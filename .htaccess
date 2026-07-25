@@ -1,0 +1,26 @@
+# RARL Community Platform — Apache config for shared hosting (Namecheap/cPanel)
+
+# Never list directory contents
+Options -Indexes
+
+# Block direct access to files that should never be served raw
+<FilesMatch "^(config\.php|env\.php)$">
+  Require all denied
+</FilesMatch>
+
+# The SQL dump should never be reachable over HTTP
+<IfModule mod_alias.c>
+  RedirectMatch 404 ^/sql/
+</IfModule>
+
+# Block dotfiles (.git, .gitignore, .env, etc.) — Apache already blocks .htaccess itself by default
+<FilesMatch "^\.(git|gitignore|gitkeep|env.*|dockerignore)">
+  Require all denied
+</FilesMatch>
+
+# Uncomment once SSL (cPanel AutoSSL) is active on the domain, to force HTTPS:
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{HTTPS} off
+#   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+# </IfModule>

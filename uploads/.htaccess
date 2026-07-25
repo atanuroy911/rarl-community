@@ -1,0 +1,6 @@
+# Uploaded files (avatars, generated certificate PDFs) must never execute as PHP,
+# even if a future upload feature accepts a badly-named/disguised file.
+<FilesMatch "\.ph(p[3457]?|t|tml)$">
+  Require all denied
+</FilesMatch>
+Options -Indexes -ExecCGI

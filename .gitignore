@@ -1,41 +1,23 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Real secrets — copy .env.sample to .env and fill in values locally/on the server
+.env
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+# User-uploaded content (avatars, generated certificate/ID-card PDFs, CVs, etc)
+uploads/avatars/*
+uploads/certificates/*
+uploads/templates/*
+uploads/cv/*
+uploads/id-cards/*
+uploads/people/*
+uploads/popups/*
+!uploads/avatars/.gitkeep
+!uploads/certificates/.gitkeep
+!uploads/templates/.gitkeep
+!uploads/cv/.gitkeep
+!uploads/id-cards/.gitkeep
+!uploads/people/.gitkeep
+!uploads/popups/.gitkeep
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
+# OS / editor cruft
 .DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
+Thumbs.db
+*.log

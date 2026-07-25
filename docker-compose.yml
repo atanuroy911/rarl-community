@@ -1,0 +1,62 @@
+# Local/Dokploy testing stack: app (PHP+Apache) + MySQL.
+# On Dokploy itself you'd normally point it at the Dockerfile directly, but this
+# compose file is the easiest way to spin up a matching MySQL instance alongside it
+# on your home server first.
+#
+# Usage:
+#   docker compose up -d --build
+#   docker compose exec app php -v            # sanity check
+#   open http://localhost:8080
+#
+# The database is seeded automatically on first run from sql/schema.sql (MySQL's
+# official image runs anything in /docker-entrypoint-initdb.d/ once, on an empty
+# data directory only).
+
+services:
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_NAME: rarl_community
+      DB_USER: rarl
+      DB_PASS: rarl_dev_password
+      SITE_URL: http://localhost:8080
+      MAIN_SITE_URL: https://rarl-lab.com
+      ADMIN_USERNAME: admin
+      # Default hash below is for the password "admin123" — change before anything
+      # resembling a real deployment. Generate your own with:
+      #   docker compose exec app php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
+      ADMIN_PASSWORD_HASH: "$$2y$$10$$Yb0ps2g8MNeSvehh6B.oWeiXWG95GRJcNwahFIPJEM5ZnP2.7aLuS"
+      SECRET_SALT: dev_only_secret_change_me
+      APP_DEBUG: "1"
+    volumes:
+      # Bind-mount the source so edits show up without rebuilding — convenient for
+      # local iteration. Drop this volume for a production-like immutable image.
+      - .:/var/www/html
+      - uploads_data:/var/www/html/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mysql:8.0
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: rarl_community
+      MYSQL_USER: rarl
+      MYSQL_PASSWORD: rarl_dev_password
+      MYSQL_ROOT_PASSWORD: rarl_dev_root_password
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prarl_dev_root_password"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  db_data:
+  uploads_data:
