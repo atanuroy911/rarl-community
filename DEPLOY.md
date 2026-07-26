@@ -221,3 +221,23 @@ existing install:
    login, post to the community feed and confirm a second test account gets a comment
    notification email, and activate a member with a photo in Admin → Members to confirm
    an ID card PDF is generated and its QR code resolves on `id-card-verify.php`.
+
+## 10. Community feed rich-text + photo upload
+
+`sql/003_community_richtext.sql` adds two columns to `community_posts`:
+`body_format` (`'markdown'` for pre-existing posts, `'html'` for new ones) and
+`image_path` (single photo per post). Run it via **Admin → Migrations** (or
+phpMyAdmin) after `002_v2_features.sql` — same idempotent, safe-to-re-run style.
+
+- The composer now uses **Quill.js** (loaded from a CDN, no Composer/build step)
+  for rich text — bold/italic/underline, lists, links, blockquotes.
+- Whatever Quill produces client-side is **never trusted as-is**: every submitted
+  post is run through `sanitizeRichHtml()` in `functions.php`, which parses it with
+  `DOMDocument` and strips anything outside a small tag/attribute allow-list before
+  it touches the database. This is the one place in the app where a `TEXT` column
+  is allowed to hold raw HTML instead of markdown.
+- `uploads/community/` is created automatically on first image upload (same
+  `mkdir()`-on-demand behavior as the other upload folders) and inherits the shared
+  `uploads/.htaccess` protection — no manual folder setup needed.
+- Older posts (`body_format = 'markdown'`) keep rendering through the existing
+  Parsedown path (`markdownToHtml()`) — nothing about existing content changes.

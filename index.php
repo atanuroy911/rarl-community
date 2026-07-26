@@ -64,13 +64,16 @@ echo htmlHead('Join the RARL Community');
 
 <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 <script>
+  <?php $lottieJson = getLottieJson('https://rarl-lab.com/wp-content/uploads/2026/03/Anima-Bot.json'); ?>
+  <?php if ($lottieJson): ?>
   lottie.loadAnimation({
     container: document.getElementById('rarl-hero-lottie'),
     renderer: 'svg',
     loop: true,
     autoplay: true,
-    path: 'https://rarl-lab.com/wp-content/uploads/2026/03/Anima-Bot.json'
+    animationData: <?= $lottieJson ?>
   });
+  <?php endif; ?>
 </script>
 
 <!-- ── ABOUT RARL ───────────────────────────────────────── -->
@@ -121,7 +124,7 @@ echo htmlHead('Join the RARL Community');
 
       <?php $modules = [
         ['👥','Member Profiles','Individual researchers and research labs register with rich academic profiles — ORCID, Google Scholar, research interests, institution.','bg-blue-50 dark:bg-blue-900/20','text-blue-600 dark:text-blue-400','border-blue-200 dark:border-blue-800'],
-        ['💬','Discord Community','Approved members receive a Discord invite to join our active research community — channels for discussions, opportunities, and collaboration.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
+        ['💬','Community Feed','Approved members can post updates, discuss research, and connect with fellow researchers on the community feed.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
         ['📚','Learning Hub','Curated YouTube playlists, articles, and free books on Scientific Writing, Machine Learning, Statistics, LaTeX, and more.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
         ['📧','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
         ['🏆','Certificates','Attend workshops, webinars, or competitions and receive a verifiable PDF certificate with a unique ID and QR code — ready for LinkedIn and your CV.','bg-red-50 dark:bg-red-900/20','text-red-600 dark:text-red-400','border-red-200 dark:border-red-800'],
@@ -150,7 +153,7 @@ echo htmlHead('Join the RARL Community');
     <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
       <?php $steps = [
         ['1','Register Free','Fill in a short form as an Individual Researcher or a Research Lab. Takes less than 2 minutes.'],
-        ['2','Get Approved','Our team reviews and approves your application within 1–2 business days, then sends your Discord invite.'],
+        ['2','Get Approved','Our team reviews and approves your application within 1–2 business days.'],
         ['3','Start Participating','Access the community, browse learning resources, attend events, and earn certificates.'],
       ]; foreach ($steps as $i => [$num, $title, $desc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> text-center">

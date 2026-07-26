@@ -1,7 +1,7 @@
 # RARL Community Platform
 
 Plain PHP + MySQL community platform for the Robotics & Automation Research Lab (RARL):
-member registration (individuals and labs), a Discord-linked community feed, a learning
+member registration (individuals and labs), a built-in community feed, a learning
 resource hub, newsletters, event management, and verifiable PDF certificates with
 QR-code validation. No build step — Tailwind is loaded from a CDN at runtime.
 

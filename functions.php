@@ -332,8 +332,9 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
 
 // ── Install / migrations ────────────────────────────────────
 const RARL_MIGRATIONS = [
-    'schema.sql'          => 'Base schema (members, certificates, settings, …)',
-    '002_v2_features.sql' => 'v2 features (plans, OTP, community, ID cards, sections)',
+    'schema.sql'                    => 'Base schema (members, certificates, settings, …)',
+    '002_v2_features.sql'           => 'v2 features (plans, OTP, community, ID cards, sections)',
+    '003_community_richtext.sql'    => 'Community rich-text posts + single photo upload',
 ];
 
 function dbTablesExist(): bool {
@@ -494,6 +495,105 @@ function markdownToHtml(string $raw): string {
     // Harden generated links the same way the rest of the app links out to
     // member-submitted URLs (autoLinkUrls, certificate links, etc).
     return preg_replace('/<a href=/', '<a target="_blank" rel="noopener nofollow" href=', $html);
+}
+
+// ── Lottie JSON fetch (server-side, cached) ─────────────────
+// lottie.loadAnimation({path:...}) fetches client-side, which breaks across
+// subdomains without CORS headers on the source (WordPress uploads rarely
+// send any). Fetching it here once and embedding the JSON directly into the
+// page sidesteps CORS entirely. Cached in settings for 24h.
+function getLottieJson(string $url): ?string {
+    $cacheKey = 'lottie_cache_' . md5($url);
+    $cached = setting($cacheKey, '');
+    $cachedAt = (int) setting($cacheKey . '_at', '0');
+    if ($cached !== '' && (time() - $cachedAt) < 86400) return $cached;
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [CURLOPT_RETURNTRANSFER => true, CURLOPT_TIMEOUT => 8]);
+    $body = curl_exec($ch);
+    $ok = $body !== false && curl_getinfo($ch, CURLINFO_HTTP_CODE) === 200 && json_decode($body) !== null;
+    curl_close($ch);
+
+    if (!$ok) return $cached !== '' ? $cached : null;
+
+    $pdo = db();
+    $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?")->execute([$cacheKey, $body, $body]);
+    $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?")->execute([$cacheKey . '_at', time(), time()]);
+    return $body;
+}
+
+// ── Rich-text sanitizer (community posts) ───────────────────
+// Quill.js (loaded client-side in community.php) produces arbitrary HTML,
+// which is never trusted as-is. This strips everything to an allow-list of
+// tags/attributes before it's stored — the ONLY place community_posts.body
+// is allowed to contain raw HTML instead of markdown (body_format='html').
+const RICH_TEXT_ALLOWED_TAGS = [
+    'p','br','strong','b','em','i','u','s','a','ul','ol','li',
+    'h1','h2','h3','blockquote','code','pre','span',
+];
+
+function sanitizeRichHtml(string $html): string {
+    $html = trim($html);
+    if ($html === '') return '';
+    $html = mb_substr($html, 0, 10000); // hard cap before parsing
+
+    $dom = new DOMDocument();
+    libxml_use_internal_errors(true);
+    // Wrap in a template so DOMDocument doesn't invent <html><body>, and force UTF-8.
+    $dom->loadHTML('<?xml encoding="utf-8"?><div id="rarl-root">' . $html . '</div>', LIBXML_NOERROR | LIBXML_NOWARNING);
+    libxml_clear_errors();
+
+    $root = $dom->getElementById('rarl-root');
+    if (!$root) return '';
+
+    sanitizeRichHtmlNode($root);
+    $out = '';
+    foreach (iterator_to_array($root->childNodes) as $child) {
+        $out .= $dom->saveHTML($child);
+    }
+    return trim($out);
+}
+
+function sanitizeRichHtmlNode(DOMNode $node): void {
+    $toRemove = [];
+    foreach (iterator_to_array($node->childNodes) as $child) {
+        if ($child instanceof DOMText) continue;
+        if ($child instanceof DOMComment) { $toRemove[] = $child; continue; }
+        if (!($child instanceof DOMElement)) { $toRemove[] = $child; continue; }
+
+        $tag = strtolower($child->tagName);
+        if (!in_array($tag, RICH_TEXT_ALLOWED_TAGS, true)) {
+            // Unwrap disallowed tags (script/style/img/etc.) but keep their text content —
+            // don't silently drop what the member typed, just strip the markup around it.
+            while ($child->firstChild) $node->insertBefore($child->firstChild, $child);
+            $toRemove[] = $child;
+            continue;
+        }
+
+        foreach (iterator_to_array($child->attributes ?? []) as $attr) {
+            if ($tag === 'a' && $attr->name === 'href') {
+                $href = trim($attr->value);
+                if (!preg_match('#^(https?://|mailto:)#i', $href)) {
+                    $child->removeAttribute('href');
+                }
+                continue;
+            }
+            $child->removeAttribute($attr->name);
+        }
+        if ($tag === 'a' && $child->hasAttribute('href')) {
+            $child->setAttribute('target', '_blank');
+            $child->setAttribute('rel', 'noopener nofollow');
+        }
+
+        sanitizeRichHtmlNode($child);
+    }
+    foreach ($toRemove as $c) $node->removeChild($c);
+}
+
+// Plain-text excerpt of a post/comment body regardless of format (markdown
+// source has no tags to strip; html source does) — for previews/emails.
+function communityBodyExcerpt(string $body, int $len = 120): string {
+    return mb_strimwidth(trim(strip_tags($body)), 0, $len, '…');
 }
 
 // ── File upload validation ──────────────────────────────────

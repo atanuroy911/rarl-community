@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS `members` (
   `unsubscribe_token`   VARCHAR(64)  NOT NULL,
   `status`              ENUM('pending','active','inactive') NOT NULL DEFAULT 'pending',
   `avatar_path`         VARCHAR(500) DEFAULT NULL,
-  `discord_invited`     TINYINT(1)   NOT NULL DEFAULT 0,
+  `discord_invited`     TINYINT(1)   NOT NULL DEFAULT 0  COMMENT 'Doubles as "welcome email sent" flag',
   `email_verified_at`   TIMESTAMP    NULL DEFAULT NULL,
   `reset_token`         VARCHAR(64)  DEFAULT NULL                COMMENT 'Password reset token',
   `reset_expires`       DATETIME     DEFAULT NULL                COMMENT 'Reset token expiry',
@@ -163,8 +163,6 @@ CREATE TABLE IF NOT EXISTS `settings` (
 
 -- Default settings
 INSERT INTO `settings` (`key`, `value`) VALUES
-('discord_invite_url',  'https://discord.gg/YOUR_INVITE_CODE'),
-('discord_server_name', 'RARL Community'),
 ('community_guidelines','Welcome to the RARL Community. Please be respectful and collaborative.'),
 ('site_name',           'RARL Community'),
 ('site_tagline',        'Robotics and Automation Research Laboratory'),

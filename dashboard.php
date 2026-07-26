@@ -113,7 +113,7 @@ echo htmlHead('My Dashboard');
         <!-- Quick links -->
         <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
           <?php $quickLinks = [
-            ['community.php','💬','Discord Community','Join the discussion'],
+            ['community.php','💬','Community Feed','Join the discussion'],
             ['resources.php','📚','Learning Hub','Curated resources'],
             [MAIN_SITE_URL,'🔬','RARL Lab','Main website'],
           ]; foreach ($quickLinks as [$url, $ic, $title, $sub]): ?>
@@ -150,17 +150,11 @@ echo htmlHead('My Dashboard');
                 <?= $m['newsletter_opt_in'] ? '✓ Subscribed' : 'Unsubscribed' ?>
               </span>
             </div>
-            <div class="flex justify-between items-center py-1.5">
-              <span class="text-gray-500">Discord</span>
-              <span class="<?= $m['discord_invited'] ? 'text-purple-600' : 'text-gray-400' ?> font-semibold">
-                <?= $m['discord_invited'] ? '✓ Invited' : 'Pending' ?>
-              </span>
-            </div>
           </div>
 
-          <?php if ($m['status'] === 'active' && !$m['discord_invited']): ?>
+          <?php if ($m['status'] === 'active'): ?>
           <a href="community.php" class="block w-full text-center mt-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-colors">
-            💬 Join Discord Community
+            💬 Visit Community Feed
           </a>
           <?php endif; ?>
         </div>

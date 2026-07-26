@@ -14,12 +14,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
 
     if ($action === 'activate' && $mid) {
         $pdo->prepare("UPDATE members SET status='active' WHERE id=?")->execute([$mid]);
-        // Send Discord invite email if not already done
+        // Send welcome email if not already sent (discord_invited doubles as a "welcome email sent" flag)
         $m = $pdo->prepare("SELECT * FROM members WHERE id=?");
         $m->execute([$mid]);
         $member = $m->fetch();
         if ($member && !$member['discord_invited']) {
-            $discordUrl  = setting('discord_invite_url');
             $memberName  = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
             $isApproval  = false;
             ob_start(); require dirname(__DIR__) . '/emails/welcome.php'; $body = ob_get_clean();
@@ -50,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Content-Disposition: attachment; filename="rarl_members_' . date('Ymd') . '.csv"');
         echo "\xEF\xBB\xBF";
         $out = fopen('php://output','w');
-        fputcsv($out,['ID','Type','Name','Email','Institution','Country','Status','Newsletter','Discord','Joined']);
+        fputcsv($out,['ID','Type','Name','Email','Institution','Country','Status','Newsletter','Welcome Email','Joined']);
         foreach ($members as $m) {
             $name = $m['type']==='lab' ? $m['lab_name'] : $m['full_name'];
             fputcsv($out,[$m['id'],$m['type'],$name,$m['email'],$m['institution'],$m['country'],$m['status'],$m['newsletter_opt_in']?'Yes':'No',$m['discord_invited']?'Yes':'No',$m['created_at']]);
@@ -122,16 +121,17 @@ adminWrap(function() use ($members, $fs, $ft, $fq, $sections) {
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Type</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Inst. / Country</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">NL</th>
-          <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Discord</th>
+          <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Welcomed</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Section</th>
+          <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">CV</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">ID Card</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Joined</th>
           <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Actions</th>
         </tr>
       </thead>
       <tbody class="divide-y divide-gray-100">
-        <?php if (empty($members)): ?><tr><td colspan="10" class="py-12 text-center text-gray-400 text-sm">No members found.</td></tr><?php endif; ?>
+        <?php if (empty($members)): ?><tr><td colspan="11" class="py-12 text-center text-gray-400 text-sm">No members found.</td></tr><?php endif; ?>
         <?php foreach ($members as $m):
           $name = $m['type']==='lab' ? $m['lab_name'] : $m['full_name'];
           $sc   = ['active'=>'bg-green-100 text-green-700','pending'=>'bg-amber-100 text-amber-700','inactive'=>'bg-gray-100 text-gray-500'][$m['status']] ?? '';
@@ -167,6 +167,13 @@ adminWrap(function() use ($members, $fs, $ft, $fq, $sections) {
             </form>
           </td>
           <td class="px-4 py-3 text-[10px]">
+            <?php if (!empty($m['cv_path'])): ?>
+              <a href="../uploads/cv/<?= urlencode($m['cv_path']) ?>" target="_blank" class="text-blue-600 hover:underline">📄 View</a>
+            <?php else: ?>
+              <span class="text-gray-300">—</span>
+            <?php endif; ?>
+          </td>
+          <td class="px-4 py-3 text-[10px]">
             <?php if (!empty($m['id_card_path'])): ?>
               <a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="text-blue-600 hover:underline">📇 <?= htmlspecialchars($m['member_code'] ?? '') ?></a>
               <div class="text-gray-400">exp <?= $m['id_card_expires_at'] ? date('d M Y', strtotime($m['id_card_expires_at'])) : '—' ?></div>
@@ -177,6 +184,7 @@ adminWrap(function() use ($members, $fs, $ft, $fq, $sections) {
           <td class="px-4 py-3 text-[10px] text-gray-400"><?= date('d M Y', strtotime($m['created_at'])) ?></td>
           <td class="px-4 py-3">
             <div class="flex flex-wrap gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+              <a href="member-edit.php?id=<?= $m['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-gray-800 text-white hover:bg-black rounded-lg">✏️ Edit</a>
               <?php if ($m['status'] !== 'active'): ?>
               <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="activate"><input type="hidden" name="mid" value="<?= $m['id'] ?>">
                 <button type="submit" class="px-2 py-1 text-[10px] font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded-lg">Activate</button>

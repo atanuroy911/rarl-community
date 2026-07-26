@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL — Community Portal (Feed + Regional Leadership + Discord)
+ * RARL — Community Portal (Feed + Regional Leadership)
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
@@ -17,10 +17,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
     $me = $stmt->fetch();
 
     if ($action === 'create_post' && $me && $me['status'] === 'active') {
-        // Stored raw (Markdown syntax preserved) — escaping happens once, at render time, in markdownToHtml().
-        $body = mb_substr(trim($_POST['body'] ?? ''), 0, 2000);
-        if ($body !== '') {
-            $pdo->prepare('INSERT INTO community_posts (member_id, body) VALUES (?,?)')->execute([$memberId, $body]);
+        // Rich HTML from the Quill editor — sanitized here, this is the only
+        // place community_posts.body is allowed to contain raw HTML (body_format='html').
+        $bodyHtml = sanitizeRichHtml($_POST['body_html'] ?? '');
+        $hasText  = trim(strip_tags($bodyHtml)) !== '';
+
+        $imagePath = null;
+        if (!empty($_FILES['image']['name'])) {
+            $imagePath = validateUpload($_FILES['image'], ['jpg','jpeg','png','webp'], 5 * 1024 * 1024, UPLOADS_PATH . '/community');
+        }
+
+        if ($hasText || $imagePath) {
+            $pdo->prepare('INSERT INTO community_posts (member_id, body, body_format, image_path) VALUES (?,?,?,?)')
+                ->execute([$memberId, $bodyHtml, 'html', $imagePath]);
         }
         header('Location: community.php#feed'); exit;
     }
@@ -42,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
                 $authorName    = $post['type'] === 'lab' ? $post['lab_name'] : $post['full_name'];
                 $commenterName = $me['type'] === 'lab' ? $me['lab_name'] : $me['full_name'];
                 $memberName    = $authorName;
-                $postExcerpt   = mb_strimwidth($post['body'], 0, 120, '…');
+                $postExcerpt   = communityBodyExcerpt($post['body']);
                 $feedUrl       = SITE_URL . '/community.php#post-' . $postId;
                 ob_start();
                 require __DIR__ . '/emails/community-comment.php';
@@ -70,8 +79,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
     }
 }
 
-$discordUrl    = setting('discord_invite_url');
-$discordName   = setting('discord_server_name', 'RARL Community');
 $guidelines    = setting('community_guidelines');
 $feedIntro     = setting('community_feed_intro', 'Share updates, ask questions, and connect with fellow RARL researchers.');
 $isMember      = !empty($_SESSION['member_id']);
@@ -149,13 +156,36 @@ echo htmlHead('Community Portal');
         <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5">🗨️ Community Feed</h2>
 
         <!-- Composer -->
-        <form method="POST" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm mb-6">
+        <form method="POST" enctype="multipart/form-data" id="post-composer" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm mb-6">
           <?= csrfField() ?><input type="hidden" name="action" value="create_post">
-          <div class="md-toolbar flex items-center gap-1 mb-2"></div>
-          <textarea name="body" required maxlength="2000" rows="3" placeholder="Share an update, ask a question…"
-            class="md-editor w-full px-4 py-3 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"></textarea>
+          <input type="hidden" name="body_html" id="post-body-html">
+          <div id="post-quill-toolbar">
+            <span class="ql-formats">
+              <button class="ql-bold"></button>
+              <button class="ql-italic"></button>
+              <button class="ql-underline"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-list" value="ordered"></button>
+              <button class="ql-list" value="bullet"></button>
+            </span>
+            <span class="ql-formats">
+              <button class="ql-link"></button>
+              <button class="ql-blockquote"></button>
+            </span>
+          </div>
+          <div id="post-quill-editor" style="min-height:90px;"></div>
+
+          <div id="post-image-preview" class="hidden mt-3 relative inline-block">
+            <img id="post-image-preview-img" src="" class="max-h-48 rounded-xl border border-gray-200 dark:border-gray-700"/>
+            <button type="button" id="post-image-remove" class="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white rounded-full text-xs flex items-center justify-center">✕</button>
+          </div>
+
           <div class="flex items-center justify-between mt-3">
-            <p class="text-[11px] text-gray-400">Markdown supported — **bold**, *italic*, `code`, [link](url), - lists</p>
+            <label class="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-rarl-red transition-colors">
+              <input type="file" name="image" id="post-image-input" accept=".jpg,.jpeg,.png,.webp" class="hidden"/>
+              🖼️ Add a photo
+            </label>
             <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors">Post</button>
           </div>
         </form>
@@ -168,7 +198,9 @@ echo htmlHead('Community Portal');
         <div class="space-y-5">
           <?php foreach ($posts as $post):
             $authorName = $post['type'] === 'lab' ? $post['lab_name'] : $post['full_name'];
-            $bodyHtml   = markdownToHtml($post['body']);
+            // body_format='html' -> already-sanitized rich text from the Quill composer (see sanitizeRichHtml()).
+            // Older posts predate this column and are still markdown -> rendered through Parsedown as before.
+            $bodyHtml = ($post['body_format'] ?? 'markdown') === 'html' ? $post['body'] : markdownToHtml($post['body']);
           ?>
           <div id="post-<?= (int)$post['id'] ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
             <div class="flex items-start justify-between gap-3 mb-3">
@@ -179,7 +211,12 @@ echo htmlHead('Community Portal');
               </div>
               <span class="text-xs text-gray-400"><?= date('d M Y, H:i', strtotime($post['created_at'])) ?></span>
             </div>
-            <div class="md-content text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4"><?= $bodyHtml ?></div>
+            <?php if ($bodyHtml !== ''): ?>
+            <div class="rich-content text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4"><?= $bodyHtml ?></div>
+            <?php endif; ?>
+            <?php if (!empty($post['image_path'])): ?>
+            <img src="<?= UPLOADS_URL ?>/community/<?= htmlspecialchars($post['image_path']) ?>" alt="" class="w-full rounded-xl border border-gray-100 dark:border-gray-800 mb-4"/>
+            <?php endif; ?>
 
             <div class="flex items-center gap-4 mb-4">
               <form method="POST">
@@ -304,60 +341,56 @@ echo htmlHead('Community Portal');
         <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed"><?= nl2br(htmlspecialchars($guidelines)) ?></p>
       </div>
       <?php endif; ?>
-
-      <!-- Discord (secondary, only if configured) -->
-      <?php if (!empty($discordUrl)): ?>
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-        <h3 class="font-heading font-bold text-sm text-gray-800 dark:text-white mb-3">💬 Also on Discord</h3>
-        <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed mb-4">Join <?= htmlspecialchars($discordName) ?> for real-time discussion alongside the feed.</p>
-        <?php if ($isMember): ?>
-        <a href="<?= htmlspecialchars($discordUrl) ?>" target="_blank" rel="noopener"
-          class="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-[#5865f2] hover:bg-[#4752c4] text-white font-bold rounded-xl transition-colors text-xs">
-          Join Discord Server
-        </a>
-        <?php else: ?>
-        <a href="register.php" class="inline-flex items-center justify-center gap-2 w-full px-4 py-2.5 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white font-semibold rounded-xl transition-colors text-xs">
-          Join as a Member for Discord Access
-        </a>
-        <?php endif; ?>
-      </div>
-      <?php endif; ?>
     </div>
 
   </div>
 </div>
 
+<?php if ($isMember): ?>
+<link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
+<style>
+  /* Quill toolbar/editor styled to match the rest of the composer card */
+  #post-quill-toolbar.ql-toolbar { border: 1px solid rgb(209 213 219); border-radius: 0.75rem 0.75rem 0 0; background: rgb(249 250 251); }
+  #post-quill-editor.ql-container { border: 1px solid rgb(209 213 219); border-top: none; border-radius: 0 0 0.75rem 0.75rem; font-size: 0.875rem; background: rgb(249 250 251); }
+  .dark #post-quill-toolbar.ql-toolbar, .dark #post-quill-editor.ql-container { border-color: rgb(75 85 99); background: rgb(31 41 55); }
+  .dark #post-quill-editor .ql-editor.ql-blank::before { color: rgb(107 114 128); }
+  /* Rendered post/comment rich content — Quill's own list/heading margins got stripped by Tailwind's reset */
+  .rich-content p { margin: 0 0 0.5em; }
+  .rich-content p:last-child { margin-bottom: 0; }
+  .rich-content ul, .rich-content ol { margin: 0 0 0.5em 1.25em; }
+  .rich-content ul { list-style: disc; }
+  .rich-content ol { list-style: decimal; }
+  .rich-content blockquote { border-left: 3px solid currentColor; opacity: 0.8; padding-left: 0.75em; margin: 0 0 0.5em; }
+  .rich-content a { text-decoration: underline; }
+</style>
 <script>
-  // Lightweight Markdown formatting toolbar — wraps the current selection in
-  // the adjacent .md-editor with the given syntax (or inserts a placeholder).
-  function mdWrap(editor, before, after, placeholder) {
-    const start = editor.selectionStart, end = editor.selectionEnd;
-    const val = editor.value;
-    const selected = val.slice(start, end) || placeholder;
-    editor.value = val.slice(0, start) + before + selected + after + val.slice(end);
-    const pos = start + before.length + selected.length + after.length;
-    editor.focus();
-    editor.setSelectionRange(pos, pos);
-  }
-  document.querySelectorAll('.md-toolbar').forEach(bar => {
-    const editor = bar.parentElement.querySelector('.md-editor');
-    if (!editor) return;
-    const buttons = [
-      ['B', 'Bold', () => mdWrap(editor, '**', '**', 'bold text')],
-      ['I', 'Italic', () => mdWrap(editor, '*', '*', 'italic text')],
-      ['</>', 'Code', () => mdWrap(editor, '`', '`', 'code')],
-      ['🔗', 'Link', () => mdWrap(editor, '[', '](https://)', 'link text')],
-      ['•', 'List item', () => mdWrap(editor, '- ', '', 'list item')],
-    ];
-    buttons.forEach(([label, title, fn]) => {
-      const btn = document.createElement('button');
-      btn.type = 'button'; btn.title = title; btn.textContent = label;
-      btn.className = 'px-2.5 py-1 text-xs font-semibold bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg transition-colors';
-      btn.addEventListener('click', fn);
-      bar.appendChild(btn);
-    });
+  const quill = new Quill('#post-quill-editor', {
+    theme: 'snow',
+    modules: { toolbar: '#post-quill-toolbar' },
+    placeholder: 'Share an update, ask a question…',
+  });
+
+  const composer = document.getElementById('post-composer');
+  composer.addEventListener('submit', () => {
+    document.getElementById('post-body-html').value = quill.root.innerHTML;
+  });
+
+  const imageInput   = document.getElementById('post-image-input');
+  const imagePreview = document.getElementById('post-image-preview');
+  const imagePreviewImg = document.getElementById('post-image-preview-img');
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    imagePreviewImg.src = URL.createObjectURL(file);
+    imagePreview.classList.remove('hidden');
+  });
+  document.getElementById('post-image-remove').addEventListener('click', () => {
+    imageInput.value = '';
+    imagePreview.classList.add('hidden');
   });
 </script>
+<?php endif; ?>
 
 <?= publicFooter() ?>
 </body></html>

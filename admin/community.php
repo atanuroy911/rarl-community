@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Admin — Community Management (Discord + Announcements)
+ * RARL Admin — Community Management (Guidelines + Announcements)
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
@@ -10,7 +10,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'save_settings') {
-        $settingKeys = ['discord_invite_url','discord_server_name','community_guidelines'];
+        $settingKeys = ['community_guidelines'];
         foreach ($settingKeys as $k) {
             $v = clean($_POST[$k] ?? '');
             $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?")->execute([$k,$v,$v]);
@@ -91,24 +91,14 @@ $comments = $pdo->query("SELECT community_comments.*, members.full_name, members
 adminWrap(function() use ($settings, $announcements, $posts, $comments) {
     adminFlash(); ?>
 <h1 class="text-2xl font-black text-gray-900 mb-1">Community</h1>
-<p class="text-gray-500 text-sm mb-7">Manage Discord settings and community announcements</p>
+<p class="text-gray-500 text-sm mb-7">Manage community guidelines and announcements</p>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-7">
-  <!-- Discord Settings -->
+  <!-- Community Guidelines -->
   <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-    <h2 class="font-heading font-bold text-base text-gray-800 mb-5">💬 Discord Settings</h2>
+    <h2 class="font-heading font-bold text-base text-gray-800 mb-5">📋 Community Guidelines</h2>
     <form method="POST" class="space-y-4">
       <?= acsrfField() ?><input type="hidden" name="action" value="save_settings">
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Discord Invite URL</label>
-        <input type="url" name="discord_invite_url" value="<?= htmlspecialchars($settings['discord_invite_url']??'') ?>" placeholder="https://discord.gg/xxxxx"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Server Name</label>
-        <input type="text" name="discord_server_name" value="<?= htmlspecialchars($settings['discord_server_name']??'RARL Community') ?>"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Community Guidelines</label>
         <textarea name="community_guidelines" rows="5"
@@ -204,7 +194,10 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
           <span class="font-semibold text-xs text-gray-900"><?= htmlspecialchars($authorName) ?></span>
           <span class="text-[10px] text-gray-400">· <?= date('d M Y', strtotime($post['created_at'])) ?></span>
         </div>
-        <p class="text-xs text-gray-500 mb-2"><?= htmlspecialchars(mb_strimwidth($post['body'],0,140,'…')) ?></p>
+        <p class="text-xs text-gray-500 mb-2"><?= htmlspecialchars(communityBodyExcerpt($post['body'], 140)) ?></p>
+        <?php if (!empty($post['image_path'])): ?>
+        <img src="<?= UPLOADS_URL ?>/community/<?= htmlspecialchars($post['image_path']) ?>" alt="" class="max-h-24 rounded-lg mb-2"/>
+        <?php endif; ?>
         <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="<?= $post['is_pinned']?'unpin_post':'pin_post' ?>"><input type="hidden" name="post_id" value="<?= $post['id'] ?>">
             <button type="submit" class="px-2.5 py-1 text-xs font-semibold bg-amber-100 text-amber-700 hover:bg-amber-200 rounded-lg"><?= $post['is_pinned']?'Unpin':'Pin' ?></button>
@@ -237,7 +230,7 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
           <span class="font-semibold text-xs text-gray-900"><?= htmlspecialchars($cAuthor) ?></span>
           <span class="text-[10px] text-gray-400">· <?= date('d M Y', strtotime($c['created_at'])) ?></span>
         </div>
-        <p class="text-xs text-gray-500 mb-2"><?= htmlspecialchars(mb_strimwidth($c['body'],0,140,'…')) ?></p>
+        <p class="text-xs text-gray-500 mb-2"><?= htmlspecialchars(communityBodyExcerpt($c['body'], 140)) ?></p>
         <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="<?= $c['is_hidden']?'unhide_comment':'hide_comment' ?>"><input type="hidden" name="comment_id" value="<?= $c['id'] ?>">
             <button type="submit" class="px-2.5 py-1 text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg"><?= $c['is_hidden']?'Unhide':'Hide' ?></button>
