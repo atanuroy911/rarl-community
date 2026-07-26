@@ -219,6 +219,117 @@ function otpCooldownSecondsLeft(string $email, string $purpose, int $cooldown = 
     return max(0, $cooldown - $elapsed);
 }
 
+// ── Designation options (registration + profile forms) ─────
+const POSITION_OPTIONS = [
+    'Undergraduate Student', "Master's Student", 'PhD Student',
+    'Postdoctoral Researcher', 'Lecturer', 'Research Scientist',
+    'Assistant Professor', 'Associate Professor', 'Professor',
+    'Industry Researcher', 'Independent Researcher', 'Other',
+];
+
+function positionSelectOptions(string $selected): string {
+    $html = '<option value="">— Select —</option>';
+    foreach (POSITION_OPTIONS as $p) {
+        $sel = $selected === $p ? ' selected' : '';
+        $html .= '<option' . $sel . '>' . htmlspecialchars($p) . '</option>';
+    }
+    return $html;
+}
+
+// ── Shared registration/profile option sets ─────────────────
+// Defined once here (not duplicated per-file) so individual/lab registration
+// and profile editing always stay in sync.
+const YEARS_OPTIONS = [
+    '<1' => 'Less than 1 year', '1-3' => '1-3 years', '3-5' => '3-5 years',
+    '5-10' => '5-10 years', '10+' => 'More than 10 years',
+];
+const REFERRAL_OPTIONS = [
+    'conference' => 'Academic Conference', 'referral' => 'Colleague / Peer Referral',
+    'social_media' => 'Social Media', 'newsletter' => 'University Newsletter', 'other' => 'Other',
+];
+
+function optionsSelectHtml(array $options, string $selected): string {
+    $html = '<option value="">— Select —</option>';
+    foreach ($options as $val => $label) {
+        $sel = $selected === $val ? ' selected' : '';
+        $html .= '<option value="' . htmlspecialchars($val) . '"' . $sel . '>' . htmlspecialchars($label) . '</option>';
+    }
+    return $html;
+}
+
+// ── Country list (static, bundled — no external API) ────────
+// name => ISO 3166-1 alpha-2 code (code powers the flag image, see
+// countryFlagUrl() below; no API/key needed for flags either).
+const COUNTRIES = [
+    'Afghanistan'=>'af','Albania'=>'al','Algeria'=>'dz','Andorra'=>'ad','Angola'=>'ao',
+    'Argentina'=>'ar','Armenia'=>'am','Australia'=>'au','Austria'=>'at','Azerbaijan'=>'az',
+    'Bahamas'=>'bs','Bahrain'=>'bh','Bangladesh'=>'bd','Belarus'=>'by','Belgium'=>'be',
+    'Belize'=>'bz','Benin'=>'bj','Bhutan'=>'bt','Bolivia'=>'bo','Bosnia and Herzegovina'=>'ba',
+    'Botswana'=>'bw','Brazil'=>'br','Brunei'=>'bn','Bulgaria'=>'bg','Burkina Faso'=>'bf',
+    'Burundi'=>'bi','Cambodia'=>'kh','Cameroon'=>'cm','Canada'=>'ca','Chad'=>'td',
+    'Chile'=>'cl','China'=>'cn','Colombia'=>'co','Costa Rica'=>'cr','Croatia'=>'hr',
+    'Cuba'=>'cu','Cyprus'=>'cy','Czechia'=>'cz','Denmark'=>'dk','Dominican Republic'=>'do',
+    'Ecuador'=>'ec','Egypt'=>'eg','El Salvador'=>'sv','Estonia'=>'ee','Ethiopia'=>'et',
+    'Fiji'=>'fj','Finland'=>'fi','France'=>'fr','Gabon'=>'ga','Georgia'=>'ge',
+    'Germany'=>'de','Ghana'=>'gh','Greece'=>'gr','Guatemala'=>'gt','Honduras'=>'hn',
+    'Hong Kong'=>'hk','Hungary'=>'hu','Iceland'=>'is','India'=>'in','Indonesia'=>'id',
+    'Iran'=>'ir','Iraq'=>'iq','Ireland'=>'ie','Israel'=>'il','Italy'=>'it',
+    'Jamaica'=>'jm','Japan'=>'jp','Jordan'=>'jo','Kazakhstan'=>'kz','Kenya'=>'ke',
+    'Kuwait'=>'kw','Kyrgyzstan'=>'kg','Laos'=>'la','Latvia'=>'lv','Lebanon'=>'lb',
+    'Libya'=>'ly','Liechtenstein'=>'li','Lithuania'=>'lt','Luxembourg'=>'lu','Madagascar'=>'mg',
+    'Malawi'=>'mw','Malaysia'=>'my','Maldives'=>'mv','Mali'=>'ml','Malta'=>'mt',
+    'Mauritius'=>'mu','Mexico'=>'mx','Moldova'=>'md','Monaco'=>'mc','Mongolia'=>'mn',
+    'Montenegro'=>'me','Morocco'=>'ma','Mozambique'=>'mz','Myanmar'=>'mm','Namibia'=>'na',
+    'Nepal'=>'np','Netherlands'=>'nl','New Zealand'=>'nz','Nicaragua'=>'ni','Niger'=>'ne',
+    'Nigeria'=>'ng','North Korea'=>'kp','North Macedonia'=>'mk','Norway'=>'no','Oman'=>'om',
+    'Pakistan'=>'pk','Panama'=>'pa','Papua New Guinea'=>'pg','Paraguay'=>'py','Peru'=>'pe',
+    'Philippines'=>'ph','Poland'=>'pl','Portugal'=>'pt','Qatar'=>'qa','Romania'=>'ro',
+    'Russia'=>'ru','Rwanda'=>'rw','Saudi Arabia'=>'sa','Senegal'=>'sn','Serbia'=>'rs',
+    'Singapore'=>'sg','Slovakia'=>'sk','Slovenia'=>'si','Somalia'=>'so','South Africa'=>'za',
+    'South Korea'=>'kr','South Sudan'=>'ss','Spain'=>'es','Sri Lanka'=>'lk','Sudan'=>'sd',
+    'Sweden'=>'se','Switzerland'=>'ch','Syria'=>'sy','Taiwan'=>'tw','Tajikistan'=>'tj',
+    'Tanzania'=>'tz','Thailand'=>'th','Togo'=>'tg','Trinidad and Tobago'=>'tt','Tunisia'=>'tn',
+    'Turkey'=>'tr','Turkmenistan'=>'tm','Uganda'=>'ug','Ukraine'=>'ua','United Arab Emirates'=>'ae',
+    'United Kingdom'=>'gb','United States'=>'us','Uruguay'=>'uy','Uzbekistan'=>'uz','Venezuela'=>'ve',
+    'Vietnam'=>'vn','Yemen'=>'ye','Zambia'=>'zm','Zimbabwe'=>'zw',
+];
+
+function countrySelectOptions(string $selected): string {
+    $html = '<option value="">— Select —</option>';
+    foreach (COUNTRIES as $name => $code) {
+        $sel = $selected === $name ? ' selected' : '';
+        $html .= '<option value="' . htmlspecialchars($name) . '" data-code="' . $code . '"' . $sel . '>' . htmlspecialchars($name) . '</option>';
+    }
+    return $html;
+}
+
+// Flag image URL — flags.restcountries.com needs no API key.
+function countryFlagUrl(string $countryName): ?string {
+    $code = COUNTRIES[$countryName] ?? null;
+    return $code ? "https://flags.restcountries.com/v5/w320/{$code}.png" : null;
+}
+
+// Renders a country <select> (name="country") plus a live flag preview next
+// to it — used on both registration forms and the profile edit form so the
+// behavior/markup isn't duplicated four times. $uid must be unique per
+// <select> on the page (e.g. "reg-ind", "profile-lab").
+function countryFieldHtml(string $selected, string $uid, bool $required = true): string {
+    $flagUrl = $selected !== '' ? countryFlagUrl($selected) : null;
+    $reqAttr = $required ? ' required' : '';
+    $selectId = 'country-select-' . $uid;
+    $flagId   = 'country-flag-' . $uid;
+    $display  = $flagUrl ? '' : 'display:none;';
+    return '
+        <div class="flex items-center gap-2">
+          <select name="country" id="' . $selectId . '"' . $reqAttr . '
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"
+            onchange="var o=this.options[this.selectedIndex],f=document.getElementById(\'' . $flagId . '\');if(o.dataset.code){f.src=\'https://flags.restcountries.com/v5/w320/\'+o.dataset.code+\'.png\';f.style.display=\'\';}else{f.style.display=\'none\';}">
+            ' . countrySelectOptions($selected) . '
+          </select>
+          <img id="' . $flagId . '" src="' . htmlspecialchars((string)$flagUrl) . '" alt="" style="' . $display . '" class="w-8 h-6 object-cover rounded flex-shrink-0 border border-gray-200 dark:border-gray-600"/>
+        </div>';
+}
+
 // ── Install / migrations ────────────────────────────────────
 const RARL_MIGRATIONS = [
     'schema.sql'          => 'Base schema (members, certificates, settings, …)',

@@ -55,12 +55,23 @@ echo htmlHead('Join the RARL Community');
       </div>
     </div>
     <div class="hidden md:flex justify-center">
-      <div class="relative w-full max-w-sm aspect-square rounded-3xl bg-gradient-to-br from-blue-50 to-red-50 dark:from-gray-800 dark:to-gray-800 flex items-center justify-center">
-        <img src="<?= BRAND_MARK_PATH ?>" alt="RARL" class="w-32 h-32 object-contain drop-shadow-lg"/>
+      <div class="relative w-full max-w-sm aspect-square rounded-3xl bg-gradient-to-br from-blue-50 to-red-50 dark:from-gray-800 dark:to-gray-800 flex items-center justify-center overflow-hidden">
+        <div id="rarl-hero-lottie" class="w-full h-full"></div>
       </div>
     </div>
   </div>
 </section>
+
+<script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
+<script>
+  lottie.loadAnimation({
+    container: document.getElementById('rarl-hero-lottie'),
+    renderer: 'svg',
+    loop: true,
+    autoplay: true,
+    path: 'https://rarl-lab.com/wp-content/uploads/2026/03/Anima-Bot.json'
+  });
+</script>
 
 <!-- ── ABOUT RARL ───────────────────────────────────────── -->
 <section class="py-20 bg-gray-50 dark:bg-gray-950">

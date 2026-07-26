@@ -29,9 +29,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'newsletter_opt_in' => isset($_POST['newsletter_opt_in']) ? 1 : 0,
     ];
 
-    $yearsOptions    = ['<1'=>'Less than 1 year','1-3'=>'1-3 years','3-5'=>'3-5 years','5-10'=>'5-10 years','10+'=>'More than 10 years'];
-    $referralOptions = ['conference'=>'Academic Conference','referral'=>'Colleague / Peer Referral','social_media'=>'Social Media','newsletter'=>'University Newsletter','other'=>'Other'];
-
     if (strlen($vals['lab_name']) < 2)   $errors[] = 'Lab name is required.';
     if (strlen($vals['pi_name']) < 2)    $errors[] = 'Principal Investigator name is required.';
     if (!filter_var($vals['email'], FILTER_VALIDATE_EMAIL)) $errors[] = 'Valid contact email is required.';
@@ -39,11 +36,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($vals['institution']))     $errors[] = 'Institution/University is required.';
     if (empty($vals['country']))         $errors[] = 'Country is required.';
     if (empty($vals['city_state']))      $errors[] = 'City & State/Province is required.';
-    if (!array_key_exists($vals['years_experience'], $yearsOptions)) $errors[] = 'Please select the lab\'s years of research experience.';
-    if (!array_key_exists($vals['referral_source'], $referralOptions)) $errors[] = 'Please tell us how you heard about us.';
+    if (!array_key_exists($vals['years_experience'], YEARS_OPTIONS)) $errors[] = 'Please select the lab\'s years of research experience.';
+    if (!array_key_exists($vals['referral_source'], REFERRAL_OPTIONS)) $errors[] = 'Please tell us how you heard about us.';
     if (empty($vals['research_areas']))  $errors[] = 'Please describe your research areas.';
-    if (!filter_var($vals['google_scholar_url'], FILTER_VALIDATE_URL)) $errors[] = 'A valid Google Scholar URL is required.';
-    if (empty($vals['orcid_id']))        $errors[] = 'ORCID ID is required.';
+    if ($vals['google_scholar_url'] !== '' && !filter_var($vals['google_scholar_url'], FILTER_VALIDATE_URL)) $errors[] = 'Google Scholar URL must be a valid URL.';
 
     $cvFilename = null;
     if (empty($_FILES['cv_file']['name'])) {
@@ -161,8 +157,7 @@ echo htmlHead('Research Lab Registration');
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Country <span class="text-rarl-red">*</span></label>
-          <input type="text" name="country" value="<?= htmlspecialchars($vals['country'] ?? '') ?>" required
-            placeholder="e.g. USA" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          <?= countryFieldHtml($vals['country'] ?? '', 'reg-lab') ?>
         </div>
       </div>
 
@@ -175,10 +170,7 @@ echo htmlHead('Research Lab Registration');
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Years of Research Experience <span class="text-rarl-red">*</span></label>
           <select name="years_experience" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
-            <option value="">— Select —</option>
-            <?php foreach ($yearsOptions as $val => $label): ?>
-            <option value="<?= $val ?>" <?= ($vals['years_experience'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-            <?php endforeach; ?>
+            <?= optionsSelectHtml(YEARS_OPTIONS, $vals['years_experience'] ?? '') ?>
           </select>
         </div>
       </div>
@@ -187,10 +179,7 @@ echo htmlHead('Research Lab Registration');
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">How did you hear about us? <span class="text-rarl-red">*</span></label>
           <select name="referral_source" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
-            <option value="">— Select —</option>
-            <?php foreach ($referralOptions as $val => $label): ?>
-            <option value="<?= $val ?>" <?= ($vals['referral_source'] ?? '') === $val ? 'selected' : '' ?>><?= $label ?></option>
-            <?php endforeach; ?>
+            <?= optionsSelectHtml(REFERRAL_OPTIONS, $vals['referral_source'] ?? '') ?>
           </select>
         </div>
         <div>
@@ -202,13 +191,13 @@ echo htmlHead('Research Lab Registration');
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Google Scholar URL <span class="text-rarl-red">*</span></label>
-          <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($vals['google_scholar_url'] ?? '') ?>" required
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Google Scholar URL <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($vals['google_scholar_url'] ?? '') ?>"
             placeholder="scholar.google.com/…" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">ORCID ID <span class="text-rarl-red">*</span></label>
-          <input type="text" name="orcid_id" value="<?= htmlspecialchars($vals['orcid_id'] ?? '') ?>" required
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">ORCID ID <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="text" name="orcid_id" value="<?= htmlspecialchars($vals['orcid_id'] ?? '') ?>"
             placeholder="0000-0000-0000-0000" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
         </div>
       </div>

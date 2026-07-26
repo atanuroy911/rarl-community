@@ -32,6 +32,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!$avatarFile) $errors[] = 'Photo must be a JPG/PNG/WEBP under 3MB.';
             }
 
+            $yearsExp = clean($_POST['years_experience'] ?? '');
+            $referral = clean($_POST['referral_source']  ?? '');
+            if ($yearsExp !== '' && !array_key_exists($yearsExp, YEARS_OPTIONS)) $errors[] = 'Invalid years of experience selection.';
+            if ($referral !== '' && !array_key_exists($referral, REFERRAL_OPTIONS)) $errors[] = 'Invalid referral source selection.';
+
             if ($m['type'] === 'lab') {
                 $labName   = clean($_POST['lab_name']   ?? '');
                 $piName    = clean($_POST['pi_name']    ?? '');
@@ -42,8 +47,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($country))      $errors[] = 'Country is required.';
 
                 if (empty($errors)) {
-                    $sql = 'UPDATE members SET lab_name=?, pi_name=?, lab_website=?, research_areas=?, country=?, newsletter_opt_in=?, community_notify=?';
-                    $params = [$labName, $piName, $labSite, $areas, $country, $newsletter, $commNotify];
+                    $sql = 'UPDATE members SET lab_name=?, pi_name=?, lab_website=?, research_areas=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?';
+                    $params = [$labName, $piName, $labSite, $areas, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify];
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
@@ -64,8 +69,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($country))         $errors[] = 'Country is required.';
 
                 if (empty($errors)) {
-                    $sql = 'UPDATE members SET full_name=?, institution=?, department=?, position=?, research_interests=?, google_scholar_url=?, orcid_id=?, linkedin_url=?, country=?, newsletter_opt_in=?, community_notify=?';
-                    $params = [$fullName, $institution, $department, $position, $interests, $scholar, $orcid, $linkedin, $country, $newsletter, $commNotify];
+                    $sql = 'UPDATE members SET full_name=?, institution=?, department=?, position=?, research_interests=?, google_scholar_url=?, orcid_id=?, linkedin_url=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?';
+                    $params = [$fullName, $institution, $department, $position, $interests, $scholar, $orcid, $linkedin, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify];
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
@@ -204,13 +209,26 @@ echo htmlHead('My Profile');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Country <span class="text-rarl-red">*</span></label>
-          <input type="text" name="country" value="<?= htmlspecialchars($m['country'] ?? '') ?>" required
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          <?= countryFieldHtml($m['country'] ?? '', 'profile-lab') ?>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Website</label>
           <input type="url" name="lab_website" value="<?= htmlspecialchars($m['lab_website'] ?? '') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Years of Research Experience</label>
+          <select name="years_experience" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+            <?= optionsSelectHtml(YEARS_OPTIONS, $m['years_experience'] ?? '') ?>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">How did you hear about us?</label>
+          <select name="referral_source" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+            <?= optionsSelectHtml(REFERRAL_OPTIONS, $m['referral_source'] ?? '') ?>
+          </select>
         </div>
       </div>
       <div>
@@ -239,17 +257,27 @@ echo htmlHead('My Profile');
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Country <span class="text-rarl-red">*</span></label>
-          <input type="text" name="country" value="<?= htmlspecialchars($m['country'] ?? '') ?>" required
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          <?= countryFieldHtml($m['country'] ?? '', 'profile-ind') ?>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Position</label>
+          <select name="position" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+            <?= positionSelectOptions($m['position'] ?? '') ?>
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Years of Research Experience</label>
+          <select name="years_experience" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+            <?= optionsSelectHtml(YEARS_OPTIONS, $m['years_experience'] ?? '') ?>
+          </select>
         </div>
       </div>
       <div>
-        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Position</label>
-        <select name="position" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
-          <option value="">— Select —</option>
-          <?php foreach (['PhD Student','MSc Student','BSc Student','Postdoctoral Researcher','Research Scientist','Assistant Professor','Associate Professor','Professor','Industry Researcher','Independent Researcher','Other'] as $p): ?>
-          <option <?= ($m['position'] ?? '') === $p ? 'selected' : '' ?>><?= $p ?></option>
-          <?php endforeach; ?>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">How did you hear about us?</label>
+        <select name="referral_source" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+          <?= optionsSelectHtml(REFERRAL_OPTIONS, $m['referral_source'] ?? '') ?>
         </select>
       </div>
       <div>
