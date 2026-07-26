@@ -8,38 +8,9 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
 
-define('RARL_MIGRATIONS', [
-    'schema.sql'          => 'Base schema (members, certificates, settings, …)',
-    '002_v2_features.sql' => 'v2 features (plans, OTP, community, ID cards, sections)',
-]);
-
-function runSqlFile(PDO $pdo, string $path): array {
-    $sql = file_get_contents($path);
-    // Strip -- line comments, then split on statement-terminating semicolons.
-    $sql = preg_replace('/^--.*$/m', '', $sql);
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
-
-    $ran = 0;
-    foreach ($statements as $stmt) {
-        if ($stmt === '') continue;
-        $pdo->exec($stmt);
-        $ran++;
-    }
-    return ['ok' => true, 'statements' => $ran];
-}
-
 $results = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && ($_POST['action'] ?? '') === 'run_migrations') {
-    $pdo = db();
-    $results = [];
-    foreach (array_keys(RARL_MIGRATIONS) as $file) {
-        $path = dirname(__DIR__) . '/sql/' . $file;
-        try {
-            $results[$file] = runSqlFile($pdo, $path);
-        } catch (PDOException $e) {
-            $results[$file] = ['ok' => false, 'error' => $e->getMessage()];
-        }
-    }
+    $results = runAllMigrations();
     $failed = array_filter($results, fn($r) => !$r['ok']);
     $_SESSION['flash'] = $failed
         ? ['type' => 'error', 'msg' => 'Migration finished with errors — see details below.']

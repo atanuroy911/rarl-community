@@ -10,6 +10,10 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!dbTablesExist()) {
+    header('Location: install.php'); exit;
+}
+
 if (empty($_SESSION['admin_ok']) || (time() - ($_SESSION['admin_ts'] ?? 0)) > ADMIN_TIMEOUT) {
     session_unset(); session_destroy();
     header('Location: login.php?e=expired'); exit;

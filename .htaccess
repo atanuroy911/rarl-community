@@ -18,6 +18,16 @@ Options -Indexes
   Require all denied
 </FilesMatch>
 
+# Basic hardening headers (same idea as WordPress security guides recommend)
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Don't leak the Apache/PHP version in response headers
+ServerSignature Off
+
 # Uncomment once SSL (cPanel AutoSSL) is active on the domain, to force HTTPS:
 # <IfModule mod_rewrite.c>
 #   RewriteEngine On

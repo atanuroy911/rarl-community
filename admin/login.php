@@ -1,12 +1,18 @@
 <?php
 require_once dirname(__DIR__) . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(ADMIN_SESSION_NAME); session_start(); }
+if (!dbTablesExist()) { header('Location: install.php'); exit; }
 if (!empty($_SESSION['admin_ok'])) { header('Location: index.php'); exit; }
 $error = '';
+$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+$lockedFor = loginThrottleCheck($ip);
+if ($lockedFor > 0) {
+    $error = 'Too many failed attempts. Try again in ' . ceil($lockedFor / 60) . ' minute(s).';
+} elseif ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $u = trim($_POST['u'] ?? ''); $p = $_POST['p'] ?? '';
     if ($u === ADMIN_USERNAME && password_verify($p, ADMIN_PASSWORD_HASH)) {
+        loginThrottleReset($ip);
         session_regenerate_id(true);
         $_SESSION['admin_ok'] = true;
         $_SESSION['admin_ts'] = time();
@@ -14,9 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['acsrf'] = bin2hex(random_bytes(32));
         header('Location: index.php'); exit;
     }
+    loginThrottleRecordFailure($ip);
     sleep(1); $error = 'Invalid credentials.';
 }
 $expired = !empty($_GET['e']);
+$flash = $_SESSION['flash'] ?? null;
+unset($_SESSION['flash']);
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Admin Login — RARL</title><meta name="robots" content="noindex,nofollow"/>
@@ -33,6 +42,7 @@ $expired = !empty($_GET['e']);
       <div class="text-left"><div class="font-heading font-black text-white text-base">RARL Admin</div><div class="text-white/35 text-xs">Community Platform</div></div>
     </div>
   </div>
+  <?php if ($flash): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">✅ <?= htmlspecialchars($flash['msg']) ?></div><?php endif; ?>
   <?php if ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">⏱️ Session expired. Please sign in again.</div><?php endif; ?>
   <?php if ($error): ?><div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">⚠️ <?= htmlspecialchars($error) ?></div><?php endif; ?>
   <div class="bg-white rounded-2xl shadow-2xl p-8">

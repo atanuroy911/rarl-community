@@ -201,6 +201,84 @@ function otpCooldownSecondsLeft(string $email, string $purpose, int $cooldown = 
     return max(0, $cooldown - $elapsed);
 }
 
+// ── Install / migrations ────────────────────────────────────
+const RARL_MIGRATIONS = [
+    'schema.sql'          => 'Base schema (members, certificates, settings, …)',
+    '002_v2_features.sql' => 'v2 features (plans, OTP, community, ID cards, sections)',
+];
+
+function dbTablesExist(): bool {
+    try {
+        $pdo = db();
+        return (bool) $pdo->query("SHOW TABLES LIKE 'members'")->fetchColumn();
+    } catch (Throwable $e) {
+        return false;
+    }
+}
+
+function runSqlFile(PDO $pdo, string $path): array {
+    $sql = file_get_contents($path);
+    $sql = preg_replace('/^--.*$/m', '', $sql);
+    $statements = array_filter(array_map('trim', explode(';', $sql)));
+
+    $ran = 0;
+    foreach ($statements as $stmt) {
+        if ($stmt === '') continue;
+        $pdo->exec($stmt);
+        $ran++;
+    }
+    return ['ok' => true, 'statements' => $ran];
+}
+
+function runAllMigrations(): array {
+    $pdo = db();
+    $results = [];
+    foreach (array_keys(RARL_MIGRATIONS) as $file) {
+        $path = __DIR__ . '/sql/' . $file;
+        try {
+            $results[$file] = runSqlFile($pdo, $path);
+        } catch (PDOException $e) {
+            $results[$file] = ['ok' => false, 'error' => $e->getMessage()];
+        }
+    }
+    return $results;
+}
+
+// ── Admin login throttle (brute-force protection) ──────────
+// Tracked per client IP in the settings table (no extra table needed) —
+// locks out after 5 failed attempts within 15 minutes.
+function loginThrottleKey(string $ip): string {
+    return 'login_throttle_' . hash('sha256', $ip);
+}
+
+function loginThrottleCheck(string $ip): int {
+    $raw = setting(loginThrottleKey($ip), '');
+    if ($raw === '') return 0;
+    $data = json_decode($raw, true);
+    if (!$data || empty($data['locked_until'])) return 0;
+    $left = $data['locked_until'] - time();
+    return max(0, $left);
+}
+
+function loginThrottleRecordFailure(string $ip): void {
+    $key  = loginThrottleKey($ip);
+    $raw  = setting($key, '');
+    $data = $raw !== '' ? json_decode($raw, true) : null;
+    $count = ($data['count'] ?? 0) + 1;
+    $lockedUntil = ($data['locked_until'] ?? 0);
+    if ($count >= 5) {
+        $lockedUntil = time() + 900; // 15 minutes
+        $count = 0;
+    }
+    $value = json_encode(['count' => $count, 'locked_until' => $lockedUntil]);
+    db()->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?")
+        ->execute([$key, $value, $value]);
+}
+
+function loginThrottleReset(string $ip): void {
+    db()->prepare("DELETE FROM settings WHERE `key` = ?")->execute([loginThrottleKey($ip)]);
+}
+
 // ── Regional section matching ("nearest chair") ────────────
 function countryToContinent(string $country): ?string {
     static $map = [

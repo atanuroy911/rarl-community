@@ -15,9 +15,13 @@ runtime), so it deploys the same way any classic PHP site does on shared hosting
 In cPanel → **MySQL Databases**:
 1. Create a database (e.g. `yourcpaneluser_rarl`).
 2. Create a database user with a strong password, add it to the database with **All Privileges**.
-3. Open **phpMyAdmin**, select the new database, go to **Import**, and upload
-   [`sql/schema.sql`](sql/schema.sql). This creates all 11 tables and seeds default settings,
-   resource categories, and the starter membership/partnership tiers.
+3. Leave the tables empty — you don't need to import `schema.sql` by hand. The first time
+   you visit `/admin/` (or `/admin/login.php`) against an empty database, the app
+   detects there are no tables yet and redirects to a first-run setup screen
+   (`admin/install.php`, WordPress-style) with a single "Set Up Database" button that
+   runs `sql/schema.sql` and `sql/002_v2_features.sql` for you, then sends you to login.
+   You can still import them manually via phpMyAdmin if you prefer — the setup screen
+   just won't appear once the `members` table exists.
 
 ## 2. Upload the files
 
