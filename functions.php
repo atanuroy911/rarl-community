@@ -469,7 +469,7 @@ function publicNav(string $active = ''): string {
     $memberLinks = isset($_SESSION['member_id'])
         ? '<a href="dashboard.php" class="text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark px-4 py-2 rounded-xl transition-colors">My Dashboard</a>'
         : '<a href="login.php" class="text-sm text-gray-600 hover:text-rarl-red transition-colors hidden sm:inline">Sign In</a>
-           <a href="register.php" class="text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark px-3 sm:px-4 py-2 rounded-xl transition-colors">Join Free</a>';
+           <a href="register.php" class="text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark px-3 sm:px-4 py-2 rounded-xl transition-colors">Join</a>';
     $mobileMemberLinks = isset($_SESSION['member_id'])
         ? '<a href="dashboard.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red">My Dashboard</a>'
         : '<a href="login.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">Sign In</a>';
@@ -508,12 +508,18 @@ function publicFooter(): string {
     $mainUrl  = MAIN_SITE_URL;
     return <<<HTML
 <footer class="bg-rarl-navy text-white/45 py-10 mt-auto">
-  <div class="max-w-6xl mx-auto px-6 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs">
-    <span>&copy; {$year} {$siteName} &middot; {$tagline}</span>
-    <div class="flex gap-5">
-      <a href="{$mainUrl}" class="hover:text-white transition-colors">rarl-lab.com</a>
-      <a href="login.php" class="hover:text-white transition-colors">Member Login</a>
-      <a href="verify.php" class="hover:text-white transition-colors">Verify Certificate</a>
+  <div class="max-w-6xl mx-auto px-6 flex flex-col gap-6 text-xs">
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+      <span>&copy; {$year} {$siteName} &middot; {$tagline}</span>
+      <div class="flex gap-5">
+        <a href="{$mainUrl}" class="hover:text-white transition-colors">www.rarl-lab.com</a>
+        <a href="login.php" class="hover:text-white transition-colors">Member Login</a>
+        <a href="verify.php" class="hover:text-white transition-colors">Verify Certificate</a>
+      </div>
+    </div>
+    <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-4 border-t border-white/10 text-white/35">
+      <span>🌐 Website: <a href="{$mainUrl}" class="hover:text-white transition-colors">www.rarl-lab.com</a></span>
+      <span>📍 Robotics &amp; Automation Research Lab (RARL), Queens Building, Leicester, LE1 9BH, United Kingdom</span>
     </div>
   </div>
 </footer>

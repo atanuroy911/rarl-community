@@ -1,9 +1,0 @@
-.git
-.env
-*.log
-uploads/avatars/*
-uploads/certificates/*
-uploads/templates/*
-!uploads/avatars/.gitkeep
-!uploads/certificates/.gitkeep
-!uploads/templates/.gitkeep

@@ -221,7 +221,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ON DUPLICATE KEY UPDATE `value` = `value`;
 
 -- Default seed data for resource categories
-INSERT INTO `resource_categories` (`name`, `slug`, `icon_emoji`, `description`, `display_order`) VALUES
+INSERT INTO `resource_categories` (`name`, `slug`, `icon_emoji`, `description`, `display_order`) VALUfES
 ('Scientific Writing',  'scientific-writing',  '✍️', 'Learn how to write impactful research papers and academic documents.', 1),
 ('Research Methodology','research-methodology','🔬', 'Fundamentals of designing and conducting research.', 2),
 ('Machine Learning',    'machine-learning',    '🤖', 'Tutorials and courses on ML algorithms and applications.', 3),

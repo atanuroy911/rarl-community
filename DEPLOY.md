@@ -33,6 +33,36 @@ Control** if you'd rather `git pull` directly on the server. Do not upload
 `node_modules`, `.git`, or anything Next.js-related — this repo should only contain the
 PHP app now.
 
+### Automated upload via GitHub Actions
+
+Once the initial upload/config (steps 1–3) is done once by hand, ongoing deploys can
+happen automatically on every push instead of re-zipping and re-uploading manually.
+`.github/workflows/deploy.yml` is already set up for this — it deploys over FTPS using
+[FTP-Deploy-Action](https://github.com/SamKirkland/FTP-Deploy-Action) on every push to
+`main` (or manually via the Actions tab's "Run workflow" button).
+
+1. In cPanel, find your FTP credentials: **FTP Accounts** (or reuse the main account) —
+   note the host, username, password, and the server directory the app lives in (e.g.
+   `public_html/membership`).
+2. In the GitHub repo → **Settings → Secrets and variables → Actions**, add:
+   - `CPANEL_FTP_SERVER` — FTP host (e.g. `ftp.rarl-lab.com`)
+   - `CPANEL_FTP_USERNAME`
+   - `CPANEL_FTP_PASSWORD`
+   - `CPANEL_FTP_SERVER_DIR` — the remote path, e.g. `public_html/membership/`
+3. Push to `main` (or trigger the workflow manually). GitHub Actions checks out the repo
+   and FTPS-uploads everything except what's excluded in `deploy.yml` — notably `.env`,
+   `.env.sample`, `.git*`, `.github`, `node_modules`, and the `uploads/` subfolders that
+   hold user-generated files (avatars, certificates, CVs, ID cards, popups, templates,
+   people photos), so those are never clobbered by a deploy.
+4. **`.env` is never touched by this workflow.** Because it's excluded from the sync,
+   whatever you created on the server in step 3 below stays in place across every future
+   deploy — you only need to set it up once, not per push. The same applies if you use
+   real server environment variables instead of a `.env` file (see step 3).
+5. Database migrations (importing `sql/schema.sql` / `sql/002_v2_features.sql`) are
+   **not** part of this workflow — it only syncs PHP/asset files. Run migrations from
+   **Admin → Migrations** in the app itself after a deploy that adds new tables/columns
+   (see step 3's SQL import, or that admin page for the automated version).
+
 ## 3. Configure
 
 Config values come from environment variables — `config.php` itself has no secrets and
@@ -105,45 +135,12 @@ copy of `schema.sql` (i.e. you imported it before this feature existed), re-impo
 `sql/schema.sql` — every statement uses `CREATE TABLE IF NOT EXISTS` / `ON DUPLICATE KEY
 UPDATE`, so it's safe to re-run without wiping existing members, certificates, etc.
 
-## 8. Testing locally with Docker / Dokploy
+## 8. Testing locally
 
-A `Dockerfile` and `docker-compose.yml` are included for spinning up the app + a MySQL
-database on your home server (or any machine with Docker) without installing PHP/MySQL
-natively.
-
-```bash
-docker compose up -d --build
-```
-
-This builds the app image (`php:8.2-apache` with `pdo_mysql`/`gd` enabled and
-`.htaccess` support turned on), starts a MySQL 8 container, and auto-imports
-`sql/schema.sql` into it on first run (only happens on an empty database volume — safe
-to `docker compose down` and back `up` without re-seeding). The app is then reachable at
-`http://localhost:8080`, with `docker-compose.yml` already setting the environment
-variables it needs (DB host/creds, site URL, a default admin login) — no `.env` file is
-required for the Docker path, though one still works if you add it.
-
-Default admin login for the Docker stack is `admin` / `admin123` — change
-`ADMIN_PASSWORD_HASH` in `docker-compose.yml` before using this for anything beyond a
-quick local check.
-
-To stop and wipe the database (start fresh): `docker compose down -v`.
-
-**On Dokploy itself**: point it at this repo's `Dockerfile` directly (Dokploy builds
-and runs it the same way `docker compose up --build` does locally) and configure the
-same environment variables — `DB_HOST`/`DB_NAME`/`DB_USER`/`DB_PASS`,
-`SITE_URL`/`MAIN_SITE_URL`, `ADMIN_USERNAME`/`ADMIN_PASSWORD_HASH`, `SECRET_SALT` — via
-Dokploy's environment variable UI rather than a committed `.env`. Dokploy can also run a
-MySQL service alongside it (or you point `DB_HOST` at an existing MySQL instance);
-either way, import `sql/schema.sql` once via whatever DB admin tool Dokploy exposes
-(phpMyAdmin/Adminer) the same way you would in cPanel.
-
-## Local PHP + MySQL testing (no Docker)
-
-Alternatively, run this on a local PHP + MySQL stack (XAMPP, or PHP's built-in server
-pointed at a local MySQL) to catch issues early — ask for a hand with that setup
-whenever you're ready. The same `.env` process applies (`.env.sample` → `.env` with
-local DB credentials).
+Run this on a local PHP + MySQL stack (XAMPP, or PHP's built-in server pointed at a
+local MySQL) to catch issues early — ask for a hand with that setup whenever you're
+ready. The same `.env` process applies (`.env.sample` → `.env` with local DB
+credentials).
 
 ## 9. v2 rollout (free plans, CMS, community feed, OTP auth, ID cards)
 
@@ -166,10 +163,7 @@ existing install:
    Admin → Settings) if you want signatures on generated member ID cards; the card
    still generates without them, just without a signature graphic.
 4. **Mail** — no change needed. OTP codes and community-comment notifications reuse
-   the same `sendEmail()`/`mail()` path every other email on this site already uses;
-   there is nothing Docker- or WSL-specific in the mailed code paths. (Mailpit, used to
-   preview these emails during local development, is a dev-only tool and is never part
-   of the deployed app.)
+   the same `sendEmail()`/`mail()` path every other email on this site already uses.
 5. **PDF/QR for ID cards** — reuses the same `libs/fpdf` + `libs/phpqrcode` already
    bundled for certificates; no new PHP extensions or Composer packages required.
 6. **Verify** — register a test account and confirm the OTP-verification step gates

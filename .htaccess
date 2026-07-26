@@ -14,7 +14,7 @@ Options -Indexes
 </IfModule>
 
 # Block dotfiles (.git, .gitignore, .env, etc.) — Apache already blocks .htaccess itself by default
-<FilesMatch "^\.(git|gitignore|gitkeep|env.*|dockerignore)">
+<FilesMatch "^\.(git|gitignore|gitkeep|env.*)">
   Require all denied
 </FilesMatch>
 

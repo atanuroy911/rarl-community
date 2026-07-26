@@ -28,6 +28,7 @@ function adminSidebar(string $active = ''): void {
         'plans'       => ['plans.php',        '🎓', 'Plans'],
         'sections'    => ['sections.php',     '🌍', 'Sections'],
         'people'      => ['people.php',       '🧑‍🤝‍🧑', 'People'],
+        'migrate'     => ['migrate.php',      '🗄️', 'Migrations'],
         'settings'    => ['settings.php',     '⚙️', 'Settings'],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>

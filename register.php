@@ -17,6 +17,7 @@ echo htmlHead('Join the Community');
       </div>
       <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Who are you joining as?</h1>
       <p class="text-white/55 text-sm">Choose the profile type that best describes you. You can always update your details later.</p>
+      <p class="text-white/40 text-xs mt-4 max-w-lg mx-auto">Membership is free for one year. In return, members are expected to use the RARL affiliation as the second affiliation on at least one paper during that year.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5">

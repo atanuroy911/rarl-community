@@ -2,9 +2,9 @@
 /**
  * RARL Community Platform — Minimal .env Loader
  * No Composer dependency — parses KEY=VALUE lines so this works unmodified on any
- * plain-PHP shared host as well as in Docker (where vars are usually injected directly
- * via the environment, in which case there may be no .env file at all — that's fine,
- * env() just falls through to getenv()/the given default).
+ * plain-PHP shared host. Real environment variables (e.g. cPanel's "Environment
+ * Variables" feature) work too — there may be no .env file at all, that's fine,
+ * env() just falls through to getenv()/the given default.
  */
 function loadEnv(string $path): void {
     static $loaded = false;

@@ -1,5 +1,7 @@
 # Real secrets — copy .env.sample to .env and fill in values locally/on the server
 .env
+.env.production
+.env.local
 
 # User-uploaded content (avatars, generated certificate/ID-card PDFs, CVs, etc)
 uploads/avatars/*

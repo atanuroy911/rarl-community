@@ -166,7 +166,8 @@ echo htmlHead('Join the RARL Community');
 <section class="py-16 bg-rarl-red">
   <div class="max-w-3xl mx-auto px-6 text-center">
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the RARL Community?</h2>
-    <p class="text-white/75 text-sm mb-7">Free forever. No credit card. Open to researchers worldwide.</p>
+    <p class="text-white/75 text-sm mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
+    <p class="text-white/60 text-xs mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
     <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
       Create Your Free Account →
     </a>

@@ -2,8 +2,8 @@
 /**
  * RARL Community Platform — Central Configuration
  * Values come from environment variables (.env locally, or injected directly by
- * Docker/Dokploy/cPanel) with sensible defaults for local dev. This file holds no
- * secrets itself and is safe to commit — put real values in .env (gitignored).
+ * cPanel) with sensible defaults for local dev. This file holds no secrets itself
+ * and is safe to commit — put real values in .env (gitignored).
  */
 require_once __DIR__ . '/env.php';
 loadEnv(__DIR__ . '/.env');
