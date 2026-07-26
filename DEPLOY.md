@@ -37,27 +37,39 @@ PHP app now.
 
 Once the initial upload/config (steps 1–3) is done once by hand, ongoing deploys can
 happen automatically on every push instead of re-zipping and re-uploading manually.
-`.github/workflows/deploy.yml` is already set up for this — it deploys over FTPS using
-[FTP-Deploy-Action](https://github.com/SamKirkland/FTP-Deploy-Action) on every push to
-`main` (or manually via the Actions tab's "Run workflow" button).
+`.github/workflows/deploy.yml` is already set up for this. Rather than FTP-uploading
+every individual file (600+ of them, mostly from the bundled `fpdf`/`phpqrcode`
+libraries) — which was tripping connection resets on some cPanel FTP servers — the
+workflow zips the whole app into a single `deploy.zip`, FTPS-uploads just that one
+file, then calls a small PHP endpoint (`deploy-extract.php`) on the server that unzips
+it in place and deletes the zip. One file over the wire instead of hundreds.
 
 1. In cPanel, find your FTP credentials: **FTP Accounts** (or reuse the main account) —
    note the host, username, password, and the server directory the app lives in (e.g.
    `public_html/membership`).
-2. In the GitHub repo → **Settings → Secrets and variables → Actions**, add:
+2. Generate a deploy token the same way as `SECRET_SALT`:
+   `php -r "echo bin2hex(random_bytes(32));"` (or `openssl rand -hex 32`).
+3. In the GitHub repo → **Settings → Secrets and variables → Actions**, add:
    - `CPANEL_FTP_SERVER` — FTP host (e.g. `ftp.rarl-lab.com`)
    - `CPANEL_FTP_USERNAME`
    - `CPANEL_FTP_PASSWORD`
    - `CPANEL_FTP_SERVER_DIR` — the remote path, e.g. `public_html/membership/`
-3. Push to `main` (or trigger the workflow manually). GitHub Actions checks out the repo
-   and FTPS-uploads everything except what's excluded in `deploy.yml` — notably `.env`,
-   `.env.sample`, `.git*`, `.github`, `node_modules`, and the `uploads/` subfolders that
-   hold user-generated files (avatars, certificates, CVs, ID cards, popups, templates,
-   people photos), so those are never clobbered by a deploy.
-4. **`.env` is never touched by this workflow.** Because it's excluded from the sync,
-   whatever you created on the server in step 3 below stays in place across every future
-   deploy — you only need to set it up once, not per push. The same applies if you use
-   real server environment variables instead of a `.env` file (see step 3).
+   - `CPANEL_SITE_URL` — the public URL the app is served at, e.g.
+     `https://rarl-lab.com/membership` (used to call `deploy-extract.php` after upload)
+   - `DEPLOY_TOKEN` — the value generated in step 2
+4. Add the **same** `DEPLOY_TOKEN` value to the server's `.env` (see step 3 below) —
+   `deploy-extract.php` compares the token in the request against this before
+   extracting anything, so the two must match.
+5. Push to `main` (or trigger the workflow manually via the Actions tab). GitHub
+   Actions checks out the repo, zips it (excluding `.git`, `.github`, `node_modules`,
+   `.env*`, the `phpqrcode` mask cache, and the `uploads/` subfolders that hold
+   user-generated files — avatars, certificates, CVs, ID cards, popups, templates,
+   people photos, so those are never clobbered), uploads only `deploy.zip`, then hits
+   `deploy-extract.php?token=...` which unzips it into place and removes the zip.
+6. **`.env` is never touched by this workflow** — it's excluded from the zip entirely,
+   so whatever you create on the server in step 3 below stays in place across every
+   future deploy. Same goes for real server environment variables instead of a `.env`
+   file (see step 3).
 5. Database migrations (importing `sql/schema.sql` / `sql/002_v2_features.sql`) are
    **not** part of this workflow — it only syncs PHP/asset files. Run migrations from
    **Admin → Migrations** in the app itself after a deploy that adds new tables/columns
