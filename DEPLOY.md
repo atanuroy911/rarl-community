@@ -241,3 +241,53 @@ phpMyAdmin) after `002_v2_features.sql` — same idempotent, safe-to-re-run styl
   `uploads/.htaccess` protection — no manual folder setup needed.
 - Older posts (`body_format = 'markdown'`) keep rendering through the existing
   Parsedown path (`markdownToHtml()`) — nothing about existing content changes.
+- **Edit/delete** — post authors get ✏️/🗑️ controls on their own posts (ownership
+  checked server-side in `community.php`, not just hidden in the UI).
+- **Lazy loading** — the feed now loads 8 posts at a time (`COMMUNITY_PAGE_SIZE`
+  in `community.php`) instead of fetching 50 rows up front. Scrolling near the
+  bottom triggers `community.php?ajax=posts&offset=N`, which returns just the
+  next batch of rendered post cards (shared `renderCommunityPost()` in
+  `functions.php`, used by both the initial page load and this endpoint).
+
+## 11. Public events/RSVP, premium learning content, member directory
+
+`sql/004_events_premium_directory.sql` — run via **Admin → Migrations** after
+`003_community_richtext.sql`. Adds:
+
+- **Events**: `visibility` (`public`/`members_only`), `event_time`, `online_url`,
+  `speaker_name`, `capacity`, `recording_url`, `cover_image`, `reminder_sent` on
+  `events`; new `event_registrations` table (RSVP + attendance status).
+- **Premium learning content**: `access_level` (`public`/`member`) on both
+  `resource_categories` and `resources` — gate a whole category or individual
+  resources behind active membership.
+- **Member directory**: `directory_visible`, `open_to_mentor`, `seeking_mentor`
+  on `members` — all opt-in via **My Profile**, default visible/not-mentoring.
+
+**New pages:**
+- `events.php` — public events list (Upcoming/Past tabs), RSVP for active
+  members, capacity bar, online join link once registered, recordings for past
+  events (members-only). Creating an event in **Admin → Events** auto-posts a
+  pinned announcement to the community feed.
+- `admin/event-registrations.php` — per-event attendee list. Marking someone
+  **Attended** calls `issueCertificateForAttendance()` in `functions.php`,
+  which reuses the exact same PDF/QR pipeline as the manual CSV path in
+  `admin/certificates.php` (that function — `generateCertPDF()` — now lives in
+  `functions.php` so both flows share one implementation).
+- `directory.php` — searchable member directory (name/institution/research
+  interest, country, individual-vs-lab, mentors-only filter). Locked behind
+  active membership with a "Join Free" prompt, same pattern as premium
+  resources. No email addresses are exposed — only LinkedIn/Scholar/lab
+  website links members already chose to add, to avoid the directory becoming
+  a spam-harvesting target.
+- `resources.php` / `admin/resources.php` — premium resources render as a
+  locked preview (title + description visible, no outbound link) for anyone
+  who isn't an active member, with a "Join free to unlock" CTA. Admins toggle
+  `Make Premium`/`Make Public` per category or per resource.
+
+**Folders**: `uploads/events/` (cover images) is created automatically on
+first upload, same `mkdir()`-on-demand pattern as every other upload folder.
+
+**Not built yet (future work, deliberately out of scope for this pass):**
+automated event-reminder emails (the `reminder_sent` column exists for this
+but nothing sends yet), .ics calendar export, and a badges/gamification
+layer on top of community/event activity.

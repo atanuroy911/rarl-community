@@ -38,8 +38,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             header('Location: certificates.php'); exit;
         }
 
-        $event = $pdo->prepare("SELECT * FROM events WHERE id = ?")->execute([$eventId]) ?
-            $pdo->prepare("SELECT * FROM events WHERE id = ?")->execute([$eventId]) || null : null;
         $ev = $pdo->prepare("SELECT * FROM events WHERE id = ?");
         $ev->execute([$eventId]);
         $event = $ev->fetch();
@@ -141,80 +139,8 @@ $stmt->execute($params);
 $certificates = $stmt->fetchAll();
 $templates    = $pdo->query("SELECT * FROM certificate_templates ORDER BY id")->fetchAll();
 
-// ── PDF generation helper ──────────────────────────────────
-function generateCertPDF(string $path, string $name, string $event, string $certNo, string $date, string $uuid): void {
-    // Requires FPDF — gracefully skip if not available
-    if (!class_exists('FPDF')) return;
-    if (!class_exists('QRcode') && file_exists(dirname(__DIR__) . '/libs/phpqrcode/qrlib.php')) {
-        require_once dirname(__DIR__) . '/libs/phpqrcode/qrlib.php';
-    }
-
-    [$inkR, $inkG, $inkB]   = brandRgb(BRAND_INK);
-    [$redR, $redG, $redB]   = brandRgb(BRAND_RED);
-    [$blueR, $blueG, $blueB]= brandRgb(BRAND_BLUE);
-
-    $pdf = new FPDF('L', 'mm', 'A4');
-    $pdf->AddPage();
-    $pdf->SetFillColor($inkR, $inkG, $inkB);
-    $pdf->Rect(0, 0, 297, 210, 'F');
-    // Border
-    $pdf->SetDrawColor($redR, $redG, $redB);
-    $pdf->SetLineWidth(2);
-    $pdf->Rect(8, 8, 281, 194);
-    // Title
-    $pdf->SetFont('Helvetica', 'B', 11);
-    $pdf->SetTextColor($redR, $redG, $redB);
-    $pdf->SetY(30); $pdf->Cell(0, 0, 'RARL COMMUNITY', 0, 1, 'C');
-    $pdf->SetFont('Helvetica', '', 8);
-    $pdf->SetTextColor(170, 170, 170);
-    $pdf->SetY(40); $pdf->Cell(0, 0, 'ROBOTICS AND AUTOMATION RESEARCH LABORATORY', 0, 1, 'C');
-    // Certificate title
-    $pdf->SetFont('Helvetica', 'B', 22);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetY(55); $pdf->Cell(0, 0, 'Certificate of Participation', 0, 1, 'C');
-    // Subtitle
-    $pdf->SetFont('Helvetica', '', 9);
-    $pdf->SetTextColor(170, 170, 170);
-    $pdf->SetY(75); $pdf->Cell(0, 0, 'This is to certify that', 0, 1, 'C');
-    // Name
-    $pdf->SetFont('Helvetica', 'B', 26);
-    $pdf->SetTextColor($blueR, $blueG, $blueB);
-    $pdf->SetY(85); $pdf->Cell(0, 0, $name, 0, 1, 'C');
-    // Participation text
-    $pdf->SetFont('Helvetica', '', 9);
-    $pdf->SetTextColor(170, 170, 170);
-    $pdf->SetY(110); $pdf->Cell(0, 0, 'has successfully participated in', 0, 1, 'C');
-    // Event
-    $pdf->SetFont('Helvetica', 'B', 16);
-    $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetY(120); $pdf->Cell(0, 0, $event, 0, 1, 'C');
-    // Date + ID
-    $pdf->SetFont('Helvetica', '', 8);
-    $pdf->SetTextColor(150, 150, 150);
-    $pdf->SetY(145); $pdf->Cell(0, 0, 'Date: ' . ($date ? date('d F Y', strtotime($date)) : date('d F Y')) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');
-    // Verify URL
-    $pdf->SetY(155);
-    $pdf->SetTextColor(150, 150, 150);
-    $pdf->Cell(0, 0, 'Verify at: ' . CERT_VERIFY_URL . '?id=' . $uuid, 0, 1, 'C');
-    // QR code
-    $qrPath = null;
-    if (class_exists('QRcode')) {
-        $qrPath = sys_get_temp_dir() . '/rarl_qr_' . str_replace('-', '', $uuid) . '.png';
-        QRcode::png(CERT_VERIFY_URL . '?id=' . $uuid, $qrPath, QR_ECLEVEL_L, 4, 2);
-    }
-    if ($qrPath && file_exists($qrPath)) {
-        $pdf->Image($qrPath, 133.5, 158, 30, 30, 'PNG');
-        @unlink($qrPath);
-    }
-    // Signature line
-    $pdf->SetDrawColor(120, 120, 120);
-    $pdf->SetLineWidth(0.3);
-    $pdf->Line(100, 194, 197, 194);
-    $pdf->SetFont('Helvetica', '', 7);
-    $pdf->SetTextColor(150, 150, 150);
-    $pdf->SetY(197); $pdf->Cell(0, 0, 'Authorised by ' . SITE_NAME . ' - ' . str_replace(['https://', 'http://'], '', MAIN_SITE_URL), 0, 1, 'C');
-    $pdf->Output('F', $path);
-}
+// generateCertPDF() now lives in functions.php (shared with the
+// auto-issue-on-attendance flow in admin/event-registrations.php).
 
 adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $search, $pdo) {
     adminFlash(); ?>

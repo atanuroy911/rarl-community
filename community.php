@@ -62,6 +62,60 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
         header('Location: community.php#post-' . $postId); exit;
     }
 
+    if ($action === 'edit_comment' && $me && $me['status'] === 'active') {
+        $commentId = (int)($_POST['comment_id'] ?? 0);
+        $body = mb_substr(trim($_POST['body'] ?? ''), 0, 2000);
+        if ($body !== '') {
+            $pdo->prepare('UPDATE community_comments SET body=? WHERE id=? AND member_id=?')->execute([$body, $commentId, $memberId]);
+        }
+        $postId = (int)($_POST['post_id'] ?? 0);
+        header('Location: community.php#post-' . $postId); exit;
+    }
+
+    if ($action === 'delete_own_comment') {
+        $commentId = (int)($_POST['comment_id'] ?? 0);
+        $postId    = (int)($_POST['post_id'] ?? 0);
+        $pdo->prepare('DELETE FROM community_comments WHERE id=? AND member_id=?')->execute([$commentId, $memberId]);
+        header('Location: community.php#post-' . $postId); exit;
+    }
+
+    if ($action === 'edit_post' && $me && $me['status'] === 'active') {
+        $postId = (int)($_POST['post_id'] ?? 0);
+        $own = $pdo->prepare('SELECT * FROM community_posts WHERE id=? AND member_id=?');
+        $own->execute([$postId, $memberId]);
+        $existing = $own->fetch();
+        if ($existing) {
+            $bodyHtml = sanitizeRichHtml($_POST['body_html'] ?? '');
+            $hasText  = trim(strip_tags($bodyHtml)) !== '';
+
+            $imagePath = $existing['image_path'];
+            if (!empty($_FILES['image']['name'])) {
+                $uploaded = validateUpload($_FILES['image'], ['jpg','jpeg','png','webp'], 5 * 1024 * 1024, UPLOADS_PATH . '/community');
+                if ($uploaded) $imagePath = $uploaded;
+            } elseif (!empty($_POST['remove_image'])) {
+                $imagePath = null;
+            }
+
+            if ($hasText || $imagePath) {
+                $pdo->prepare('UPDATE community_posts SET body=?, body_format=?, image_path=? WHERE id=?')
+                    ->execute([$bodyHtml, 'html', $imagePath, $postId]);
+            }
+        }
+        header('Location: community.php#post-' . $postId); exit;
+    }
+
+    if ($action === 'delete_own_post') {
+        $postId = (int)($_POST['post_id'] ?? 0);
+        $own = $pdo->prepare('SELECT id FROM community_posts WHERE id=? AND member_id=?');
+        $own->execute([$postId, $memberId]);
+        if ($own->fetch()) {
+            $pdo->prepare('DELETE FROM community_comments WHERE post_id=?')->execute([$postId]);
+            $pdo->prepare('DELETE FROM community_likes WHERE post_id=?')->execute([$postId]);
+            $pdo->prepare('DELETE FROM community_posts WHERE id=?')->execute([$postId]);
+        }
+        header('Location: community.php#feed'); exit;
+    }
+
     if ($action === 'toggle_like') {
         $postId = (int)($_POST['post_id'] ?? 0);
         if ($postId) {
@@ -83,32 +137,62 @@ $guidelines    = setting('community_guidelines');
 $feedIntro     = setting('community_feed_intro', 'Share updates, ask questions, and connect with fellow RARL researchers.');
 $isMember      = !empty($_SESSION['member_id']);
 $myMemberId    = (int)($_SESSION['member_id'] ?? 0);
+$myAvatarHtml  = '';
+if ($isMember) {
+    $meStmt = $pdo->prepare('SELECT full_name, lab_name, type, avatar_path FROM members WHERE id=?');
+    $meStmt->execute([$myMemberId]);
+    $meRow = $meStmt->fetch();
+    if ($meRow) {
+        $myName = $meRow['type'] === 'lab' ? $meRow['lab_name'] : $meRow['full_name'];
+        $myAvatarHtml = memberAvatarHtml($meRow['avatar_path'], $myName ?: '?', 'w-10 h-10 text-sm');
+    }
+}
+
+const COMMUNITY_PAGE_SIZE = 8;
+
+// ── Lazy-load AJAX endpoint (?ajax=posts&offset=N) — returns just the next
+// batch of rendered post cards, called by the IntersectionObserver below.
+// Kept above the announcements/regions queries so a lazy-load request doesn't
+// do any extra work beyond fetching its own page of posts.
+if ($isMember && ($_GET['ajax'] ?? '') === 'posts') {
+    $offset = max(0, (int)($_GET['offset'] ?? 0));
+    $stmt = $pdo->prepare("SELECT community_posts.*, members.full_name, members.lab_name, members.type, members.avatar_path
+                            FROM community_posts JOIN members ON members.id = community_posts.member_id
+                            WHERE community_posts.is_hidden = 0
+                            ORDER BY is_pinned DESC, community_posts.created_at DESC LIMIT ? OFFSET ?");
+    $stmt->bindValue(1, COMMUNITY_PAGE_SIZE, PDO::PARAM_INT);
+    $stmt->bindValue(2, $offset, PDO::PARAM_INT);
+    $stmt->execute();
+    $page = $stmt->fetchAll();
+
+    header('Content-Type: text/html; charset=UTF-8');
+    foreach ($page as $p) echo renderCommunityPost($pdo, $p, $myMemberId);
+    echo '<!-- has_more:' . (count($page) === COMMUNITY_PAGE_SIZE ? '1' : '0') . ' -->';
+    exit;
+}
+
 $announcements = $pdo->query("SELECT * FROM announcements WHERE is_published = 1 ORDER BY is_pinned DESC, created_at DESC")->fetchAll();
 
-// ── Feed data ──
+// ── Feed data — first page only, the rest lazy-loads via the endpoint above ──
 $posts = [];
+$hasMorePosts = false;
 if ($isMember) {
-    $posts = $pdo->query("SELECT community_posts.*, members.full_name, members.lab_name, members.type
-                           FROM community_posts JOIN members ON members.id = community_posts.member_id
-                           WHERE community_posts.is_hidden = 0
-                           ORDER BY is_pinned DESC, community_posts.created_at DESC LIMIT 50")->fetchAll();
-
-    $likeCountStmt = $pdo->prepare('SELECT COUNT(*) FROM community_likes WHERE post_id=?');
-    $likedStmt     = $pdo->prepare('SELECT 1 FROM community_likes WHERE post_id=? AND member_id=?');
-    $commentsStmt  = $pdo->prepare('SELECT community_comments.*, members.full_name, members.lab_name, members.type
-                                     FROM community_comments JOIN members ON members.id = community_comments.member_id
-                                     WHERE post_id=? AND is_hidden=0 ORDER BY created_at ASC');
-
-    foreach ($posts as &$p) {
-        $likeCountStmt->execute([$p['id']]);
-        $p['like_count'] = (int)$likeCountStmt->fetchColumn();
-        $likedStmt->execute([$p['id'], $myMemberId]);
-        $p['liked_by_me'] = (bool)$likedStmt->fetch();
-        $commentsStmt->execute([$p['id']]);
-        $p['comments'] = $commentsStmt->fetchAll();
-    }
-    unset($p);
+    $stmt = $pdo->prepare("SELECT community_posts.*, members.full_name, members.lab_name, members.type, members.avatar_path
+                            FROM community_posts JOIN members ON members.id = community_posts.member_id
+                            WHERE community_posts.is_hidden = 0
+                            ORDER BY is_pinned DESC, community_posts.created_at DESC LIMIT ?");
+    $stmt->bindValue(1, COMMUNITY_PAGE_SIZE, PDO::PARAM_INT);
+    $stmt->execute();
+    $posts = $stmt->fetchAll();
+    $hasMorePosts = count($posts) === COMMUNITY_PAGE_SIZE;
 }
+
+// ── Community stats (sidebar social proof) ──
+$communityStats = [
+    'members'   => (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn(),
+    'posts'     => (int) $pdo->query("SELECT COUNT(*) FROM community_posts WHERE is_hidden=0")->fetchColumn(),
+    'countries' => (int) $pdo->query("SELECT COUNT(DISTINCT country) FROM members WHERE status='active' AND country IS NOT NULL AND country != ''")->fetchColumn(),
+];
 
 // ── Regional sections, grouped by continent ──
 $sections = $pdo->query("SELECT * FROM regional_sections WHERE is_published = 1 ORDER BY continent, display_order")->fetchAll();
@@ -159,6 +243,10 @@ echo htmlHead('Community Portal');
         <form method="POST" enctype="multipart/form-data" id="post-composer" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm mb-6">
           <?= csrfField() ?><input type="hidden" name="action" value="create_post">
           <input type="hidden" name="body_html" id="post-body-html">
+          <div class="flex items-center gap-2.5 mb-3">
+            <?= $myAvatarHtml ?>
+            <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">Share something with the community</span>
+          </div>
           <div id="post-quill-toolbar">
             <span class="ql-formats">
               <button class="ql-bold"></button>
@@ -195,64 +283,11 @@ echo htmlHead('Community Portal');
           <p class="text-3xl mb-2">📭</p><p class="text-sm">No posts yet. Be the first to share something!</p>
         </div>
         <?php else: ?>
-        <div class="space-y-5">
-          <?php foreach ($posts as $post):
-            $authorName = $post['type'] === 'lab' ? $post['lab_name'] : $post['full_name'];
-            // body_format='html' -> already-sanitized rich text from the Quill composer (see sanitizeRichHtml()).
-            // Older posts predate this column and are still markdown -> rendered through Parsedown as before.
-            $bodyHtml = ($post['body_format'] ?? 'markdown') === 'html' ? $post['body'] : markdownToHtml($post['body']);
-          ?>
-          <div id="post-<?= (int)$post['id'] ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-            <div class="flex items-start justify-between gap-3 mb-3">
-              <div class="flex items-center gap-2">
-                <?php if ($post['is_pinned']): ?><span class="text-xs font-bold text-amber-500">📌</span><?php endif; ?>
-                <span class="font-semibold text-sm text-gray-900 dark:text-white"><?= htmlspecialchars($authorName) ?></span>
-                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500"><?= htmlspecialchars(ucfirst($post['type'])) ?></span>
-              </div>
-              <span class="text-xs text-gray-400"><?= date('d M Y, H:i', strtotime($post['created_at'])) ?></span>
-            </div>
-            <?php if ($bodyHtml !== ''): ?>
-            <div class="rich-content text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4"><?= $bodyHtml ?></div>
-            <?php endif; ?>
-            <?php if (!empty($post['image_path'])): ?>
-            <img src="<?= UPLOADS_URL ?>/community/<?= htmlspecialchars($post['image_path']) ?>" alt="" class="w-full rounded-xl border border-gray-100 dark:border-gray-800 mb-4"/>
-            <?php endif; ?>
-
-            <div class="flex items-center gap-4 mb-4">
-              <form method="POST">
-                <?= csrfField() ?><input type="hidden" name="action" value="toggle_like"><input type="hidden" name="post_id" value="<?= (int)$post['id'] ?>">
-                <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-semibold <?= $post['liked_by_me'] ? 'text-rarl-red' : 'text-gray-400 hover:text-rarl-red' ?> transition-colors">
-                  <?= $post['liked_by_me'] ? '❤️' : '🤍' ?> <?= (int)$post['like_count'] ?>
-                </button>
-              </form>
-              <span class="text-xs text-gray-400">💬 <?= count($post['comments']) ?></span>
-            </div>
-
-            <?php if (!empty($post['comments'])): ?>
-            <div class="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
-              <?php foreach ($post['comments'] as $c):
-                $cAuthor = $c['type'] === 'lab' ? $c['lab_name'] : $c['full_name'];
-                $cHtml   = markdownToHtml($c['body']);
-              ?>
-              <div class="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
-                <div class="flex items-center justify-between mb-1">
-                  <span class="font-semibold text-xs text-gray-800 dark:text-white"><?= htmlspecialchars($cAuthor) ?></span>
-                  <span class="text-[10px] text-gray-400"><?= date('d M Y, H:i', strtotime($c['created_at'])) ?></span>
-                </div>
-                <div class="md-content text-gray-500 dark:text-gray-400 text-xs leading-relaxed"><?= $cHtml ?></div>
-              </div>
-              <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-
-            <form method="POST" class="flex gap-2" title="Markdown supported — **bold**, *italic*, [link](url)">
-              <?= csrfField() ?><input type="hidden" name="action" value="create_comment"><input type="hidden" name="post_id" value="<?= (int)$post['id'] ?>">
-              <input type="text" name="body" required maxlength="2000" placeholder="Write a reply… (markdown supported)"
-                class="md-editor flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-              <button type="submit" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white font-semibold text-xs rounded-lg transition-colors">Reply</button>
-            </form>
-          </div>
-          <?php endforeach; ?>
+        <div id="post-list" class="space-y-5">
+          <?php foreach ($posts as $post) echo renderCommunityPost($pdo, $post, $myMemberId); ?>
+        </div>
+        <div id="feed-sentinel" class="py-6 text-center text-xs text-gray-400" data-offset="<?= count($posts) ?>" data-has-more="<?= $hasMorePosts ? '1' : '0' ?>">
+          <?php if ($hasMorePosts): ?>Loading more…<?php endif; ?>
         </div>
         <?php endif; ?>
       </div>
@@ -334,6 +369,25 @@ echo htmlHead('Community Portal');
 
     <!-- Sidebar -->
     <div class="space-y-5">
+      <!-- Community Stats -->
+      <div class="rounded-2xl p-6 shadow-sm text-white" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%);">
+        <h3 class="font-heading font-bold text-sm mb-4">🌐 RARL Community</h3>
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div>
+            <div class="font-heading font-black text-xl"><?= $communityStats['members'] ?></div>
+            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Members</div>
+          </div>
+          <div>
+            <div class="font-heading font-black text-xl"><?= $communityStats['posts'] ?></div>
+            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Posts</div>
+          </div>
+          <div>
+            <div class="font-heading font-black text-xl"><?= $communityStats['countries'] ?></div>
+            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Countries</div>
+          </div>
+        </div>
+      </div>
+
       <!-- Guidelines -->
       <?php if ($guidelines): ?>
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
@@ -363,6 +417,11 @@ echo htmlHead('Community Portal');
   .rich-content ol { list-style: decimal; }
   .rich-content blockquote { border-left: 3px solid currentColor; opacity: 0.8; padding-left: 0.75em; margin: 0 0 0.5em; }
   .rich-content a { text-decoration: underline; }
+  /* Per-post edit toolbars/editors, IDs are dynamic (edit-quill-toolbar-123) so
+     these are attribute-prefix selectors instead of one rule per post. */
+  [id^="edit-quill-toolbar-"].ql-toolbar { border: 1px solid rgb(209 213 219); border-radius: 0.5rem 0.5rem 0 0; background: #fff; }
+  [id^="edit-quill-editor-"].ql-container { border: 1px solid rgb(209 213 219); border-top: none; border-radius: 0 0 0.5rem 0.5rem; font-size: 0.8125rem; background: #fff; }
+  .dark [id^="edit-quill-toolbar-"].ql-toolbar, .dark [id^="edit-quill-editor-"].ql-container { border-color: rgb(75 85 99); background: rgb(17 24 39); }
 </style>
 <script>
   const quill = new Quill('#post-quill-editor', {
@@ -389,6 +448,55 @@ echo htmlHead('Community Portal');
     imageInput.value = '';
     imagePreview.classList.add('hidden');
   });
+
+  // ── Per-post edit panels — Quill instance created lazily on first open ──
+  const editQuillInstances = {};
+  function rarlToggleEditPanel(postId) {
+    const panel = document.getElementById('edit-panel-' + postId);
+    if (!panel) return;
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden') && !editQuillInstances[postId]) {
+      const editorEl = document.getElementById('edit-quill-editor-' + postId);
+      const q = new Quill(editorEl, {
+        theme: 'snow',
+        modules: { toolbar: '#edit-quill-toolbar-' + postId },
+      });
+      q.root.innerHTML = editorEl.dataset.content || '';
+      editQuillInstances[postId] = q;
+    }
+  }
+  function rarlSubmitEdit(postId) {
+    const q = editQuillInstances[postId];
+    if (q) document.getElementById('edit-body-html-' + postId).value = q.root.innerHTML;
+    return true;
+  }
+
+  // ── Lazy-load more posts as the sentinel scrolls into view ──
+  const sentinel = document.getElementById('feed-sentinel');
+  if (sentinel) {
+    const observer = new IntersectionObserver((entries) => {
+      const entry = entries[0];
+      if (!entry.isIntersecting) return;
+      if (sentinel.dataset.hasMore !== '1' || sentinel.dataset.loading === '1') return;
+      sentinel.dataset.loading = '1';
+      sentinel.textContent = 'Loading more…';
+
+      const offset = parseInt(sentinel.dataset.offset, 10) || 0;
+      fetch('community.php?ajax=posts&offset=' + offset)
+        .then(r => r.text())
+        .then(html => {
+          const hasMore = html.includes('<!-- has_more:1 -->');
+          const cleanHtml = html.replace(/<!-- has_more:[01] -->/, '');
+          document.getElementById('post-list').insertAdjacentHTML('beforeend', cleanHtml);
+          sentinel.dataset.offset = offset + <?= COMMUNITY_PAGE_SIZE ?>;
+          sentinel.dataset.hasMore = hasMore ? '1' : '0';
+          sentinel.dataset.loading = '0';
+          sentinel.textContent = hasMore ? '' : '— End of feed —';
+        })
+        .catch(() => { sentinel.dataset.loading = '0'; });
+    }, { rootMargin: '200px' });
+    observer.observe(sentinel);
+  }
 </script>
 <?php endif; ?>
 

@@ -4,6 +4,14 @@
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
+
+$loggedInMember = null;
+if (!empty($_SESSION['member_id'])) {
+    $meStmt = db()->prepare('SELECT full_name, lab_name, type, status, avatar_path FROM members WHERE id = ?');
+    $meStmt->execute([(int)$_SESSION['member_id']]);
+    $loggedInMember = $meStmt->fetch();
+}
+
 echo htmlHead('Join the RARL Community');
 ?>
 <?= publicNav('home') ?>
@@ -12,6 +20,35 @@ echo htmlHead('Join the RARL Community');
 <section class="relative overflow-hidden bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
   <div class="relative z-10 max-w-6xl mx-auto px-6 py-20 md:py-28 grid md:grid-cols-2 gap-12 items-center">
     <div>
+      <?php if ($loggedInMember): ?>
+      <?php
+        $myName = $loggedInMember['type'] === 'lab' ? $loggedInMember['lab_name'] : $loggedInMember['full_name'];
+        $firstName = trim(explode(' ', $myName ?: '')[0] ?? '');
+      ?>
+      <div class="inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-7">
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Welcome back
+      </div>
+      <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-gray-900 dark:text-white leading-tight mb-5">
+        Good to see you,<br/><span class="text-rarl-red"><?= htmlspecialchars($firstName ?: 'there') ?></span>
+      </h1>
+      <?php if ($loggedInMember['status'] !== 'active'): ?>
+      <p class="text-amber-600 dark:text-amber-400 text-base max-w-xl leading-relaxed mb-9">
+        ⏳ Your account is still pending approval — you'll get an email as soon as it's reviewed. In the meantime, feel free to browse the community and learning hub.
+      </p>
+      <?php else: ?>
+      <p class="text-gray-500 dark:text-gray-400 text-xl max-w-xl leading-relaxed mb-9">
+        Catch up on the community feed, check your certificates, or pick up where you left off.
+      </p>
+      <?php endif; ?>
+      <div class="flex flex-wrap gap-4 mb-14">
+        <a href="dashboard.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+          Go to My Dashboard →
+        </a>
+        <a href="community.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-0.5 transition-all text-sm">
+          Community Feed
+        </a>
+      </div>
+      <?php else: ?>
       <div class="inline-flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-rarl-red text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-7">
         <span class="w-1.5 h-1.5 rounded-full bg-rarl-red animate-pulse"></span> <?= htmlspecialchars(setting('home_hero_badge', 'Now Open for Membership')) ?>
       </div>
@@ -37,6 +74,7 @@ echo htmlHead('Join the RARL Community');
           Explore Community
         </a>
       </div>
+      <?php endif; ?>
       <!-- Stats -->
       <div class="pt-8 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-10">
         <?php
@@ -125,9 +163,11 @@ echo htmlHead('Join the RARL Community');
       <?php $modules = [
         ['👥','Member Profiles','Individual researchers and research labs register with rich academic profiles — ORCID, Google Scholar, research interests, institution.','bg-blue-50 dark:bg-blue-900/20','text-blue-600 dark:text-blue-400','border-blue-200 dark:border-blue-800'],
         ['💬','Community Feed','Approved members can post updates, discuss research, and connect with fellow researchers on the community feed.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
-        ['📚','Learning Hub','Curated YouTube playlists, articles, and free books on Scientific Writing, Machine Learning, Statistics, LaTeX, and more.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
-        ['📧','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
+        ['📚','Learning Hub','Curated YouTube playlists, articles, and free books — plus premium courses unlocked exclusively for members.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
+        ['🎥','Events &amp; Webinars','Register for workshops and webinars, some open to everyone, some reserved for members — with recordings archived afterward.','bg-indigo-50 dark:bg-indigo-900/20','text-indigo-600 dark:text-indigo-400','border-indigo-200 dark:border-indigo-800'],
+        ['🧑‍🤝‍🧑','Member Directory','Search the community by country, institution, or research interest — and find or become a mentor.','bg-pink-50 dark:bg-pink-900/20','text-pink-600 dark:text-pink-400','border-pink-200 dark:border-pink-800'],
         ['🏆','Certificates','Attend workshops, webinars, or competitions and receive a verifiable PDF certificate with a unique ID and QR code — ready for LinkedIn and your CV.','bg-red-50 dark:bg-red-900/20','text-red-600 dark:text-red-400','border-red-200 dark:border-red-800'],
+        ['📧','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
         ['🔐','Member Dashboard','Log in anytime to view and download your certificates, update your profile, and manage your newsletter preferences.','bg-gray-50 dark:bg-gray-800','text-gray-600 dark:text-gray-300','border-gray-200 dark:border-gray-700'],
       ]; ?>
 
@@ -203,12 +243,20 @@ echo htmlHead('Join the RARL Community');
 <!-- ── CTA ────────────────────────────────────────────────── -->
 <section class="py-16 bg-rarl-red">
   <div class="max-w-3xl mx-auto px-6 text-center">
+    <?php if ($loggedInMember): ?>
+    <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to share something with the community?</h2>
+    <p class="text-white/75 text-base mb-7">Post an update, ask a question, or check out what other members are working on.</p>
+    <a href="community.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+      Go to the Community Feed →
+    </a>
+    <?php else: ?>
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the RARL Community?</h2>
     <p class="text-white/75 text-base mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
     <p class="text-white/60 text-sm mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
     <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
       Create Your Free Account →
     </a>
+    <?php endif; ?>
   </div>
 </section>
 

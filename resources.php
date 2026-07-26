@@ -5,7 +5,14 @@
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 
-$pdo        = db();
+$pdo = db();
+$isActiveMember = false;
+if (!empty($_SESSION['member_id'])) {
+    $s = $pdo->prepare('SELECT status FROM members WHERE id = ?');
+    $s->execute([(int)$_SESSION['member_id']]);
+    $isActiveMember = $s->fetchColumn() === 'active';
+}
+
 $categories = $pdo->query("SELECT * FROM resource_categories WHERE is_published = 1 ORDER BY display_order")->fetchAll();
 
 // If viewing a category
@@ -45,11 +52,12 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
   <!-- Category grid -->
   <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-7">Browse by Topic</h2>
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-    <?php foreach ($categories as $cat):
-      $count = (int)$pdo->prepare("SELECT COUNT(*) FROM resources WHERE category_id = ?")->execute([$cat['id']]) ? $pdo->query("SELECT COUNT(*) FROM resources WHERE category_id = " . (int)$cat['id'])->fetchColumn() : 0;
-    ?>
+    <?php foreach ($categories as $cat): ?>
     <a href="resources.php?cat=<?= urlencode($cat['slug']) ?>"
-      class="group block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-rarl-red/40 transition-all">
+      class="group block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-rarl-red/40 transition-all relative">
+      <?php if (($cat['access_level'] ?? 'public') === 'member'): ?>
+      <span class="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">🔒 Premium</span>
+      <?php endif; ?>
       <div class="text-3xl mb-3"><?= $cat['icon_emoji'] ?></div>
       <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1"><?= htmlspecialchars($cat['name']) ?></h3>
       <p class="text-gray-400 text-xs leading-relaxed mb-3"><?= htmlspecialchars(mb_strimwidth($cat['description'] ?? '', 0, 70, '…')) ?></p>
@@ -83,24 +91,32 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
       $icon  = $typeIcons[$r['type']] ?? '🔗';
       $label = $typeLabels[$r['type']] ?? 'Resource';
       $isYT  = in_array($r['type'], ['youtube_playlist','youtube_video']);
+      $isPremium = ($r['access_level'] ?? 'public') === 'member' || ($activecat['access_level'] ?? 'public') === 'member';
+      $isLocked  = $isPremium && !$isActiveMember;
+      $tag = $isLocked ? 'div' : 'a';
     ?>
-    <a href="<?= htmlspecialchars($r['url']) ?>" target="_blank" rel="noopener"
-      class="group flex gap-4 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md transition-all">
-      <div class="w-12 h-12 rounded-xl <?= $isYT ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800' ?> flex items-center justify-center text-xl flex-shrink-0">
-        <?= $icon ?>
+    <<?= $tag ?> <?= $isLocked ? '' : 'href="' . htmlspecialchars($r['url']) . '" target="_blank" rel="noopener"' ?>
+      class="group flex gap-4 bg-white dark:bg-gray-900 border rounded-2xl p-5 transition-all <?= $isLocked ? 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md' ?>">
+      <div class="w-12 h-12 rounded-xl <?= $isLocked ? 'bg-amber-100 dark:bg-amber-900/30' : ($isYT ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800') ?> flex items-center justify-center text-xl flex-shrink-0">
+        <?= $isLocked ? '🔒' : $icon ?>
       </div>
       <div class="flex-1 min-w-0">
+        <?php if ($isPremium): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">🔒 Premium · </span><?php endif; ?>
         <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">⭐ Featured · </span><?php endif; ?>
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"><?= $label ?></span>
-        <h3 class="font-semibold text-sm text-gray-900 dark:text-white mt-1 mb-1 leading-snug group-hover:text-rarl-red transition-colors"><?= htmlspecialchars($r['title']) ?></h3>
+        <h3 class="font-semibold text-sm text-gray-900 dark:text-white mt-1 mb-1 leading-snug <?= $isLocked ? '' : 'group-hover:text-rarl-red transition-colors' ?>"><?= htmlspecialchars($r['title']) ?></h3>
         <?php if ($r['description']): ?>
         <p class="text-xs text-gray-400 leading-relaxed line-clamp-2"><?= htmlspecialchars($r['description']) ?></p>
         <?php endif; ?>
+        <?php if ($isLocked): ?>
+        <a href="register.php" class="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 font-bold hover:underline">Join free to unlock →</a>
+        <?php else: ?>
         <div class="flex items-center gap-1 mt-2 text-xs text-rarl-red font-semibold opacity-0 group-hover:opacity-100 transition-opacity">
           Open →
         </div>
+        <?php endif; ?>
       </div>
-    </a>
+    </<?= $tag ?>>
     <?php endforeach; ?>
   </div>
   <?php endif; ?>

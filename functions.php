@@ -83,6 +83,114 @@ function nextCertNumber(): string {
     return CERT_PREFIX . '-' . date('Y') . '-' . str_pad($counter, 4, '0', STR_PAD_LEFT);
 }
 
+// ── Certificate PDF generation ──────────────────────────────
+// Shared by admin/certificates.php (manual CSV issuance) and the
+// auto-issue-on-attendance flow in admin/event-registrations.php.
+// Requires FPDF — gracefully no-ops if not available (a certificate row
+// without a pdf_path just shows "not generated" instead of erroring).
+function generateCertPDF(string $path, string $name, string $event, string $certNo, string $date, string $uuid): void {
+    if (!class_exists('FPDF') && file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
+        require_once __DIR__ . '/libs/fpdf/fpdf.php';
+    }
+    if (!class_exists('FPDF')) return;
+    if (!class_exists('QRcode') && file_exists(__DIR__ . '/libs/phpqrcode/qrlib.php')) {
+        require_once __DIR__ . '/libs/phpqrcode/qrlib.php';
+    }
+
+    [$inkR, $inkG, $inkB]    = brandRgb(BRAND_INK);
+    [$redR, $redG, $redB]    = brandRgb(BRAND_RED);
+    [$blueR, $blueG, $blueB] = brandRgb(BRAND_BLUE);
+
+    $pdf = new FPDF('L', 'mm', 'A4');
+    $pdf->AddPage();
+    $pdf->SetFillColor($inkR, $inkG, $inkB);
+    $pdf->Rect(0, 0, 297, 210, 'F');
+    $pdf->SetDrawColor($redR, $redG, $redB);
+    $pdf->SetLineWidth(2);
+    $pdf->Rect(8, 8, 281, 194);
+    $pdf->SetFont('Helvetica', 'B', 11);
+    $pdf->SetTextColor($redR, $redG, $redB);
+    $pdf->SetY(30); $pdf->Cell(0, 0, 'RARL COMMUNITY', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 8);
+    $pdf->SetTextColor(170, 170, 170);
+    $pdf->SetY(40); $pdf->Cell(0, 0, 'ROBOTICS AND AUTOMATION RESEARCH LABORATORY', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', 'B', 22);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->SetY(55); $pdf->Cell(0, 0, 'Certificate of Participation', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 9);
+    $pdf->SetTextColor(170, 170, 170);
+    $pdf->SetY(75); $pdf->Cell(0, 0, 'This is to certify that', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', 'B', 26);
+    $pdf->SetTextColor($blueR, $blueG, $blueB);
+    $pdf->SetY(85); $pdf->Cell(0, 0, $name, 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 9);
+    $pdf->SetTextColor(170, 170, 170);
+    $pdf->SetY(110); $pdf->Cell(0, 0, 'has successfully participated in', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', 'B', 16);
+    $pdf->SetTextColor(255, 255, 255);
+    $pdf->SetY(120); $pdf->Cell(0, 0, $event, 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 8);
+    $pdf->SetTextColor(150, 150, 150);
+    $pdf->SetY(145); $pdf->Cell(0, 0, 'Date: ' . ($date ? date('d F Y', strtotime($date)) : date('d F Y')) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');
+    $pdf->SetY(155);
+    $pdf->SetTextColor(150, 150, 150);
+    $pdf->Cell(0, 0, 'Verify at: ' . CERT_VERIFY_URL . '?id=' . $uuid, 0, 1, 'C');
+    $qrPath = null;
+    if (class_exists('QRcode')) {
+        $qrPath = sys_get_temp_dir() . '/rarl_qr_' . str_replace('-', '', $uuid) . '.png';
+        QRcode::png(CERT_VERIFY_URL . '?id=' . $uuid, $qrPath, QR_ECLEVEL_L, 4, 2);
+    }
+    if ($qrPath && file_exists($qrPath)) {
+        $pdf->Image($qrPath, 133.5, 158, 30, 30, 'PNG');
+        @unlink($qrPath);
+    }
+    $pdf->SetDrawColor(120, 120, 120);
+    $pdf->SetLineWidth(0.3);
+    $pdf->Line(100, 194, 197, 194);
+    $pdf->SetFont('Helvetica', '', 7);
+    $pdf->SetTextColor(150, 150, 150);
+    $pdf->SetY(197); $pdf->Cell(0, 0, 'Authorised by ' . SITE_NAME . ' - ' . str_replace(['https://', 'http://'], '', MAIN_SITE_URL), 0, 1, 'C');
+    $pdf->Output('F', $path);
+}
+
+// Issues a certificate for one event registration (used by the "mark
+// attended" flow) — reuses the exact same PDF/uuid/cert-number logic as the
+// manual CSV path in admin/certificates.php so both produce identical output.
+function issueCertificateForAttendance(PDO $pdo, array $event, array $member): bool {
+    $email = $member['email'];
+    $name  = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
+
+    $dup = $pdo->prepare('SELECT id FROM certificates WHERE event_id = ? AND recipient_email = ?');
+    $dup->execute([$event['id'], $email]);
+    if ($dup->fetch()) return true; // already issued, not an error
+
+    $uuid   = generateUuid();
+    $certNo = nextCertNumber();
+    $certDir = UPLOADS_PATH . '/certificates/';
+    if (!is_dir($certDir)) mkdir($certDir, 0755, true);
+    $pdfFile = 'cert_' . str_replace('-', '', $uuid) . '.pdf';
+    $pdfPath = null;
+
+    if (file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
+        generateCertPDF($certDir . $pdfFile, $name, $event['title'], $certNo, $event['event_date'] ?? date('Y-m-d'), $uuid);
+        $pdfPath = $pdfFile;
+    }
+
+    $pdo->prepare("INSERT INTO certificates (uuid, certificate_no, member_id, recipient_name, recipient_email, event_id, pdf_path)
+        VALUES (?,?,?,?,?,?,?)")->execute([$uuid, $certNo, $member['id'], $name, $email, $event['id'], $pdfPath]);
+
+    $verifyUrl  = CERT_VERIFY_URL . '?id=' . $uuid;
+    $eventTitle = $event['title'];
+    $eventDate  = $event['event_date'] ? date('d F Y', strtotime($event['event_date'])) : date('d F Y');
+    $certNumber = $certNo;
+    $memberName = $name;
+    ob_start(); require __DIR__ . '/emails/certificate.php'; $body = ob_get_clean();
+    sendEmail($email, $name, 'Your RARL Certificate — ' . $event['title'], $body);
+    $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE uuid = ?")->execute([$uuid]);
+
+    return true;
+}
+
 // ── Send email ─────────────────────────────────────────────
 // Uses SMTP (via a cPanel mailbox) when SMTP_HOST is configured — real SMTP
 // auth means SPF/DKIM line up with the sending mailbox, so mail lands in
@@ -332,9 +440,10 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
 
 // ── Install / migrations ────────────────────────────────────
 const RARL_MIGRATIONS = [
-    'schema.sql'                    => 'Base schema (members, certificates, settings, …)',
-    '002_v2_features.sql'           => 'v2 features (plans, OTP, community, ID cards, sections)',
-    '003_community_richtext.sql'    => 'Community rich-text posts + single photo upload',
+    'schema.sql'                        => 'Base schema (members, certificates, settings, …)',
+    '002_v2_features.sql'               => 'v2 features (plans, OTP, community, ID cards, sections)',
+    '003_community_richtext.sql'        => 'Community rich-text posts + single photo upload',
+    '004_events_premium_directory.sql'  => 'Public events/RSVP, premium learning content, member directory',
 ];
 
 function dbTablesExist(): bool {
@@ -590,6 +699,159 @@ function sanitizeRichHtmlNode(DOMNode $node): void {
     foreach ($toRemove as $c) $node->removeChild($c);
 }
 
+// Avatar circle for a member — falls back to an initial-letter badge when no
+// avatar_path is set, so post/comment authors always show something.
+function memberAvatarHtml(?string $avatarPath, string $displayName, string $sizeClasses = 'w-9 h-9 text-sm'): string {
+    $initial = htmlspecialchars(strtoupper(mb_substr($displayName, 0, 1)));
+    if (!empty($avatarPath)) {
+        return '<img src="' . UPLOADS_URL . '/avatars/' . htmlspecialchars($avatarPath) . '" alt="" class="' . $sizeClasses . ' rounded-full object-cover flex-shrink-0"/>';
+    }
+    return '<div class="' . $sizeClasses . ' rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-bold flex items-center justify-center flex-shrink-0">' . $initial . '</div>';
+}
+
+// ── Community post card renderer ────────────────────────────
+// Shared by the initial community.php page load and the lazy-load AJAX
+// endpoint (?ajax=posts) — one post's full HTML (content, image, like/comment
+// counts, comments, reply form, and edit/delete controls if $myMemberId owns it).
+function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
+    $likeCountStmt = $pdo->prepare('SELECT COUNT(*) FROM community_likes WHERE post_id=?');
+    $likeCountStmt->execute([$post['id']]);
+    $likeCount = (int) $likeCountStmt->fetchColumn();
+
+    $likedStmt = $pdo->prepare('SELECT 1 FROM community_likes WHERE post_id=? AND member_id=?');
+    $likedStmt->execute([$post['id'], $myMemberId]);
+    $likedByMe = (bool) $likedStmt->fetch();
+
+    $commentsStmt = $pdo->prepare('SELECT community_comments.*, members.full_name, members.lab_name, members.type, members.avatar_path
+                                     FROM community_comments JOIN members ON members.id = community_comments.member_id
+                                     WHERE post_id=? AND is_hidden=0 ORDER BY created_at ASC');
+    $commentsStmt->execute([$post['id']]);
+    $comments = $commentsStmt->fetchAll();
+
+    $authorName = $post['type'] === 'lab' ? $post['lab_name'] : $post['full_name'];
+    $bodyHtml = ($post['body_format'] ?? 'markdown') === 'html' ? $post['body'] : markdownToHtml($post['body']);
+    $isOwner = $myMemberId > 0 && (int)$post['member_id'] === $myMemberId;
+    $pid = (int)$post['id'];
+
+    ob_start();
+    ?>
+    <div id="post-<?= $pid ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
+      <div class="flex items-start justify-between gap-3 mb-3">
+        <div class="flex items-center gap-2.5">
+          <?= memberAvatarHtml($post['avatar_path'] ?? null, $authorName) ?>
+          <div class="flex items-center gap-2 flex-wrap">
+            <?php if ($post['is_pinned']): ?><span class="text-xs font-bold text-amber-500">📌</span><?php endif; ?>
+            <span class="font-semibold text-sm text-gray-900 dark:text-white"><?= htmlspecialchars($authorName) ?></span>
+            <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500"><?= htmlspecialchars(ucfirst($post['type'])) ?></span>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 flex-shrink-0">
+          <span class="text-xs text-gray-400"><?= date('d M Y, H:i', strtotime($post['created_at'])) ?></span>
+          <?php if ($isOwner): ?>
+          <button type="button" onclick="rarlToggleEditPanel(<?= $pid ?>)" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-xs" title="Edit">✏️</button>
+          <form method="POST" onsubmit="return confirm('Delete this post?')" class="inline">
+            <?= csrfField() ?><input type="hidden" name="action" value="delete_own_post"><input type="hidden" name="post_id" value="<?= $pid ?>">
+            <button type="submit" class="text-gray-300 hover:text-red-500 text-xs" title="Delete">🗑️</button>
+          </form>
+          <?php endif; ?>
+        </div>
+      </div>
+
+      <?php if ($bodyHtml !== ''): ?>
+      <div class="rich-content post-view-<?= $pid ?> text-gray-600 dark:text-gray-300 text-sm leading-relaxed mb-4"><?= $bodyHtml ?></div>
+      <?php endif; ?>
+      <?php if (!empty($post['image_path'])): ?>
+      <img src="<?= UPLOADS_URL ?>/community/<?= htmlspecialchars($post['image_path']) ?>" alt="" class="post-view-<?= $pid ?> w-full rounded-xl border border-gray-100 dark:border-gray-800 mb-4"/>
+      <?php endif; ?>
+
+      <?php if ($isOwner): ?>
+      <div id="edit-panel-<?= $pid ?>" class="hidden mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-xl">
+        <form method="POST" enctype="multipart/form-data" id="edit-post-form-<?= $pid ?>" onsubmit="return rarlSubmitEdit(<?= $pid ?>)">
+          <?= csrfField() ?><input type="hidden" name="action" value="edit_post"><input type="hidden" name="post_id" value="<?= $pid ?>">
+          <input type="hidden" name="body_html" id="edit-body-html-<?= $pid ?>">
+          <div id="edit-quill-toolbar-<?= $pid ?>">
+            <span class="ql-formats"><button class="ql-bold"></button><button class="ql-italic"></button><button class="ql-underline"></button></span>
+            <span class="ql-formats"><button class="ql-list" value="ordered"></button><button class="ql-list" value="bullet"></button></span>
+            <span class="ql-formats"><button class="ql-link"></button><button class="ql-blockquote"></button></span>
+          </div>
+          <div id="edit-quill-editor-<?= $pid ?>" data-content="<?= htmlspecialchars($bodyHtml) ?>" style="min-height:70px;"></div>
+          <?php if (!empty($post['image_path'])): ?>
+          <label class="flex items-center gap-2 text-xs text-gray-500 mt-2">
+            <input type="checkbox" name="remove_image" value="1" class="accent-rarl-red"/> Remove current photo
+          </label>
+          <?php endif; ?>
+          <div class="flex justify-end gap-2 mt-3">
+            <button type="button" onclick="document.getElementById('edit-panel-<?= $pid ?>').classList.add('hidden')" class="px-4 py-2 text-xs font-semibold text-gray-500 hover:text-gray-700">Cancel</button>
+            <button type="submit" class="px-4 py-2 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-semibold rounded-lg">Save</button>
+          </div>
+        </form>
+      </div>
+      <?php endif; ?>
+
+      <div class="flex items-center gap-4 mb-4">
+        <form method="POST">
+          <?= csrfField() ?><input type="hidden" name="action" value="toggle_like"><input type="hidden" name="post_id" value="<?= $pid ?>">
+          <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-semibold <?= $likedByMe ? 'text-rarl-red' : 'text-gray-400 hover:text-rarl-red' ?> transition-colors">
+            <?= $likedByMe ? '❤️' : '🤍' ?> <?= $likeCount ?>
+          </button>
+        </form>
+        <span class="text-xs text-gray-400">💬 <?= count($comments) ?></span>
+      </div>
+
+      <?php if (!empty($comments)): ?>
+      <div class="space-y-3 border-t border-gray-100 dark:border-gray-800 pt-4 mb-4">
+        <?php foreach ($comments as $c):
+          $cAuthor = $c['type'] === 'lab' ? $c['lab_name'] : $c['full_name'];
+          $cHtml   = markdownToHtml($c['body']);
+          $cid     = (int)$c['id'];
+          $cIsOwner = $myMemberId > 0 && (int)$c['member_id'] === $myMemberId;
+        ?>
+        <div class="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3">
+          <div class="flex items-start gap-2 mb-1">
+            <?= memberAvatarHtml($c['avatar_path'] ?? null, $cAuthor, 'w-6 h-6 text-[10px]') ?>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="font-semibold text-xs text-gray-800 dark:text-white"><?= htmlspecialchars($cAuthor) ?></span>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <span class="text-[10px] text-gray-400"><?= date('d M Y, H:i', strtotime($c['created_at'])) ?></span>
+                  <?php if ($cIsOwner): ?>
+                  <button type="button" onclick="document.getElementById('comment-edit-<?= $cid ?>').classList.toggle('hidden')" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-[10px]" title="Edit">✏️</button>
+                  <form method="POST" onsubmit="return confirm('Delete this comment?')" class="inline">
+                    <?= csrfField() ?><input type="hidden" name="action" value="delete_own_comment"><input type="hidden" name="comment_id" value="<?= $cid ?>"><input type="hidden" name="post_id" value="<?= $pid ?>">
+                    <button type="submit" class="text-gray-300 hover:text-red-500 text-[10px]" title="Delete">🗑️</button>
+                  </form>
+                  <?php endif; ?>
+                </div>
+              </div>
+              <div class="md-content text-gray-500 dark:text-gray-400 text-xs leading-relaxed"><?= $cHtml ?></div>
+              <?php if ($cIsOwner): ?>
+              <form method="POST" id="comment-edit-<?= $cid ?>" class="hidden mt-2">
+                <?= csrfField() ?><input type="hidden" name="action" value="edit_comment"><input type="hidden" name="comment_id" value="<?= $cid ?>"><input type="hidden" name="post_id" value="<?= $pid ?>">
+                <div class="flex gap-2">
+                  <input type="text" name="body" required maxlength="2000" value="<?= htmlspecialchars($c['body']) ?>"
+                    class="flex-1 px-2.5 py-1.5 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+                  <button type="submit" class="px-3 py-1.5 bg-rarl-red hover:bg-rarl-dark text-white text-[10px] font-semibold rounded-lg">Save</button>
+                </div>
+              </form>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <?php endif; ?>
+
+      <form method="POST" class="flex gap-2" title="Markdown supported — **bold**, *italic*, [link](url)">
+        <?= csrfField() ?><input type="hidden" name="action" value="create_comment"><input type="hidden" name="post_id" value="<?= $pid ?>">
+        <input type="text" name="body" required maxlength="2000" placeholder="Write a reply… (markdown supported)"
+          class="md-editor flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        <button type="submit" class="px-4 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white font-semibold text-xs rounded-lg transition-colors">Reply</button>
+      </form>
+    </div>
+    <?php
+    return ob_get_clean();
+}
+
 // Plain-text excerpt of a post/comment body regardless of format (markdown
 // source has no tags to strip; html source does) — for previews/emails.
 function communityBodyExcerpt(string $body, int $len = 120): string {
@@ -759,7 +1021,9 @@ function publicNav(string $active = ''): string {
     $links = [
         'home'      => ['/', 'Home'],
         'community' => ['community.php', 'Community'],
+        'events'    => ['events.php', 'Events'],
         'resources' => ['resources.php', 'Learning Hub'],
+        'directory' => ['directory.php', 'Directory'],
         'people'    => ['people.php', 'People'],
         'partners'  => ['partners.php', 'Partner With Us'],
     ];
