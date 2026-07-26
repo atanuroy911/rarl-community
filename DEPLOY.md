@@ -107,14 +107,49 @@ is safe to commit; only `.env` (gitignored) or real server env vars hold real va
 Enable **AutoSSL** in cPanel (free, one click) for the domain, then uncomment the
 HTTPS-redirect block at the bottom of `.htaccess`.
 
-## 5. Mail deliverability
+## 5. Mail deliverability (SMTP via your cPanel mailbox)
 
-`sendEmail()` uses PHP's built-in `mail()`. On shared hosting this works but can land in
-spam if SPF/DKIM aren't set up for the domain. In cPanel, check **Email Deliverability**
-for `rarl-lab.com` and fix any flagged SPF/DKIM records. If deliverability is still poor
-after that, consider swapping `sendEmail()` in `functions.php` for an SMTP-based sender
-(e.g. PHPMailer via your mailbox's SMTP credentials) — not required to get the site
-running, but worth revisiting if welcome/certificate emails aren't arriving.
+`sendEmail()` (in `functions.php`) sends over real authenticated SMTP when `SMTP_HOST`
+is set in `.env`, using the bundled `libs/SmtpMailer.php` (no Composer/PHPMailer
+dependency). If `SMTP_HOST` is left blank it falls back to PHP's `mail()`, which works
+but is far more likely to land in spam since it doesn't authenticate as the sending
+mailbox. **Setting up SMTP is the recommended path in production.**
+
+Namecheap/cPanel mailboxes (the ones you read via **Roundcube** webmail) are regular
+mailboxes with their own SMTP credentials — Roundcube is just a webmail *client* on top
+of the same mail server, not a separate mailer. You don't do anything inside Roundcube
+itself; you just need the mailbox's SMTP host/port/credentials.
+
+1. In cPanel → **Email Accounts**, create (or reuse) a mailbox on your domain, e.g.
+   `community@rarl-lab.com`. This is the same mailbox you can open in Roundcube at
+   `rarl-lab.com/webmail` to read replies sent to `MAIL_REPLY_TO`/`MAIL_FROM_EMAIL`.
+2. Click **Connect Devices** (or **Set Up Mail Client**) next to that mailbox in cPanel —
+   it shows the exact **Outgoing Server (SMTP)** hostname for your account (commonly
+   `mail.rarl-lab.com`, sometimes a shared Namecheap mail cluster hostname instead).
+   Note the SMTP host and the two port options it lists (usually 587 and 465).
+3. In `.env`, set:
+   ```
+   SMTP_HOST=mail.rarl-lab.com
+   SMTP_PORT=587
+   SMTP_USER=community@rarl-lab.com
+   SMTP_PASS=the mailbox's real password
+   SMTP_SECURE=tls
+   ```
+   If port 587 (`tls`, STARTTLS) doesn't connect from your host, try port 465 with
+   `SMTP_SECURE=ssl` (implicit TLS) instead — cPanel's Connect Devices page lists both.
+4. Also check **Email Deliverability** in cPanel for `rarl-lab.com` and fix any flagged
+   SPF/DKIM records — SMTP auth alone helps, but correct SPF/DKIM is still what stops
+   mail from landing in spam.
+5. Test: register a test account and confirm the welcome email arrives; check
+   `error_log` (cPanel → **Errors**) for `SMTP send failed: ...` if it doesn't — the
+   message will say exactly which SMTP step failed (auth, connection, etc).
+
+**Attachments (e.g. emailing certificate PDFs directly, not just a download link):**
+`sendEmail()` already accepts an optional `$attachments` array —
+`sendEmail($to, $name, $subject, $html, [['path' => $absolutePath, 'filename' => 'Certificate.pdf']])`
+— and both the SMTP path and the `mail()` fallback build a proper
+`multipart/mixed` MIME message for it. Nothing else needs to change if this feature
+gets used later; the mailer was built with it in mind from the start.
 
 ## 6. Verify
 

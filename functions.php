@@ -84,13 +84,31 @@ function nextCertNumber(): string {
 }
 
 // ── Send email ─────────────────────────────────────────────
-function sendEmail(string $to, string $toName, string $subject, string $htmlBody): bool {
-    $headers  = "MIME-Version: 1.0\r\n";
-    $headers .= "Content-Type: text/html; charset=UTF-8\r\n";
-    $headers .= 'From: ' . MAIL_FROM_NAME . ' <' . MAIL_FROM_EMAIL . ">\r\n";
-    $headers .= 'Reply-To: ' . MAIL_REPLY_TO . "\r\n";
-    $headers .= "X-Mailer: PHP/" . phpversion();
-    return @mail($to, $subject, $htmlBody, $headers);
+// Uses SMTP (via a cPanel mailbox) when SMTP_HOST is configured — real SMTP
+// auth means SPF/DKIM line up with the sending mailbox, so mail lands in
+// inboxes instead of spam. Falls back to PHP's mail() if SMTP isn't set up.
+// $attachments: array of ['path' => '/abs/file.pdf', 'filename' => 'Certificate.pdf']
+// — e.g. for emailing certificate PDFs alongside the download-link flow.
+function sendEmail(string $to, string $toName, string $subject, string $htmlBody, array $attachments = []): bool {
+    require_once __DIR__ . '/libs/SmtpMailer.php';
+
+    if (SMTP_HOST !== '') {
+        try {
+            $mailer = new SmtpMailer(SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE);
+            $mailer->send(MAIL_FROM_EMAIL, MAIL_FROM_NAME, $to, $toName, $subject, $htmlBody, $attachments);
+            return true;
+        } catch (Throwable $e) {
+            error_log('SMTP send failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    [$headers, $body] = SmtpMailer::buildMime(MAIL_FROM_EMAIL, MAIL_FROM_NAME, $to, $toName, $subject, $htmlBody, $attachments);
+    // mail() sets Subject/To from its own params — drop those from the shared
+    // header set to avoid duplicates, keep the rest (Content-Type, From, etc.)
+    $headers = array_values(array_filter($headers, fn($h) => !str_starts_with($h, 'Subject:') && !str_starts_with($h, 'To:')));
+    $headers[] = 'Reply-To: ' . MAIL_REPLY_TO;
+    return @mail($to, $subject, $body, implode("\r\n", $headers));
 }
 
 // ── Flash messages ─────────────────────────────────────────
@@ -552,7 +570,19 @@ function publicNav(string $active = ''): string {
         ? '<a href="dashboard.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red">My Dashboard</a>'
         : '<a href="login.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">Sign In</a>';
     $mark = BRAND_MARK_PATH;
+    $tagline = SITE_TAGLINE;
+    $mainUrl = MAIN_SITE_URL;
+    $replyTo = MAIL_REPLY_TO;
     return <<<HTML
+<div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
+  <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
+    <span>🔬 {$tagline}</span>
+    <div class="flex gap-5">
+      <a href="{$mainUrl}" class="hover:text-white transition-colors">rarl-lab.com</a>
+      <a href="mailto:{$replyTo}" class="hover:text-white transition-colors">{$replyTo}</a>
+    </div>
+  </div>
+</div>
 <header class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-6">
     <a href="index.php" class="flex items-center gap-2.5 flex-shrink-0 min-w-0">

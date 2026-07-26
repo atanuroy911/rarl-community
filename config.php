@@ -29,6 +29,14 @@ define('MAIL_FROM_EMAIL', env('MAIL_FROM_EMAIL', 'community@rarl-lab.com'));
 define('MAIL_REPLY_TO',   env('MAIL_REPLY_TO', 'info@rarl-lab.com'));
 define('ADMIN_EMAIL',     env('ADMIN_EMAIL', 'admin@rarl-lab.com'));
 
+// SMTP (optional) — set SMTP_HOST to send via a real cPanel mailbox instead of
+// PHP's mail(). Leave SMTP_HOST blank to keep using mail() (fine for local dev).
+define('SMTP_HOST',   env('SMTP_HOST', ''));
+define('SMTP_PORT',   (int) env('SMTP_PORT', '587'));
+define('SMTP_USER',   env('SMTP_USER', MAIL_FROM_EMAIL));
+define('SMTP_PASS',   env('SMTP_PASS', ''));
+define('SMTP_SECURE', env('SMTP_SECURE', 'tls')); // 'tls' (STARTTLS, port 587) or 'ssl' (implicit TLS, port 465)
+
 // ── Admin Auth ─────────────────────────────────────────────
 // Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
 define('ADMIN_USERNAME',      env('ADMIN_USERNAME', 'admin'));

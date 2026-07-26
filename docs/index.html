@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RARL Community Platform — Project Docs</title>
+<style>
+  :root {
+    --ink: #12213a;
+    --ink-soft: #1c3358;
+    --red: #c8102e;
+    --border: #e5e7eb;
+    --muted: #6b7280;
+    --bg: #f9fafb;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #111827;
+    background: var(--bg);
+    line-height: 1.6;
+  }
+  header {
+    background: linear-gradient(135deg, var(--ink) 0%, var(--ink-soft) 100%);
+    color: #fff;
+    padding: 3rem 1.5rem 2.5rem;
+    text-align: center;
+  }
+  header h1 { margin: 0 0 0.5rem; font-size: 1.9rem; font-weight: 800; }
+  header p { margin: 0; color: rgba(255,255,255,0.6); font-size: 0.95rem; }
+  main { max-width: 860px; margin: 0 auto; padding: 2.5rem 1.5rem 4rem; }
+  section { margin-bottom: 2.75rem; }
+  h2 {
+    font-size: 1.25rem; font-weight: 800; color: var(--ink);
+    border-bottom: 2px solid var(--border); padding-bottom: 0.5rem; margin-bottom: 1rem;
+  }
+  h3 { font-size: 1rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+  p { color: #374151; }
+  code {
+    background: #eef0f3; padding: 0.15em 0.4em; border-radius: 4px;
+    font-size: 0.88em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  pre {
+    background: #12213a; color: #e5e7eb; padding: 1rem 1.25rem; border-radius: 10px;
+    overflow-x: auto; font-size: 0.85rem; line-height: 1.5;
+  }
+  pre code { background: none; padding: 0; color: inherit; }
+  ul { padding-left: 1.25rem; color: #374151; }
+  li { margin-bottom: 0.35rem; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; margin: 1rem 0; }
+  th, td { text-align: left; padding: 0.55rem 0.75rem; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: 12px;
+    padding: 1.25rem 1.5rem; margin-bottom: 1rem;
+  }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  .badge {
+    display: inline-block; font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 0.04em; padding: 0.2em 0.6em; border-radius: 999px;
+    background: #fee2e2; color: var(--red); margin-bottom: 0.5rem;
+  }
+  .flow-step {
+    display: flex; gap: 0.9rem; align-items: flex-start; margin-bottom: 1rem;
+  }
+  .flow-num {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 8px;
+    background: var(--ink); color: #fff; font-weight: 800; font-size: 0.85rem;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .flow-body strong { display: block; margin-bottom: 0.15rem; }
+  footer {
+    text-align: center; color: var(--muted); font-size: 0.8rem;
+    padding: 2rem 1.5rem 3rem;
+  }
+  a { color: var(--red); }
+
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0b1220; --border: #1f2937; --muted: #9ca3af; }
+    body { color: #e5e7eb; }
+    h2 { color: #f3f4f6; }
+    p, ul, li { color: #cbd5e1; }
+    code { background: #1f2937; color: #e5e7eb; }
+    .card { background: #111827; border-color: #1f2937; }
+    th { color: #9ca3af; }
+    th, td { border-color: #1f2937; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>RARL Community Platform</h1>
+  <p>Project documentation — architecture, deployment, and admin operations</p>
+</header>
+
+<main>
+
+<section>
+  <h2>What this is</h2>
+  <p>
+    A plain PHP + MySQL community platform for the Robotics &amp; Automation Research Lab
+    (RARL) — member registration (individuals and labs), a Discord-linked community feed,
+    a learning resource hub, newsletters, event management, and verifiable PDF certificates
+    with QR-code validation. No build step: Tailwind is loaded from a CDN at runtime, so
+    the deployed app is just PHP files served directly.
+  </p>
+  <div class="grid">
+    <div class="card">
+      <div class="badge">Stack</div>
+      <p style="margin:0">PHP 8.1+, MySQL/MariaDB, Apache (mod_rewrite/mod_headers), no framework, no Composer.</p>
+    </div>
+    <div class="card">
+      <div class="badge">Hosting</div>
+      <p style="margin:0">cPanel shared hosting (Namecheap), deployed as a subdomain (<code>community.rarl-lab.com</code>).</p>
+    </div>
+    <div class="card">
+      <div class="badge">Libraries</div>
+      <p style="margin:0">Bundled, no package manager: <code>fpdf</code> (certificate/ID card PDFs), <code>phpqrcode</code> (QR codes), <code>Parsedown</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Configuration &amp; secrets</h2>
+  <p>
+    <code>config.php</code> holds no secrets and is safe to commit — every real value comes
+    from environment variables via <code>env()</code> (<code>env.php</code>), which checks
+    real server env vars first and falls back to a local <code>.env</code> file if present.
+    <code>.env</code> is gitignored and excluded from every deploy, so it's set up once on
+    the server and never touched again by CI.
+  </p>
+  <table>
+    <tr><th>Variable</th><th>Purpose</th></tr>
+    <tr><td><code>DB_HOST / DB_NAME / DB_USER / DB_PASS</code></td><td>MySQL connection</td></tr>
+    <tr><td><code>SITE_URL / MAIN_SITE_URL</code></td><td>Where this app and the main RARL site live</td></tr>
+    <tr><td><code>ADMIN_USERNAME / ADMIN_PASSWORD_HASH</code></td><td>Admin login — hash generated with <code>password_hash()</code>, never a plaintext password</td></tr>
+    <tr><td><code>SECRET_SALT</code></td><td>Random 64-char hex string used by the app's crypto/token helpers</td></tr>
+    <tr><td><code>DEPLOY_TOKEN</code></td><td>Shared secret between GitHub Actions and <code>deploy-extract.php</code></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>Deployment: GitHub → cPanel</h2>
+  <p>
+    Every push to <code>main</code> runs <code>.github/workflows/deploy.yml</code>, which
+    deploys to cPanel over FTPS. The app has 600+ files (mostly the bundled PDF/QR
+    libraries), and uploading each one individually was tripping connection resets
+    (<code>Server sent FIN packet unexpectedly</code>) on the shared-hosting FTP server.
+    Instead, the workflow ships the whole app as a single zip and lets a PHP endpoint
+    unzip it in place.
+  </p>
+  <div class="flow-step">
+    <div class="flow-num">1</div>
+    <div class="flow-body"><strong>Checkout &amp; zip</strong>Repo is zipped into <code>deploy.zip</code>, excluding <code>.git</code>, <code>.github</code>, <code>.env*</code>, the disposable <code>phpqrcode</code> mask cache, and every <code>uploads/</code> subfolder holding user-generated content (avatars, certificates, CVs, ID cards, popups, templates) so a deploy never clobbers real data.</div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num">2</div>
+    <div class="flow-body"><strong>Upload two files</strong><code>deploy.zip</code> and a fresh copy of <code>deploy-extract.php</code> are FTPS-uploaded from a staging folder — two files over the wire instead of 600+.</div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num">3</div>
+    <div class="flow-body"><strong>Trigger extraction</strong>A <code>curl</code> call hits <code>deploy-extract.php?token=...</code> on the live site. The token must match <code>DEPLOY_TOKEN</code> in the server's <code>.env</code> (<code>hash_equals</code> comparison) or it 403s.</div>
+  </div>
+  <div class="flow-step">
+    <div class="flow-num">4</div>
+    <div class="flow-body"><strong>Unzip &amp; clean up</strong><code>deploy-extract.php</code> unzips <code>deploy.zip</code> into place with <code>ZipArchive</code>, then deletes the zip. <code>.env</code> was never in the zip, so it's untouched across every deploy.</div>
+  </div>
+
+  <h3>Required GitHub secrets</h3>
+  <table>
+    <tr><th>Secret</th><th>Example</th></tr>
+    <tr><td><code>CPANEL_FTP_SERVER</code></td><td><code>ftp.rarl-lab.com</code></td></tr>
+    <tr><td><code>CPANEL_FTP_USERNAME</code></td><td>—</td></tr>
+    <tr><td><code>CPANEL_FTP_PASSWORD</code></td><td>—</td></tr>
+    <tr><td><code>CPANEL_FTP_SERVER_DIR</code></td><td>Document root, e.g. <code>community.rarl-lab.com</code> for a subdomain</td></tr>
+    <tr><td><code>CPANEL_SITE_URL</code></td><td><code>https://community.rarl-lab.com</code></td></tr>
+    <tr><td><code>DEPLOY_TOKEN</code></td><td>Random 64-char hex, must match server <code>.env</code></td></tr>
+  </table>
+</section>
+
+<section>
+  <h2>First-run database setup</h2>
+  <p>
+    Modeled on WordPress's <code>wp-admin/install.php</code>. When any admin page loads and
+    <code>dbTablesExist()</code> finds no <code>members</code> table, the request is
+    redirected to <code>admin/install.php</code> instead of hitting a fatal error.
+  </p>
+  <ul>
+    <li>The setup screen shows a single "Set Up Database" button that runs <code>sql/schema.sql</code> then <code>sql/002_v2_features.sql</code> (idempotent — safe to re-run, uses <code>CREATE TABLE IF NOT EXISTS</code> / <code>ON DUPLICATE KEY UPDATE</code>).</li>
+    <li>On success, the session is destroyed and the admin is redirected to login with a flash message — no auto-login, matching how WordPress makes you log in fresh after install.</li>
+    <li>If tables already exist, <code>install.php</code> refuses to run and redirects straight to login — it can't be used to re-trigger setup on a live site.</li>
+    <li>A logged-in admin can also re-run the same migrations any time from <strong>Admin → Migrations</strong> (<code>admin/migrate.php</code>) — useful after a deploy that adds new tables/columns (e.g. the v2 feature set).</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Admin login security</h2>
+  <ul>
+    <li><strong>Brute-force lockout</strong> — 5 failed logins from the same IP lock that IP out for 15 minutes. Tracked in the existing <code>settings</code> key/value table (no new table needed), via <code>loginThrottleCheck</code>/<code>RecordFailure</code>/<code>Reset</code> in <code>functions.php</code>.</li>
+    <li><strong>Generic error messages</strong> — failed logins say "Invalid credentials," never which field was wrong.</li>
+    <li><strong>Session hardening</strong> — <code>session_regenerate_id(true)</code> on successful login (prevents session fixation), CSRF token per admin session compared with <code>hash_equals</code>.</li>
+    <li><strong>Security headers</strong> (<code>.htaccess</code>) — <code>X-Content-Type-Options: nosniff</code>, <code>X-Frame-Options: SAMEORIGIN</code>, <code>Referrer-Policy: strict-origin-when-cross-origin</code>, and <code>ServerSignature Off</code>.</li>
+    <li><strong>Dotfile &amp; sensitive-file blocking</strong> — <code>.env*</code>, <code>.git*</code>, and <code>config.php</code>/<code>env.php</code> are denied directly over HTTP; <code>sql/</code> 404s.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Membership terms shown on-site</h2>
+  <p>
+    Membership is free for the first year. In exchange, members are expected to use the
+    RARL affiliation as the second affiliation on at least one paper during that year.
+    This is stated on the registration page and the homepage's final call-to-action —
+    not enforced in code, just communicated up front.
+  </p>
+</section>
+
+</main>
+
+<footer>
+  RARL Community Platform — internal project documentation.
+</footer>
+
+</body>
+</html>

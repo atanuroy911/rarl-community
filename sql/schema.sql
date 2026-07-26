@@ -221,7 +221,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ON DUPLICATE KEY UPDATE `value` = `value`;
 
 -- Default seed data for resource categories
-INSERT INTO `resource_categories` (`name`, `slug`, `icon_emoji`, `description`, `display_order`) VALUfES
+INSERT INTO `resource_categories` (`name`, `slug`, `icon_emoji`, `description`, `display_order`) VALUES
 ('Scientific Writing',  'scientific-writing',  '✍️', 'Learn how to write impactful research papers and academic documents.', 1),
 ('Research Methodology','research-methodology','🔬', 'Fundamentals of designing and conducting research.', 2),
 ('Machine Learning',    'machine-learning',    '🤖', 'Tutorials and courses on ML algorithms and applications.', 3),
@@ -229,7 +229,8 @@ INSERT INTO `resource_categories` (`name`, `slug`, `icon_emoji`, `description`, 
 ('Programming',         'programming',         '💻', 'Python, MATLAB, and other tools for researchers.', 5),
 ('Statistics',          'statistics',          '📊', 'Statistical methods for research analysis.', 6),
 ('Publishing & Journals','publishing',         '📄', 'How to navigate academic publishing and peer review.', 7),
-('LaTeX',               'latex',               '📝', 'Document preparation for academic writing.', 8);
+('LaTeX',               'latex',               '📝', 'Document preparation for academic writing.', 8)
+ON DUPLICATE KEY UPDATE `slug` = `slug`;
 
 SET FOREIGN_KEY_CHECKS = 1;
 COMMIT;

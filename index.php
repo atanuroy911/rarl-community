@@ -6,17 +6,6 @@ require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 echo htmlHead('Join the RARL Community');
 ?>
-<!-- Top bar -->
-<div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
-  <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
-    <span>🔬 <?= SITE_TAGLINE ?></span>
-    <div class="flex gap-5">
-      <a href="<?= MAIN_SITE_URL ?>" class="hover:text-white transition-colors">rarl-lab.com</a>
-      <a href="mailto:<?= MAIL_REPLY_TO ?>" class="hover:text-white transition-colors"><?= MAIL_REPLY_TO ?></a>
-    </div>
-  </div>
-</div>
-
 <?= publicNav('home') ?>
 
 <!-- ── HERO ──────────────────────────────────────────────── -->
@@ -37,7 +26,7 @@ echo htmlHead('Join the RARL Community');
         <?= htmlspecialchars($heroTitle) ?>
         <?php endif; ?>
       </h1>
-      <p class="text-gray-500 dark:text-gray-400 text-lg max-w-xl leading-relaxed mb-9">
+      <p class="text-gray-500 dark:text-gray-400 text-xl max-w-xl leading-relaxed mb-9">
         <?= htmlspecialchars(setting('home_hero_subtitle', 'Connect with researchers worldwide. Access curated learning resources, receive newsletters, attend events, and earn verifiable digital certificates for your contributions.')) ?>
       </p>
       <div class="flex flex-wrap gap-4 mb-14">
@@ -73,13 +62,48 @@ echo htmlHead('Join the RARL Community');
   </div>
 </section>
 
+<!-- ── ABOUT RARL ───────────────────────────────────────── -->
+<section class="py-20 bg-gray-50 dark:bg-gray-950">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="max-w-3xl reveal mb-14">
+      <span class="text-sm font-bold uppercase tracking-widest text-rarl-red">About Us</span>
+      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-4">Robotics and Automation Research Lab</h2>
+      <p class="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-4">
+        The Robotics and Automation Research Laboratory (RARL) was established to innovate,
+        design, and develop robots, with a particular focus on service robots and automation
+        projects. Beyond research, RARL aims to provide consultation and support to industries
+        seeking advanced automation solutions.
+      </p>
+      <p class="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
+        RARL hosts researchers from Italy, Iran, the UK, the USA, and Saudi Arabia.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+      <?php $achievements = [
+        ['📄', 'Publication of several research papers', 'Published several impactful research papers across reputed journals and conferences.'],
+        ['🎓', 'Successful mentorship of 12 students', 'Successfully mentored 12 students, guiding them through academic and professional growth.'],
+        ['©️', 'Securing 12 copyrights', 'Secured 12 copyrights showcasing innovation and original contributions.'],
+        ['📚', 'Authorship of 3 books and 4 book chapters', 'Authored 3 books and 4 book chapters, advancing knowledge in the field.'],
+      ]; ?>
+      <?php foreach ($achievements as $i => [$icon, $title, $desc]): ?>
+      <div class="reveal reveal-delay-<?= $i+1 ?> bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-250">
+        <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-2xl mb-4"><?= $icon ?></div>
+        <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2 leading-snug"><?= htmlspecialchars($title) ?></h3>
+        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= htmlspecialchars($desc) ?></p>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
 <!-- ── WHAT YOU GET ─────────────────────────────────────── -->
 <section class="py-20 bg-white dark:bg-gray-900">
   <div class="max-w-6xl mx-auto px-6">
     <div class="text-center mb-14 reveal">
       <span class="text-xs font-bold uppercase tracking-widest text-rarl-red">Platform Modules</span>
       <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-3">Everything in One Place</h2>
-      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-sm">A focused community management platform built for scientific organisations, labs, and researchers.</p>
+      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-base">A focused community management platform built for scientific organisations, labs, and researchers.</p>
     </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -96,8 +120,8 @@ echo htmlHead('Join the RARL Community');
       <?php foreach ($modules as $i => [$icon, $name, $desc, $bg, $tc, $bc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> group p-6 rounded-2xl border <?= $bg ?> <?= $bc ?> hover:-translate-y-1 hover:shadow-lg transition-all duration-250 cursor-default">
         <div class="w-11 h-11 rounded-xl <?= $bg ?> flex items-center justify-center text-xl mb-4"><?= $icon ?></div>
-        <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2"><?= $name ?></h3>
-        <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed"><?= $desc ?></p>
+        <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2"><?= $name ?></h3>
+        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= $desc ?></p>
       </div>
       <?php endforeach; ?>
 
@@ -120,8 +144,8 @@ echo htmlHead('Join the RARL Community');
       ]; foreach ($steps as $i => [$num, $title, $desc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> text-center">
         <div class="w-14 h-14 mx-auto mb-4 rounded-2xl bg-rarl-navy text-white flex items-center justify-center font-heading font-black text-xl shadow-lg"><?= $num ?></div>
-        <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2"><?= $title ?></h3>
-        <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed"><?= $desc ?></p>
+        <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2"><?= $title ?></h3>
+        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= $desc ?></p>
       </div>
       <?php endforeach; ?>
     </div>
@@ -136,10 +160,10 @@ echo htmlHead('Join the RARL Community');
         <div class="flex-1 reveal">
           <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5">🏆 Certificates</span>
           <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-4">Verifiable Digital Certificates</h2>
-          <p class="text-white/60 text-sm leading-relaxed mb-6 max-w-lg">Every workshop, webinar, and competition you attend generates a professional PDF certificate with a unique ID and QR code that anyone can verify instantly online.</p>
+          <p class="text-white/60 text-base leading-relaxed mb-6 max-w-lg">Every workshop, webinar, and competition you attend generates a professional PDF certificate with a unique ID and QR code that anyone can verify instantly online.</p>
           <ul class="space-y-2 mb-8">
             <?php foreach (['Unique certificate ID (e.g. RARL-2025-0042)', 'QR code links to public verification page', 'Download anytime from your member dashboard', 'LinkedIn-ready — add to your profile with a click'] as $pt): ?>
-            <li class="flex items-center gap-2.5 text-white/70 text-sm"><span class="w-4 h-4 rounded-full bg-green-900/40 text-green-400 flex items-center justify-center text-[10px] font-bold">✓</span><?= $pt ?></li>
+            <li class="flex items-center gap-2.5 text-white/70 text-base"><span class="w-4 h-4 rounded-full bg-green-900/40 text-green-400 flex items-center justify-center text-[10px] font-bold">✓</span><?= $pt ?></li>
             <?php endforeach; ?>
           </ul>
           <a href="register.php" class="inline-flex items-center gap-2 px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition-all hover:-translate-y-0.5">Get Started Free →</a>
@@ -166,8 +190,8 @@ echo htmlHead('Join the RARL Community');
 <section class="py-16 bg-rarl-red">
   <div class="max-w-3xl mx-auto px-6 text-center">
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the RARL Community?</h2>
-    <p class="text-white/75 text-sm mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
-    <p class="text-white/60 text-xs mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
+    <p class="text-white/75 text-base mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
+    <p class="text-white/60 text-sm mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
     <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
       Create Your Free Account →
     </a>
