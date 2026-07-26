@@ -27,8 +27,9 @@ jobs:
             -x "uploads/id-cards/*" "uploads/id-cards/**" \
             -x "uploads/people/*" "uploads/people/**" \
             -x ".env" ".env.sample" ".env.production"
+          cp deploy-extract.php /tmp/deploy-stage/deploy-extract.php
 
-      - name: Upload deploy.zip over FTPS
+      - name: Upload deploy.zip + extractor over FTPS
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.CPANEL_FTP_SERVER }}
