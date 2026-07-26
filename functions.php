@@ -1050,7 +1050,7 @@ function publicNav(string $active = ''): string {
     $replyTo = MAIL_REPLY_TO;
     return <<<HTML
 <div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
-  <div class="max-w-6xl mx-auto px-6 flex justify-between items-center">
+  <div class="w-full px-6 flex justify-between items-center">
     <span>🔬 {$tagline}</span>
     <div class="flex gap-5">
       <a href="{$mainUrl}" class="hover:text-white transition-colors">rarl-lab.com</a>
@@ -1059,7 +1059,7 @@ function publicNav(string $active = ''): string {
   </div>
 </div>
 <header class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
-  <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-6">
+  <div class="w-full px-4 sm:px-6 h-16 flex items-center justify-between gap-3 sm:gap-6">
     <a href="index.php" class="flex items-center gap-2.5 flex-shrink-0 min-w-0">
       <img src="{$mark}" alt="RARL" class="w-8 h-8 rounded-lg object-contain shadow flex-shrink-0"/>
       <div class="leading-tight hidden sm:block min-w-0">
@@ -1091,7 +1091,7 @@ function publicFooter(): string {
     $mainUrl  = MAIN_SITE_URL;
     return <<<HTML
 <footer class="bg-rarl-navy text-white/45 py-10 mt-auto">
-  <div class="max-w-6xl mx-auto px-6 flex flex-col gap-6 text-xs">
+  <div class="w-full px-6 flex flex-col gap-6 text-xs">
     <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
       <span>&copy; {$year} {$siteName} &middot; {$tagline}</span>
       <div class="flex gap-5">

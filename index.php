@@ -5,12 +5,8 @@
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 
+if (!empty($_SESSION['member_id'])) redirect('community.php');
 $loggedInMember = null;
-if (!empty($_SESSION['member_id'])) {
-    $meStmt = db()->prepare('SELECT full_name, lab_name, type, status, avatar_path FROM members WHERE id = ?');
-    $meStmt->execute([(int)$_SESSION['member_id']]);
-    $loggedInMember = $meStmt->fetch();
-}
 
 echo htmlHead('Join the RARL Community');
 ?>

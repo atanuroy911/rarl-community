@@ -4,7 +4,7 @@
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
-if (!empty($_SESSION['member_id'])) redirect('dashboard.php');
+if (!empty($_SESSION['member_id'])) redirect('community.php');
 
 $error = '';
 
@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['member_type'] = $member['type'];
             $_SESSION['member_name'] = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
             db()->prepare('UPDATE members SET last_login_at = NOW() WHERE id = ?')->execute([$member['id']]);
-            redirect('dashboard.php');
+            redirect('community.php');
         }
     }
 }
