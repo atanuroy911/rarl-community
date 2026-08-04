@@ -138,13 +138,15 @@ $feedIntro     = setting('community_feed_intro', 'Share updates, ask questions, 
 $isMember      = !empty($_SESSION['member_id']);
 $myMemberId    = (int)($_SESSION['member_id'] ?? 0);
 $myAvatarHtml  = '';
+$mySectionId   = null;
 if ($isMember) {
-    $meStmt = $pdo->prepare('SELECT full_name, lab_name, type, avatar_path FROM members WHERE id=?');
+    $meStmt = $pdo->prepare('SELECT full_name, lab_name, type, avatar_path, section_id FROM members WHERE id=?');
     $meStmt->execute([$myMemberId]);
     $meRow = $meStmt->fetch();
     if ($meRow) {
         $myName = $meRow['type'] === 'lab' ? $meRow['lab_name'] : $meRow['full_name'];
         $myAvatarHtml = memberAvatarHtml($meRow['avatar_path'], $myName ?: '?', 'w-10 h-10 text-sm');
+        $mySectionId = $meRow['section_id'] ? (int)$meRow['section_id'] : null;
     }
 }
 
@@ -171,7 +173,9 @@ if ($isMember && ($_GET['ajax'] ?? '') === 'posts') {
     exit;
 }
 
-$announcements = $pdo->query("SELECT * FROM announcements WHERE is_published = 1 ORDER BY is_pinned DESC, created_at DESC")->fetchAll();
+$annStmt = $pdo->prepare("SELECT * FROM announcements WHERE is_published = 1 AND (section_id IS NULL OR section_id = ?) ORDER BY is_pinned DESC, created_at DESC");
+$annStmt->execute([$mySectionId]);
+$announcements = $annStmt->fetchAll();
 
 // ── Feed data — first page only, the rest lazy-loads via the endpoint above ──
 $posts = [];
@@ -253,7 +257,7 @@ echo htmlHead('Community Portal');
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm sticky top-4">
         <div class="h-14" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"></div>
         <div class="px-5 pb-5 -mt-7">
-          <?= memberAvatarHtml($myFull['avatar_path'], $myDisplayName ?: '?', 'w-14 h-14 text-lg border-4 border-white dark:border-gray-900 shadow') ?>
+          <?= memberAvatarHtml($myFull['avatar_path'], $myDisplayName ?: '?', 'w-14 h-14 text-lg border-4 border-white dark:border-gray-900 shadow', memberNeedsAttention($myFull)) ?>
           <p class="font-heading font-bold text-sm text-gray-900 dark:text-white mt-2 truncate"><?= htmlspecialchars($myDisplayName ?: '(unnamed)') ?></p>
           <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
             <?= $myFull['type'] === 'lab' ? htmlspecialchars($myFull['pi_name'] ?? '') : htmlspecialchars($myFull['position'] ?? '') ?>

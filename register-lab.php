@@ -59,7 +59,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $uuid      = generateUuid();
             $token     = bin2hex(random_bytes(32));
             $hash      = password_hash($vals['password'], PASSWORD_BCRYPT);
-            $status    = REQUIRE_APPROVAL ? 'pending' : 'active';
+            $autoApproved = emailDomainAutoApproved($vals['email']);
+            $status    = (REQUIRE_APPROVAL && !$autoApproved) ? 'pending' : 'active';
             $planId    = planIdFor('lab');
             $sectionId = nearestSection($vals['country']);
 
@@ -76,6 +77,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $vals['research_areas'], $vals['lab_website'], $vals['newsletter_opt_in'], $token, $status,
                 $planId, $sectionId,
             ]);
+
+            if ($autoApproved) completeApproval((int)$pdo->lastInsertId());
 
             // Send email-verification OTP (replaces the old welcome email as first touchpoint)
             $memberName = $vals['lab_name'] . ' (' . $vals['pi_name'] . ')';

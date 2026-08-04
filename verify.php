@@ -67,12 +67,18 @@ echo htmlHead('Verify Certificate');
       <!-- Certificate details -->
       <div class="p-8">
         <div class="text-center mb-7 pb-7 border-b border-gray-100 dark:border-gray-800">
+          <?php $isMembershipCert = ($cert['cert_type'] ?? 'event') === 'membership'; ?>
           <img src="<?= BRAND_MARK_PATH ?>" alt="RARL" class="w-16 h-16 rounded-2xl object-contain mx-auto mb-4 shadow-lg"/>
-          <p class="text-xs font-bold text-rarl-red uppercase tracking-widest mb-2">Certificate of Participation</p>
+          <p class="text-xs font-bold text-rarl-red uppercase tracking-widest mb-2"><?= $isMembershipCert ? 'Certificate of Membership' : 'Certificate of Participation' ?></p>
           <p class="text-gray-500 text-sm mb-3">This is to certify that</p>
           <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-3"><?= htmlspecialchars($cert['recipient_name']) ?></h2>
+          <?php if ($isMembershipCert): ?>
+          <p class="text-gray-500 text-sm mb-1">is a certified member of the</p>
+          <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">RARL Community</h3>
+          <?php else: ?>
           <p class="text-gray-500 text-sm mb-1">has successfully participated in</p>
           <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100"><?= htmlspecialchars($cert['event_title'] ?? 'Event') ?></h3>
+          <?php endif; ?>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -81,13 +87,15 @@ echo htmlHead('Verify Certificate');
             <p class="font-mono font-bold text-gray-800 dark:text-white"><?= htmlspecialchars($cert['certificate_no']) ?></p>
           </div>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Event Type</p>
-            <p class="font-semibold text-gray-800 dark:text-white capitalize"><?= htmlspecialchars($cert['event_type'] ?? '—') ?></p>
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1"><?= $isMembershipCert ? 'Certificate Type' : 'Event Type' ?></p>
+            <p class="font-semibold text-gray-800 dark:text-white capitalize"><?= $isMembershipCert ? 'Membership' : htmlspecialchars($cert['event_type'] ?? '—') ?></p>
           </div>
+          <?php if (!$isMembershipCert): ?>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Event Date</p>
             <p class="font-semibold text-gray-800 dark:text-white"><?= $cert['event_date'] ? date('d F Y', strtotime($cert['event_date'])) : '—' ?></p>
           </div>
+          <?php endif; ?>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Issued On</p>
             <p class="font-semibold text-gray-800 dark:text-white"><?= date('d F Y', strtotime($cert['issued_at'])) ?></p>

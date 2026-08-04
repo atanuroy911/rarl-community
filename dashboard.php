@@ -26,8 +26,21 @@ $certs = $pdo->prepare("
 $certs->execute([$memberId, $m['email']]);
 $certificates = $certs->fetchAll();
 
-// Announcements
-$announcements = $pdo->query("SELECT * FROM announcements WHERE is_published = 1 ORDER BY is_pinned DESC, created_at DESC LIMIT 5")->fetchAll();
+// Announcements — general (site-wide) plus this member's chapter-only ones
+$annStmt = $pdo->prepare("SELECT * FROM announcements WHERE is_published = 1 AND (section_id IS NULL OR section_id = ?) ORDER BY is_pinned DESC, created_at DESC LIMIT 5");
+$annStmt->execute([$m['section_id'] ?: null]);
+$announcements = $annStmt->fetchAll();
+
+// Onboarding checklist — only relevant once approved; hidden once everything's done
+$hasPostedStmt = $pdo->prepare('SELECT 1 FROM community_posts WHERE member_id = ? LIMIT 1');
+$hasPostedStmt->execute([$memberId]);
+$checklist = [
+    ['done' => !empty($m['avatar_path']), 'label' => 'Add a profile photo', 'sub' => 'Required for your ID card', 'href' => 'profile.php'],
+    ['done' => !empty($m['id_card_path']), 'label' => 'Get your ID card', 'sub' => 'Generated automatically once you have a photo', 'href' => 'profile.php'],
+    ['done' => (bool)($m['institution'] ?? $m['lab_website'] ?? ''), 'label' => 'Complete your profile', 'sub' => 'Institution, research interests, and more', 'href' => 'profile.php'],
+    ['done' => (bool)$hasPostedStmt->fetch(), 'label' => 'Say hello in the community', 'sub' => 'Share an update or introduce yourself', 'href' => 'community.php'],
+];
+$checklistDone = count(array_filter($checklist, fn($c) => $c['done']));
 
 echo htmlHead('My Dashboard');
 ?>
@@ -39,8 +52,19 @@ echo htmlHead('My Dashboard');
   <div class="bg-rarl-navy border-b border-rarl-mid">
     <div class="max-w-6xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
       <div class="flex items-center gap-4">
-        <div class="w-14 h-14 bg-rarl-red rounded-2xl flex items-center justify-center text-white font-heading font-black text-xl shadow-lg">
-          <?= strtoupper(substr($displayName, 0, 1)) ?>
+        <?php $needsAttention = memberNeedsAttention($m); ?>
+        <div class="relative flex-shrink-0">
+          <?php if (!empty($m['avatar_path'])): ?>
+          <img src="<?= UPLOADS_URL ?>/avatars/<?= htmlspecialchars($m['avatar_path']) ?>" alt=""
+            class="w-14 h-14 rounded-2xl object-cover shadow-lg<?= $needsAttention ? ' ring-2 ring-rarl-red ring-offset-2 ring-offset-rarl-navy' : '' ?>"/>
+          <?php else: ?>
+          <div class="w-14 h-14 bg-rarl-red rounded-2xl flex items-center justify-center text-white font-heading font-black text-xl shadow-lg<?= $needsAttention ? ' ring-2 ring-white/60 ring-offset-2 ring-offset-rarl-navy' : '' ?>">
+            <?= strtoupper(substr($displayName, 0, 1)) ?>
+          </div>
+          <?php endif; ?>
+          <?php if ($needsAttention): ?>
+          <span class="absolute -top-1 -right-1 w-3.5 h-3.5 bg-rarl-red rounded-full border-2 border-rarl-navy" title="Complete your profile to finish setup"></span>
+          <?php endif; ?>
         </div>
         <div>
           <p class="text-white/50 text-xs uppercase tracking-wider mb-0.5"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user"></i> Individual Researcher' ?></p>
@@ -89,7 +113,7 @@ echo htmlHead('My Dashboard');
               <div class="flex items-center gap-4">
                 <div class="w-11 h-11 bg-amber-100 dark:bg-amber-900/30 rounded-xl flex items-center justify-center text-xl flex-shrink-0"><?= $icon ?></div>
                 <div>
-                  <p class="font-semibold text-sm text-gray-900 dark:text-white"><?= htmlspecialchars($cert['event_title'] ?? 'Event') ?></p>
+                  <p class="font-semibold text-sm text-gray-900 dark:text-white"><?= $cert['cert_type'] === 'membership' ? 'RARL Membership Certificate' : htmlspecialchars($cert['event_title'] ?? 'Event') ?></p>
                   <p class="text-xs text-gray-400 mt-0.5">
                     <?= htmlspecialchars($cert['certificate_no']) ?>
                     · <?= $cert['event_date'] ? date('d M Y', strtotime($cert['event_date'])) : date('d M Y', strtotime($cert['issued_at'])) ?>
@@ -129,6 +153,30 @@ echo htmlHead('My Dashboard');
 
       <!-- ── RIGHT: Sidebar ── -->
       <div class="space-y-5">
+
+        <!-- Onboarding checklist -->
+        <?php if ($m['status'] === 'active' && $checklistDone < count($checklist)): ?>
+        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="font-heading font-bold text-sm text-gray-800 dark:text-white">Getting Started</h3>
+            <span class="text-[10px] font-bold text-gray-400"><?= $checklistDone ?>/<?= count($checklist) ?></span>
+          </div>
+          <div class="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full mb-4 overflow-hidden">
+            <div class="h-full bg-rarl-red rounded-full" style="width:<?= round($checklistDone / count($checklist) * 100) ?>%"></div>
+          </div>
+          <div class="space-y-2.5">
+            <?php foreach ($checklist as $item): ?>
+            <a href="<?= $item['done'] ? '#' : $item['href'] ?>" class="flex items-start gap-2.5 text-xs <?= $item['done'] ? 'pointer-events-none' : 'hover:text-rarl-red' ?> transition-colors">
+              <i class="fa-solid <?= $item['done'] ? 'fa-circle-check text-green-500' : 'fa-circle text-gray-300' ?> mt-0.5"></i>
+              <div>
+                <p class="font-semibold <?= $item['done'] ? 'text-gray-400 line-through' : 'text-gray-800 dark:text-gray-200' ?>"><?= htmlspecialchars($item['label']) ?></p>
+                <?php if (!$item['done']): ?><p class="text-gray-400 mt-0.5"><?= htmlspecialchars($item['sub']) ?></p><?php endif; ?>
+              </div>
+            </a>
+            <?php endforeach; ?>
+          </div>
+        </div>
+        <?php endif; ?>
 
         <!-- Status badge -->
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm">

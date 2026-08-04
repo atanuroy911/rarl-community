@@ -13,14 +13,23 @@ $t = $pdo->prepare("SELECT * FROM certificate_templates WHERE id = ?"); $t->exec
 $template = $t->fetch();
 if (!$template) { $_SESSION['flash'] = ['type'=>'error','msg'=>'Template not found.']; header('Location: templates.php'); exit; }
 
-$sampleData = $template['type'] === 'id_card' ? [
-    'name' => 'Dr. Jane Sample', 'member_code' => 'RARL-000000', 'since_date' => date('Y/m/d'),
-    'section' => 'Sample Chapter', 'signer1' => 'RARL President', 'signer2' => 'Chapter Chair',
-    'verify_url' => SITE_URL . '/id-card-verify.php?code=SAMPLE',
-] : [
-    'name' => 'Dr. Jane Sample', 'event' => 'Sample Workshop 2026', 'date' => date('d F Y'),
-    'cert_no' => 'RARL-2026-SAMPLE', 'verify_url' => CERT_VERIFY_URL . '?id=sample',
-];
+$sampleData = match ($template['type']) {
+    'id_card' => [
+        'name' => 'Dr. Jane Sample', 'member_code' => 'RARL-000000', 'since_date' => date('Y/m/d'),
+        'section' => 'Sample Chapter', 'signer1' => 'RARL President', 'signer2' => 'Chapter Chair',
+        'verify_url' => SITE_URL . '/id-card-verify.php?code=SAMPLE',
+        'avatar_url' => BRAND_MARK_PATH,
+    ],
+    'membership' => [
+        'name' => 'Dr. Jane Sample', 'member_code' => 'RARL-000000', 'since_date' => date('d F Y'),
+        'section' => 'Sample Chapter', 'cert_no' => 'RARL-2026-SAMPLE', 'signer1' => 'RARL President',
+        'verify_url' => CERT_VERIFY_URL . '?id=sample',
+    ],
+    default => [
+        'name' => 'Dr. Jane Sample', 'event' => 'Sample Workshop 2026', 'date' => date('d F Y'),
+        'cert_no' => 'RARL-2026-SAMPLE', 'verify_url' => CERT_VERIFY_URL . '?id=sample',
+    ],
+};
 
 htmlAdminHead('Preview: ' . $template['name']);
 ?>

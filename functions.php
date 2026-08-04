@@ -476,6 +476,7 @@ const RARL_MIGRATIONS = [
     '005_chapters_not_sections.sql'     => 'Consolidate "Section" terminology into "Chapter"',
     '006_multi_email_accounts.sql'      => 'Multiple emails per account + temp-password / chair-account support',
     '007_certificate_templates.sql'     => 'Uploadable ID card / certificate templates (HTML-based generation)',
+    '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
 ];
 
 function dbTablesExist(): bool {
@@ -581,7 +582,7 @@ function nearestSection(string $country): ?int {
 
     $continent = countryToContinent($country);
     if (!$continent) return null;
-    $stmt = $pdo->prepare("SELECT id FROM regional_sections WHERE scope='continent' AND is_published=1 AND continent = ? AND chair_title = 'Section Chair' ORDER BY display_order LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id FROM regional_sections WHERE scope='continent' AND is_published=1 AND continent = ? ORDER BY display_order LIMIT 1");
     $stmt->execute([$continent]);
     $row = $stmt->fetch();
     return $row ? (int)$row['id'] : null;
@@ -733,12 +734,30 @@ function sanitizeRichHtmlNode(DOMNode $node): void {
 
 // Avatar circle for a member — falls back to an initial-letter badge when no
 // avatar_path is set, so post/comment authors always show something.
-function memberAvatarHtml(?string $avatarPath, string $displayName, string $sizeClasses = 'w-9 h-9 text-sm'): string {
+// $needsAttention wraps it in a red ring + small dot badge (used for "your own"
+// avatar in the nav/dashboard when onboarding isn't finished — see
+// memberNeedsAttention()) — replaces the earlier cron/email reminder approach
+// with a persistent, low-noise visual cue instead of an inbox nag.
+function memberAvatarHtml(?string $avatarPath, string $displayName, string $sizeClasses = 'w-9 h-9 text-sm', bool $needsAttention = false): string {
     $initial = htmlspecialchars(strtoupper(mb_substr($displayName, 0, 1)));
-    if (!empty($avatarPath)) {
-        return '<img src="' . UPLOADS_URL . '/avatars/' . htmlspecialchars($avatarPath) . '" alt="" class="' . $sizeClasses . ' rounded-full object-cover flex-shrink-0"/>';
-    }
-    return '<div class="' . $sizeClasses . ' rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-bold flex items-center justify-center flex-shrink-0">' . $initial . '</div>';
+    $inner = !empty($avatarPath)
+        ? '<img src="' . UPLOADS_URL . '/avatars/' . htmlspecialchars($avatarPath) . '" alt="" class="' . $sizeClasses . ' rounded-full object-cover flex-shrink-0' . ($needsAttention ? ' ring-2 ring-rarl-red ring-offset-2' : '') . '"/>'
+        : '<div class="' . $sizeClasses . ' rounded-full bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-300 font-bold flex items-center justify-center flex-shrink-0' . ($needsAttention ? ' ring-2 ring-rarl-red ring-offset-2' : '') . '">' . $initial . '</div>';
+    if (!$needsAttention) return $inner;
+    return '<span class="relative inline-flex flex-shrink-0">' . $inner
+         . '<span class="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-rarl-red rounded-full border-2 border-white dark:border-gray-900"></span></span>';
+}
+
+// True if this member has an unfinished onboarding step worth surfacing as a
+// visual nudge (ring + dot on their avatar) rather than an email. Keep this in
+// sync with dashboard.php's checklist — same underlying signals, condensed to
+// one boolean for chrome that appears on every page (nav, dashboard header).
+function memberNeedsAttention(array $member): bool {
+    if ($member['status'] !== 'active') return false;
+    if (empty($member['avatar_path'])) return true;
+    if (empty($member['id_card_path'])) return true;
+    $hasProfileInfo = !empty($member['institution']) || !empty($member['lab_website']);
+    return !$hasProfileInfo;
 }
 
 // ── Community post card renderer ────────────────────────────
@@ -1304,6 +1323,182 @@ function issueIdCard(int $memberId): bool {
     return true;
 }
 
+// Issues (once) a "Certificate of Membership" for a member — unlike ID cards,
+// no photo is required, so this can fire the moment a member is activated.
+// Uses the admin's default 'membership' template if one is set; otherwise
+// falls back to a simple plain design (generatePlainMembershipCertPDF).
+// No-op if the member already has one. Returns true if a cert now exists.
+function issueMembershipCertificate(int $memberId): bool {
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+    $stmt->execute([$memberId]);
+    $m = $stmt->fetch();
+    if (!$m) return false;
+
+    $dup = $pdo->prepare("SELECT id FROM certificates WHERE member_id = ? AND cert_type = 'membership'");
+    $dup->execute([$memberId]);
+    if ($dup->fetch()) return true; // already issued, not an error
+
+    $name = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
+    $sectionName = '';
+    if ($m['section_id']) {
+        $s = $pdo->prepare('SELECT name FROM regional_sections WHERE id = ?');
+        $s->execute([$m['section_id']]);
+        $sectionName = $s->fetchColumn() ?: '';
+    }
+
+    $uuid = generateUuid();
+    $certNo = nextCertNumber();
+    $certDir = UPLOADS_PATH . '/certificates/';
+    if (!is_dir($certDir)) mkdir($certDir, 0755, true);
+    $pdfFile = 'membercert_' . str_replace('-', '', $uuid) . '.pdf';
+    $pdfFull = $certDir . $pdfFile;
+    $verifyUrl = CERT_VERIFY_URL . '?id=' . $uuid;
+
+    try {
+        $template = getDefaultTemplate('membership');
+        if ($template) {
+            renderTemplatePdf($template, [
+                'name' => $name, 'member_code' => $m['member_code'] ?: '', 'section' => $sectionName ?: '—',
+                'since_date' => date('d F Y', strtotime($m['created_at'])), 'cert_no' => $certNo,
+                'signer1' => setting('idcard_signer1_name', 'RARL President'),
+                'verify_url' => $verifyUrl,
+            ], $pdfFull);
+        } else {
+            generatePlainMembershipCertPDF($pdfFull, $name, $certNo, $m['created_at'], $sectionName, $uuid);
+        }
+    } catch (Throwable $e) {
+        error_log('Membership certificate generation failed for member ' . $memberId . ': ' . $e->getMessage());
+        return false;
+    }
+
+    $pdo->prepare(
+        'INSERT INTO certificates (uuid, certificate_no, member_id, cert_type, recipient_name, recipient_email, event_id, pdf_path)
+         VALUES (?,?,?,"membership",?,?,NULL,?)'
+    )->execute([$uuid, $certNo, $memberId, $name, $m['email'], $pdfFile]);
+    return true;
+}
+
+// Plain fallback "Certificate of Membership" — used whenever no admin
+// template is set as default for type='membership'. Same FPDF conventions
+// as generateCertPDF() (AutoPageBreak off, single fixed-position page).
+function generatePlainMembershipCertPDF(string $path, string $name, string $certNo, string $memberSince, string $sectionName, string $uuid): void {
+    if (!class_exists('FPDF') && file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) require_once __DIR__ . '/libs/fpdf/fpdf.php';
+    if (!class_exists('FPDF')) return;
+    if (!class_exists('QRcode') && file_exists(__DIR__ . '/libs/phpqrcode/qrlib.php')) require_once __DIR__ . '/libs/phpqrcode/qrlib.php';
+
+    [$inkR, $inkG, $inkB] = brandRgb(BRAND_INK);
+    [$redR, $redG, $redB] = brandRgb(BRAND_RED);
+
+    $pdf = new FPDF('L', 'mm', 'A4');
+    $pdf->SetAutoPageBreak(false);
+    $pdf->AddPage();
+    $pdf->SetFillColor(255, 255, 255);
+    $pdf->Rect(0, 0, 297, 210, 'F');
+    $pdf->SetDrawColor($redR, $redG, $redB);
+    $pdf->SetLineWidth(1.5);
+    $pdf->Rect(10, 10, 277, 190);
+    $pdf->SetDrawColor($inkR, $inkG, $inkB);
+    $pdf->SetLineWidth(0.3);
+    $pdf->Rect(13, 13, 271, 184);
+
+    $pdf->SetFont('Helvetica', 'B', 12);
+    $pdf->SetTextColor($redR, $redG, $redB);
+    $pdf->SetY(32); $pdf->Cell(0, 0, 'RARL COMMUNITY', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 8);
+    $pdf->SetTextColor(120, 120, 120);
+    $pdf->SetY(42); $pdf->Cell(0, 0, 'ROBOTICS AND AUTOMATION RESEARCH LABORATORY', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', 'B', 24);
+    $pdf->SetTextColor($inkR, $inkG, $inkB);
+    $pdf->SetY(60); $pdf->Cell(0, 0, 'Certificate of Membership', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 9);
+    $pdf->SetTextColor(120, 120, 120);
+    $pdf->SetY(85); $pdf->Cell(0, 0, 'This is to certify that', 0, 1, 'C');
+    $pdf->SetFont('Helvetica', 'B', 26);
+    [$blueR, $blueG, $blueB] = brandRgb(BRAND_BLUE);
+    $pdf->SetTextColor($blueR, $blueG, $blueB);
+    $pdf->SetY(95); $pdf->Cell(0, 0, $name, 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 9);
+    $pdf->SetTextColor(120, 120, 120);
+    $sectionLine = $sectionName ? " and is a recognized member of the {$sectionName} chapter" : '';
+    $pdf->SetY(115); $pdf->Cell(0, 0, "is a certified member of the RARL Community{$sectionLine}.", 0, 1, 'C');
+    $pdf->SetFont('Helvetica', '', 8);
+    $pdf->SetTextColor(150, 150, 150);
+    $pdf->SetY(140); $pdf->Cell(0, 0, 'Member since ' . date('d F Y', strtotime($memberSince)) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');
+    $pdf->SetY(150); $pdf->Cell(0, 0, 'Verify at: ' . CERT_VERIFY_URL . '?id=' . $uuid, 0, 1, 'C');
+
+    $qrPath = null;
+    if (class_exists('QRcode')) {
+        $qrPath = sys_get_temp_dir() . '/rarl_memcertqr_' . str_replace('-', '', $uuid) . '.png';
+        QRcode::png(CERT_VERIFY_URL . '?id=' . $uuid, $qrPath, QR_ECLEVEL_L, 4, 2);
+    }
+    if ($qrPath && file_exists($qrPath)) { $pdf->Image($qrPath, 133.5, 158, 30, 30, 'PNG'); @unlink($qrPath); }
+
+    $pdf->SetDrawColor(120, 120, 120);
+    $pdf->SetLineWidth(0.3);
+    $pdf->Line(100, 194, 197, 194);
+    $pdf->SetFont('Helvetica', '', 7);
+    $pdf->SetTextColor(150, 150, 150);
+    $pdf->SetY(197); $pdf->Cell(0, 0, setting('idcard_signer1_name', 'RARL President') . ' — ' . SITE_NAME, 0, 1, 'C');
+    $pdf->Output('F', $path);
+}
+
+// Site-wide urgency banner for the free-membership window (Settings → Free
+// Membership Growth → deadline). Empty string if no deadline is set or it's
+// already passed — callers can safely echo the result unconditionally.
+function freeMembershipBannerHtml(): string {
+    $deadline = setting('free_membership_deadline', '');
+    if ($deadline === '') return '';
+    $daysLeft = (int) ceil((strtotime($deadline . ' 23:59:59') - time()) / 86400);
+    if ($daysLeft < 0) return '';
+    $daysLeft = max(0, $daysLeft);
+    $urgent = $daysLeft <= 14;
+    $bg = $urgent ? 'background:linear-gradient(90deg,#CC0703,#A80502);' : 'background:linear-gradient(90deg,#101010,#1a1a1a);';
+    $msg = $daysLeft === 0
+        ? 'Last day — free membership ends tonight.'
+        : ($daysLeft === 1
+            ? 'Free membership ends tomorrow — join now.'
+            : "Free membership ends in {$daysLeft} days — join now, it's free.");
+    return '<div style="' . $bg . '" class="text-white text-center text-xs font-semibold py-2 px-4">'
+         . '<i class="fa-solid fa-clock"></i> ' . htmlspecialchars($msg)
+         . ' <a href="' . (isset($_SESSION['member_id']) ? '#' : 'register.php') . '" class="underline ml-1' . (isset($_SESSION['member_id']) ? ' hidden' : '') . '">Register free →</a>'
+         . '</div>';
+}
+
+// True if $email's domain is on the admin-configured auto-approve allowlist
+// (Settings → Free Membership Growth). Lets a trusted partner institution's
+// members skip the manual-review queue entirely during the free-year push.
+function emailDomainAutoApproved(string $email): bool {
+    $domainsRaw = setting('auto_approve_domains', '');
+    if (trim($domainsRaw) === '') return false;
+    $emailDomain = strtolower(trim(substr(strrchr($email, '@'), 1)));
+    if (!$emailDomain) return false;
+    foreach (explode(',', $domainsRaw) as $d) {
+        if (strtolower(trim($d)) === $emailDomain) return true;
+    }
+    return false;
+}
+
+// Runs the same "just got approved" side effects admin/members.php triggers on
+// manual activation — welcome email, ID card, membership certificate — used
+// both by that admin action and by auto-approval at registration.
+function completeApproval(int $memberId): void {
+    $pdo = db();
+    $m = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+    $m->execute([$memberId]);
+    $member = $m->fetch();
+    if (!$member) return;
+    if (!$member['discord_invited']) {
+        $memberName = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
+        $isApproval = false;
+        ob_start(); require __DIR__ . '/emails/welcome.php'; $body = ob_get_clean();
+        sendEmail($member['email'], $memberName, 'Your RARL Membership is Approved!', $body);
+        $pdo->prepare('UPDATE members SET discord_invited = 1 WHERE id = ?')->execute([$memberId]);
+    }
+    issueIdCard($memberId);
+    issueMembershipCertificate($memberId);
+}
+
 // ── Shared nav ─────────────────────────────────────────────
 function publicNav(string $active = ''): string {
     // Icon-based primary nav (LinkedIn-style: icon + tiny label, underline on active)
@@ -1323,12 +1518,12 @@ function publicNav(string $active = ''): string {
     $isLoggedIn = isset($_SESSION['member_id']);
     $me = null;
     if ($isLoggedIn) {
-        $ms = db()->prepare('SELECT full_name, lab_name, type, avatar_path FROM members WHERE id = ?');
+        $ms = db()->prepare('SELECT full_name, lab_name, type, avatar_path, is_chair, status, id_card_path, institution, lab_website FROM members WHERE id = ?');
         $ms->execute([(int)$_SESSION['member_id']]);
         $me = $ms->fetch();
     }
     $myName = $me ? ($me['type'] === 'lab' ? $me['lab_name'] : $me['full_name']) : '';
-    $myAvatar = $me ? memberAvatarHtml($me['avatar_path'], $myName ?: '?', 'w-8 h-8 text-xs') : '';
+    $myAvatar = $me ? memberAvatarHtml($me['avatar_path'], $myName ?: '?', 'w-8 h-8 text-xs', memberNeedsAttention($me)) : '';
 
     $nav = ''; $mobileNav = '';
     foreach ($icons as $key => [$href, $icon, $label]) {
@@ -1354,6 +1549,10 @@ function publicNav(string $active = ''): string {
         $moreMenuItems .= '<a href="' . $href3 . '" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">' . $label3 . '</a>';
     }
 
+    $chairMenuItem = ($isLoggedIn && !empty($me['is_chair']))
+        ? '<a href="chapter.php" class="block px-4 py-2 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"><i class="fa-solid fa-compass"></i> Chapter Portal</a>'
+        : '';
+
     if ($isLoggedIn) {
         $accountMenu = <<<HTML
 <div class="relative flex-shrink-0" id="me-menu-wrap">
@@ -1367,6 +1566,7 @@ function publicNav(string $active = ''): string {
     </div>
     <a href="profile.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-user"></i> View Profile</a>
     <a href="dashboard.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
+    {$chairMenuItem}
     <a href="profile.php#account" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-gear"></i> Account Settings</a>
     {$moreMenuItems}
     <div class="border-t border-gray-100 dark:border-gray-800">
@@ -1398,7 +1598,9 @@ HTML;
     $mainUrl = MAIN_SITE_URL;
     $replyTo = MAIL_REPLY_TO;
     $searchQ = htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES);
+    $banner = freeMembershipBannerHtml();
     return <<<HTML
+{$banner}
 <div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
   <div class="w-full px-6 flex justify-between items-center">
     <span><i class="fa-solid fa-flask"></i> {$tagline}</span>

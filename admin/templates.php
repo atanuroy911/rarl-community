@@ -13,14 +13,16 @@ $pdo = db();
 $FIELD_KEYS = [
     'certificate' => ['name'=>'Recipient Name','event'=>'Event Title','date'=>'Date','cert_no'=>'Certificate No.','qr'=>'QR Code (verify link)'],
     'id_card'     => ['name'=>'Member Name','member_code'=>'Member ID','since_date'=>'Member Since','section'=>'Chapter/Section','signer1'=>'Signer 1','signer2'=>'Signer 2 (Chair)','qr'=>'QR Code (verify link)','avatar'=>'Member Photo'],
+    'membership'  => ['name'=>'Member Name','member_code'=>'Member ID','since_date'=>'Member Since','section'=>'Chapter/Section','cert_no'=>'Certificate No.','signer1'=>'Signer 1 (President)','qr'=>'QR Code (verify link)'],
 ];
+$TYPE_LABELS = ['certificate'=>'Event Certificate','id_card'=>'ID Card','membership'=>'Certificate of Membership'];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'create_template') {
         $name = clean($_POST['name'] ?? '');
-        $type = ($_POST['type'] ?? '') === 'id_card' ? 'id_card' : 'certificate';
+        $type = in_array($_POST['type'] ?? '', ['id_card','membership'], true) ? $_POST['type'] : 'certificate';
         $pw   = $type === 'id_card' ? 86.0 : 297.0;
         $ph   = $type === 'id_card' ? 54.0 : 210.0;
 
@@ -65,7 +67,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         if ($type) {
             $pdo->prepare("UPDATE certificate_templates SET is_default = 0 WHERE type = ?")->execute([$type]);
             $pdo->prepare("UPDATE certificate_templates SET is_default = 1 WHERE id = ?")->execute([$id]);
-            $_SESSION['flash'] = ['type'=>'success','msg'=>'Set as default ' . ($type === 'id_card' ? 'ID card' : 'certificate') . ' template.'];
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Set as default ' . ($TYPE_LABELS[$type] ?? $type) . ' template.'];
         }
         header('Location: templates.php'); exit;
     }
@@ -87,7 +89,7 @@ if ($editId) {
     $e = $pdo->prepare("SELECT * FROM certificate_templates WHERE id = ?"); $e->execute([$editId]); $edit = $e->fetch();
 }
 
-adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
+adminWrap(function() use ($templates, $edit, $FIELD_KEYS, $TYPE_LABELS) {
     adminFlash(); ?>
 <h1 class="text-2xl font-black text-gray-900 mb-1">Templates</h1>
 <p class="text-gray-500 text-sm mb-7">Upload a background image for ID cards or certificates, then drag fields onto it. This exact layout is used for the live PDF and preview.</p>
@@ -102,7 +104,8 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
         <input type="text" name="name" required placeholder="Template name (e.g. 2026 Gold Certificate)"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         <select name="type" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50">
-          <option value="certificate">Certificate (A4 landscape)</option>
+          <option value="certificate">Event Certificate (A4 landscape)</option>
+          <option value="membership">Certificate of Membership (A4 landscape)</option>
           <option value="id_card">ID Card (credit-card size)</option>
         </select>
         <div class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-5 text-center relative">
@@ -125,7 +128,7 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
         <div class="flex-1 min-w-0">
           <div class="flex items-center gap-2">
             <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($t['name']) ?></p>
-            <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= $t['type'] === 'id_card' ? 'ID Card' : 'Certificate' ?></span>
+            <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($TYPE_LABELS[$t['type']] ?? $t['type']) ?></span>
             <?php if ($t['is_default']): ?><span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Default</span><?php endif; ?>
           </div>
           <p class="text-xs text-gray-400 mt-0.5"><?= count(json_decode($t['config'] ?: '[]', true) ?: []) ?> fields placed</p>
@@ -209,10 +212,23 @@ const wrap = document.getElementById('canvas-wrap');
 let selected = null;
 const ACSRF = <?= json_encode($GLOBALS['acsrf'] ?? '') ?>;
 const TEMPLATE_ID = <?= (int)$edit['id'] ?>;
+const PAGE_WIDTH_MM = <?= (float)$edit['page_width_mm'] ?>;
 const IMAGE_KEYS = ['qr', 'avatar', 'signature'];
+// Realistic placeholder values so the canvas looks like a filled-in card/certificate
+// while editing, not a wall of raw {tokens} — matches the sample data used by
+// "Preview Sample" (preview-template.php) so what you design here matches what you see there.
+const SAMPLE_DATA = {
+  name: 'Dr. Jane Sample', event: 'Sample Workshop 2026', date: '<?= date('d F Y') ?>',
+  cert_no: 'RARL-2026-SAMPLE', member_code: 'RARL-000000', since_date: '<?= date('Y/m/d') ?>',
+  section: 'Sample Chapter', signer1: 'RARL President', signer2: 'Chapter Chair',
+};
+// A generic person silhouette so the photo slot reads as a photo, not a blank box.
+const AVATAR_PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="100" height="100" fill="#d1d5db"/><circle cx="50" cy="38" r="18" fill="#9ca3af"/><ellipse cx="50" cy="88" rx="30" ry="24" fill="#9ca3af"/></svg>');
+const QR_PLACEHOLDER = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#fff" stroke="#ccc"/><text x="30" y="34" font-size="9" text-anchor="middle" fill="#999">QR CODE</text></svg>');
 
 function render() {
   wrap.querySelectorAll('.field-el').forEach(el => el.remove());
+  const pxPerMm900 = wrap.offsetWidth / 900; // matches the 900px-wide reference used by the static "Preview Sample" page
   fields.forEach((f, i) => {
     const el = document.createElement('div');
     el.className = 'field-el';
@@ -224,24 +240,26 @@ function render() {
     el.addEventListener('mousedown', startDrag);
     el.addEventListener('click', (e) => { e.stopPropagation(); selectField(i); });
 
-    if (f.key === 'signature' && f.image) {
+    if (IMAGE_KEYS.includes(f.key)) {
       el.style.width = (f.w || 15) + '%';
       const img = document.createElement('img');
-      img.src = '../uploads/templates/' + f.image;
+      img.src = f.key === 'signature' ? (f.image ? '../uploads/templates/' + f.image : QR_PLACEHOLDER)
+              : f.key === 'avatar' ? AVATAR_PLACEHOLDER : QR_PLACEHOLDER;
       img.style.width = '100%';
       img.style.display = 'block';
-      img.style.border = '1px dashed #E11D2A';
+      img.style.outline = selected === i ? '2px solid #E11D2A' : '1px dashed rgba(225,29,42,.5)';
       el.appendChild(img);
     } else {
-      el.style.border = '1px dashed #E11D2A';
       el.style.padding = '2px 4px';
-      el.style.fontSize = IMAGE_KEYS.includes(f.key) ? '10px' : ((f.font_size || 12) * 0.9) + 'px';
+      el.style.fontSize = (f.font_size || 12) * 1.5 * pxPerMm900 + 'px';
       el.style.color = f.color || '#111';
       el.style.fontWeight = f.bold ? 'bold' : 'normal';
-      el.style.background = 'rgba(255,255,255,.6)';
+      el.style.fontFamily = 'Helvetica, Arial, sans-serif';
+      el.style.outline = selected === i ? '2px solid #E11D2A' : '1px dashed rgba(225,29,42,.5)';
+      el.style.background = selected === i ? 'rgba(225,29,42,.08)' : 'transparent';
       el.style.whiteSpace = 'nowrap';
       el.style.transform = f.align === 'center' ? 'translateX(-50%)' : (f.align === 'right' ? 'translateX(-100%)' : 'none');
-      el.textContent = IMAGE_KEYS.includes(f.key) ? '[' + f.key + ']' : (f.key === 'custom_text' ? (f.text || '(empty text)') : ('{' + f.key + '}'));
+      el.textContent = f.key === 'custom_text' ? (f.text || '(empty text — click to set)') : (SAMPLE_DATA[f.key] ?? ('{' + f.key + '}'));
     }
     wrap.appendChild(el);
   });
@@ -299,6 +317,7 @@ function selectField(i) {
   document.getElementById('f-size').closest('div').style.display = isImage ? 'none' : '';
   document.getElementById('f-color').closest('div').style.display = isImage ? 'none' : '';
   document.getElementById('f-align').closest('div').style.display = isImage ? 'none' : '';
+  render();
 }
 ['f-size','f-color','f-align','f-bold','f-wh','f-text'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {

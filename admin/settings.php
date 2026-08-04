@@ -79,6 +79,24 @@ adminWrap(function() use ($set) {
   </div>
 
   <div>
+    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Free Membership Growth</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Free Membership Deadline</label>
+        <input type="date" name="settings[free_membership_deadline]" value="<?= htmlspecialchars($set['free_membership_deadline']??'') ?>"
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        <p class="text-[10px] text-gray-400 mt-1">Shows a countdown banner site-wide until this date. Leave blank to hide the banner.</p>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Auto-Approve Email Domains</label>
+        <textarea name="settings[auto_approve_domains]" rows="2" placeholder="ulab.edu.bd, leicester.ac.uk"
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['auto_approve_domains']??'') ?></textarea>
+        <p class="text-[10px] text-gray-400 mt-1">Comma-separated email domains (e.g. a partner university). New individual registrations from these domains skip manual review and are activated immediately — ID card and membership certificate issue right away. Leave blank to keep every signup manual.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
     <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Site Content</h2>
     <div class="space-y-4">
       <div>

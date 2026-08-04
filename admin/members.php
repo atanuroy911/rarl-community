@@ -26,7 +26,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $pdo->prepare("UPDATE members SET discord_invited=1 WHERE id=?")->execute([$mid]);
         }
         $cardMsg = issueIdCard($mid) ? ' ID card generated.' : ' (Upload a photo to auto-generate their ID card.)';
-        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member activated and notified.' . $cardMsg];
+        issueMembershipCertificate($mid);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member activated and notified.' . $cardMsg . ' Membership certificate issued.'];
     } elseif ($action === 'deactivate' && $mid) {
         $pdo->prepare("UPDATE members SET status='inactive' WHERE id=?")->execute([$mid]);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Member deactivated.'];
@@ -76,8 +77,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
                         $pdo->prepare("UPDATE members SET discord_invited=1 WHERE id=?")->execute([$member['id']]);
                     }
                     issueIdCard((int)$member['id']);
+                    issueMembershipCertificate((int)$member['id']);
                 }
-                $_SESSION['flash'] = ['type'=>'success','msg'=>count($rows) . ' member(s) activated and notified.'];
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($rows) . ' member(s) activated, notified, and issued ID cards/membership certificates.'];
             } elseif ($bulkOp === 'deactivate') {
                 $pdo->exec("UPDATE members SET status='inactive' WHERE id IN ({$inClause})");
                 $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' member(s) deactivated.'];

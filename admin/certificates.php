@@ -350,7 +350,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
                 <span class="font-mono text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($c['certificate_no']) ?></span>
                 <?php if ($c['emailed_at']): ?><span class="block text-[9px] text-green-500 mt-0.5"><i class="fa-solid fa-envelope"></i> Emailed</span><?php endif; ?>
               </td>
-              <td class="px-4 py-3 text-[10px] text-gray-600"><?= htmlspecialchars(mb_strimwidth($c['event_title']??'',0,30,'…')) ?></td>
+              <td class="px-4 py-3 text-[10px] text-gray-600"><?= ($c['cert_type'] ?? 'event') === 'membership' ? '<span class="font-semibold text-purple-600">Membership Certificate</span>' : htmlspecialchars(mb_strimwidth($c['event_title']??'',0,30,'…')) ?></td>
               <td class="px-4 py-3 text-[10px] text-gray-400"><?= date('d M Y', strtotime($c['issued_at'])) ?></td>
               <td class="px-4 py-3">
                 <div class="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">

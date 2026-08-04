@@ -55,6 +55,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
+                    // A new photo means the printed ID card is now out of date (or didn't exist
+                    // yet because a photo was required) — regenerate it immediately rather than
+                    // leaving it to an admin to notice and click "Regenerate" manually.
+                    if ($avatarFile && $m['status'] === 'active') issueIdCard($memberId);
                     flash('success', 'Profile updated.');
                     redirect('profile.php');
                 }
@@ -77,6 +81,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
+                    if ($avatarFile && $m['status'] === 'active') issueIdCard($memberId);
                     flash('success', 'Profile updated.');
                     redirect('profile.php');
                 }

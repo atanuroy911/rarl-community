@@ -35,7 +35,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Email manually marked as verified.'];
     } elseif ($assist === 'approve_now') {
         $pdo->prepare("UPDATE members SET status = 'active' WHERE id = ?")->execute([$id]);
-        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member approved and activated.'];
+        $cardMsg = issueIdCard($id) ? ' ID card generated.' : '';
+        issueMembershipCertificate($id);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member approved and activated.' . $cardMsg . ' Membership certificate issued.'];
     } elseif ($assist === 'send_temp_password') {
         $temp = bin2hex(random_bytes(5));
         $pdo->prepare('UPDATE members SET password_hash = ?, must_change_password = 1 WHERE id = ?')
