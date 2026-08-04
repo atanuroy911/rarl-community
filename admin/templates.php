@@ -342,7 +342,10 @@ function removeSelected() {
 
 let dragIdx = null;
 function startDrag(e) {
-  dragIdx = parseInt(e.target.dataset.idx);
+  // currentTarget (the wrapper div the listener was bound to), not target —
+  // image fields (avatar/QR/signature) have a nested <img>, so a click on the
+  // photo itself makes e.target the <img> (no dataset.idx), breaking drag.
+  dragIdx = parseInt(e.currentTarget.dataset.idx);
   e.preventDefault();
 }
 document.addEventListener('mousemove', (e) => {
