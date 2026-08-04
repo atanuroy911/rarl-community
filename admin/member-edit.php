@@ -141,8 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $newsletter = isset($_POST['newsletter_opt_in']) ? 1 : 0;
     $commNotify = isset($_POST['community_notify']) ? 1 : 0;
     $dirVisible = isset($_POST['directory_visible']) ? 1 : 0;
-    $openMentor = isset($_POST['open_to_mentor']) ? 1 : 0;
-    $seekMentor = isset($_POST['seeking_mentor']) ? 1 : 0;
     $yearsExp   = clean($_POST['years_experience'] ?? '');
     $referral   = clean($_POST['referral_source']  ?? '');
     $notes      = clean($_POST['notes'] ?? '');
@@ -174,8 +172,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         if ($dupe->fetch()) {
             $errors[] = 'Another member already uses that email.';
         } else {
-            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, open_to_mentor=?, seeking_mentor=?, years_experience=?, referral_source=?, notes=?, member_code=?';
-            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $openMentor, $seekMentor, $yearsExp ?: null, $referral ?: null, $notes, $memberCode ?: null];
+            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, years_experience=?, referral_source=?, notes=?, member_code=?';
+            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $yearsExp ?: null, $referral ?: null, $notes, $memberCode ?: null];
 
             if ($m['type'] === 'lab') {
                 $sql .= ', lab_name=?, pi_name=?, lab_website=?, research_areas=?';
@@ -393,13 +391,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
           <input type="checkbox" name="community_notify" value="1" <?= $m['community_notify']?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Community comment emails
         </label>
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible']??1)?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Visible in directory
-        </label>
-        <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="open_to_mentor" value="1" <?= !empty($m['open_to_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> <i class="fa-solid fa-compass"></i> Open to mentor
-        </label>
-        <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="seeking_mentor" value="1" <?= !empty($m['seeking_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> <i class="fa-solid fa-bullseye"></i> Seeking mentor
+          <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible']??1)?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Visible on public roster
         </label>
       </div>
 

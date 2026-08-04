@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
+if (!membershipEnabled()) renderMembershipPausedPageAndExit('Profile');
 if (empty($_SESSION['member_id'])) { flash('error', 'Please sign in to access your profile.'); redirect('login.php'); }
 
 $pdo      = db();
@@ -26,8 +27,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $newsletter   = isset($_POST['newsletter_opt_in']) ? 1 : 0;
             $commNotify   = isset($_POST['community_notify']) ? 1 : 0;
             $dirVisible   = isset($_POST['directory_visible']) ? 1 : 0;
-            $openMentor   = isset($_POST['open_to_mentor']) ? 1 : 0;
-            $seekMentor   = isset($_POST['seeking_mentor']) ? 1 : 0;
 
             $avatarFile = null;
             if (!empty($_FILES['avatar']['tmp_name'])) {
@@ -50,8 +49,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($country))      $errors[] = 'Country is required.';
 
                 if (empty($errors)) {
-                    $sql = 'UPDATE members SET lab_name=?, pi_name=?, lab_website=?, research_areas=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, open_to_mentor=?, seeking_mentor=?';
-                    $params = [$labName, $piName, $labSite, $areas, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify, $dirVisible, $openMentor, $seekMentor];
+                    $sql = 'UPDATE members SET lab_name=?, pi_name=?, lab_website=?, research_areas=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?, directory_visible=?';
+                    $params = [$labName, $piName, $labSite, $areas, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify, $dirVisible];
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
@@ -76,8 +75,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($country))         $errors[] = 'Country is required.';
 
                 if (empty($errors)) {
-                    $sql = 'UPDATE members SET full_name=?, institution=?, department=?, position=?, research_interests=?, google_scholar_url=?, orcid_id=?, linkedin_url=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, open_to_mentor=?, seeking_mentor=?';
-                    $params = [$fullName, $institution, $department, $position, $interests, $scholar, $orcid, $linkedin, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify, $dirVisible, $openMentor, $seekMentor];
+                    $sql = 'UPDATE members SET full_name=?, institution=?, department=?, position=?, research_interests=?, google_scholar_url=?, orcid_id=?, linkedin_url=?, country=?, years_experience=?, referral_source=?, newsletter_opt_in=?, community_notify=?, directory_visible=?';
+                    $params = [$fullName, $institution, $department, $position, $interests, $scholar, $orcid, $linkedin, $country, $yearsExp ?: null, $referral ?: null, $newsletter, $commNotify, $dirVisible];
                     if ($avatarFile) { $sql .= ', avatar_path=?'; $params[] = $avatarFile; }
                     $sql .= ' WHERE id=?'; $params[] = $memberId;
                     $pdo->prepare($sql)->execute($params);
@@ -359,27 +358,13 @@ echo htmlHead('My Profile');
       </label>
 
       <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Member Directory</p>
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Membership Roster</p>
         <div class="space-y-3">
           <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
             <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible'] ?? 1) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
             <div>
-              <strong class="text-sm text-gray-800 dark:text-white">Show me in the Member Directory</strong>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Other members can find you by country, institution, or research interests.</p>
-            </div>
-          </label>
-          <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
-            <input type="checkbox" name="open_to_mentor" value="1" <?= !empty($m['open_to_mentor']) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
-            <div>
-              <strong class="text-sm text-gray-800 dark:text-white"><i class="fa-solid fa-compass"></i> I'm open to mentoring others</strong>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Shown with a badge in the directory so students/early-career researchers can find you.</p>
-            </div>
-          </label>
-          <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
-            <input type="checkbox" name="seeking_mentor" value="1" <?= !empty($m['seeking_mentor']) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
-            <div>
-              <strong class="text-sm text-gray-800 dark:text-white"><i class="fa-solid fa-bullseye"></i> I'm looking for a mentor</strong>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Shown with a badge in the directory so potential mentors can reach out.</p>
+              <strong class="text-sm text-gray-800 dark:text-white">Include me in the public Membership Roster</strong>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Your membership number and name appear on the public roster, grouped by country. No contact info or other details are shown.</p>
             </div>
           </label>
         </div>

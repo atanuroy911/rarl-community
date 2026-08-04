@@ -8,6 +8,7 @@
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
+if (!membershipEnabled()) renderMembershipPausedPageAndExit('Chapter Portal');
 if (empty($_SESSION['member_id'])) { flash('error', 'Please sign in first.'); redirect('login.php'); }
 
 $pdo = db();

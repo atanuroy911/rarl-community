@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
 
     // Checkboxes (e.g. popup_enabled) must be explicitly zeroed when unchecked
     if (isset($_POST['settings'])) {
-        $checkboxKeys = ['popup_enabled', 'registrations_open'];
+        $checkboxKeys = ['popup_enabled', 'registrations_open', 'membership_enabled'];
         foreach ($checkboxKeys as $ck) {
             if (!isset($_POST['settings'][$ck])) $_POST['settings'][$ck] = '0';
         }
@@ -90,6 +90,22 @@ adminWrap(function() use ($set) {
         <input type="number" name="settings[cert_id_counter]" value="<?= htmlspecialchars($set['cert_id_counter']??'0') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <p class="text-[10px] text-gray-400 mt-1">The numeric counter for the next certificate. e.g., 42 becomes RARL-2025-0043.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Membership Program</h2>
+    <div class="space-y-4">
+      <label class="flex items-center gap-2 p-3 <?= ($set['membership_enabled']??'1')==='1' ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-200' ?> border rounded-xl cursor-pointer">
+        <input type="checkbox" name="settings[membership_enabled]" value="1" <?= ($set['membership_enabled']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+        <span class="text-sm text-gray-700 font-semibold">Membership program is active</span>
+      </label>
+      <p class="text-[10px] text-gray-400 -mt-2">Master switch for the whole membership system. When off, sign-in, registration, dashboard, profile, community feed, chapter portal, and the public roster all show a "Membership Paused" notice — the rest of the site (home, events, resources, people, partners, certificate/ID verification) stays up as normal. This is more drastic than "Accepting new registrations" below, which only pauses new signups.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Paused Message</label>
+        <textarea name="settings[membership_paused_message]" rows="2"
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['membership_paused_message']??'') ?></textarea>
       </div>
     </div>
   </div>

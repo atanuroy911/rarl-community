@@ -4,6 +4,7 @@
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
+if (!membershipEnabled()) renderMembershipPausedPageAndExit('Sign In');
 if (!empty($_SESSION['member_id'])) redirect('community.php');
 
 $error = '';

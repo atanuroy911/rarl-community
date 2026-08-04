@@ -1496,6 +1496,40 @@ function freeMembershipBannerHtml(): string {
          . '</div>';
 }
 
+// Master kill switch for the entire membership system (Settings → General) —
+// distinct from registrationsOpen(), which only pauses *new* signups. When
+// this is off, login/register/dashboard/community/profile/roster all show a
+// "Membership Paused" notice; the public marketing pages (home, events,
+// resources, people, partners) and certificate/ID verification stay up since
+// those are informational/backward-looking, not part of the membership
+// program itself.
+function membershipEnabled(): bool {
+    return setting('membership_enabled', '1') === '1';
+}
+
+// Full standalone page + exit — call at the top of any membership-gated page
+// right after functions.php is required (before session-dependent redirects).
+function renderMembershipPausedPageAndExit(string $title = 'Membership'): never {
+    echo htmlHead($title);
+    echo publicNav();
+    echo membershipPausedHtml();
+    echo publicFooter();
+    echo '</body></html>';
+    exit;
+}
+
+function membershipPausedHtml(): string {
+    $msg = setting('membership_paused_message', 'The membership program is temporarily unavailable. Please check back soon.');
+    return '<section class="min-h-[calc(100vh-68px)] flex items-center justify-center py-16 px-4" style="background:linear-gradient(135deg,' . BRAND_INK . ' 0%,' . BRAND_INK_SOFT . ' 100%);">
+      <div class="w-full max-w-md text-center">
+        <div class="text-5xl mb-5"><i class="fa-solid fa-power-off text-white/40"></i></div>
+        <h1 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Membership Paused</h1>
+        <p class="text-white/55 text-sm mb-8">' . htmlspecialchars($msg) . '</p>
+        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm">← Back to Home</a>
+      </div>
+    </section>';
+}
+
 // Site-wide registration on/off switch (Settings → General). Checked by
 // register.php and both register-individual.php/register-lab.php (deep
 // links to the sub-forms are gated too, not just the chooser page).

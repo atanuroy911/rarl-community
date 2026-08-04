@@ -7,6 +7,7 @@
  * can be downloaded as a PDF via roster-pdf.php.
  */
 require_once __DIR__ . '/functions.php';
+if (!membershipEnabled()) renderMembershipPausedPageAndExit('Membership Roster');
 
 $pdo = db();
 $rows = $pdo->query(

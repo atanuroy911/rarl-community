@@ -130,7 +130,7 @@ echo htmlHead('Join the RARL Community');
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
       <?php $achievements = [
         ['fa-file-lines', 'Publication of several research papers', 'Published several impactful research papers across reputed journals and conferences.'],
-        ['fa-graduation-cap', 'Successful mentorship of 12 students', 'Successfully mentored 12 students, guiding them through academic and professional growth.'],
+        ['fa-graduation-cap', 'Hands-on robotics training programs', 'Delivered workshops and training programs building practical robotics and automation skills.'],
         ['fa-copyright', 'Securing 12 copyrights', 'Secured 12 copyrights showcasing innovation and original contributions.'],
         ['fa-book', 'Authorship of 3 books and 4 book chapters', 'Authored 3 books and 4 book chapters, advancing knowledge in the field.'],
       ]; ?>
@@ -158,12 +158,12 @@ echo htmlHead('Join the RARL Community');
 
       <?php $modules = [
         ['fa-users','Member Profiles','Individual researchers and research labs register with rich academic profiles — ORCID, Google Scholar, research interests, institution.','bg-blue-50 dark:bg-blue-900/20','text-blue-600 dark:text-blue-400','border-blue-200 dark:border-blue-800'],
-        ['fa-comment','Community Feed','Approved members can post updates, discuss research, and connect with fellow researchers on the community feed.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
+        ['fa-comment','Community Feed','Official updates and announcements from the RARL team — members engage by commenting and liking.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
         ['fa-book','Learning Hub','Curated YouTube playlists, articles, and free books — plus premium courses unlocked exclusively for members.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
         ['fa-video','Events &amp; Webinars','Register for workshops and webinars, some open to everyone, some reserved for members — with recordings archived afterward.','bg-indigo-50 dark:bg-indigo-900/20','text-indigo-600 dark:text-indigo-400','border-indigo-200 dark:border-indigo-800'],
-        ['fa-people-group','Member Directory','Search the community by country, institution, or research interest — and find or become a mentor.','bg-pink-50 dark:bg-pink-900/20','text-pink-600 dark:text-pink-400','border-pink-200 dark:border-pink-800'],
+        ['fa-people-group','Membership Roster','Public record of active members by country, with verifiable membership numbers.','bg-pink-50 dark:bg-pink-900/20','text-pink-600 dark:text-pink-400','border-pink-200 dark:border-pink-800'],
         ['fa-trophy','Certificates','Attend workshops, webinars, or competitions and receive a verifiable PDF certificate with a unique ID and QR code — ready for LinkedIn and your CV.','bg-red-50 dark:bg-red-900/20','text-red-600 dark:text-red-400','border-red-200 dark:border-red-800'],
-        ['fa-envelope','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
+        ['fa-envelope','Newsletter','Regular updates on RARL research, upcoming events, and funding opportunities delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
         ['fa-lock','Member Dashboard','Log in anytime to view and download your certificates, update your profile, and manage your newsletter preferences.','bg-gray-50 dark:bg-gray-800','text-gray-600 dark:text-gray-300','border-gray-200 dark:border-gray-700'],
       ]; ?>
 
