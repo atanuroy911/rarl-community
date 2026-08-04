@@ -38,4 +38,13 @@ $zip->extractTo(__DIR__);
 $zip->close();
 unlink($zipPath);
 
+// Without this, PHP-FPM/OPcache can keep serving compiled bytecode from the
+// PREVIOUS version of a changed file (e.g. a function that didn't exist yet)
+// until something invalidates the cache — causing "Call to undefined
+// function" errors on files that were, in fact, just updated on disk.
+if (function_exists('opcache_reset')) {
+    opcache_reset();
+    echo "OPcache reset.\n";
+}
+
 echo "Deployed " . date('c') . "\n";
