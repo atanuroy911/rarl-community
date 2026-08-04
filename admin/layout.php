@@ -110,8 +110,8 @@ function statCard(string $label, int|string $val, string $icon, string $color, s
 //   2. echo bulkBar([...actions]) where each action is either
 //      ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Sure?']
 //      or ['label'=>'Export','name'=>'action','value'=>'export_csv','class'=>'...'] for a plain field override.
-//   3. Give the <table>'s header row a `<th><?= bulkSelectAllCheckbox() ?></th>` and each row
-//      `<td><?= bulkRowCheckbox($id) ?></td>`.
+//   3. Give the <table>'s header row a `<th block start><?= bulkSelectAllCheckbox() th block end and each row
+//      `td block <?= bulkRowCheckbox($id) td block end.
 //   4. echo bulkBarScript(); once, anywhere after the table.
 // The page's own POST handler reads $_POST['ids'] (array) and $_POST['bulk_op'] when action=='bulk'.
 // $group distinguishes multiple independent bulk-selection sets on the same
