@@ -17,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
 
     // Checkboxes (e.g. popup_enabled) must be explicitly zeroed when unchecked
     if (isset($_POST['settings'])) {
-        $checkboxKeys = ['popup_enabled'];
+        $checkboxKeys = ['popup_enabled', 'registrations_open'];
         foreach ($checkboxKeys as $ck) {
             if (!isset($_POST['settings'][$ck])) $_POST['settings'][$ck] = '0';
         }
@@ -37,6 +37,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $_SESSION['flash'] = ['type'=>'error','msg'=>'Settings saved, but the popup image upload failed (check file type/size).'];
             header('Location: settings.php'); exit;
         }
+    }
+
+    // Custom roster PDF — shown on the public membership page (directory.php) instead of/alongside the auto-generated one
+    if (!empty($_FILES['roster_pdf']['name'])) {
+        $filename = validateUpload($_FILES['roster_pdf'], ['pdf'], 15*1024*1024, UPLOADS_PATH.'/roster');
+        if ($filename) {
+            $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES ('custom_roster_pdf_path',?) ON DUPLICATE KEY UPDATE `value`=?")->execute([$filename,$filename]);
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Settings saved, but the roster PDF upload failed (must be a PDF, max 15MB).'];
+            header('Location: settings.php'); exit;
+        }
+    }
+    if (!empty($_POST['remove_roster_pdf'])) {
+        $old = $pdo->query("SELECT value FROM settings WHERE `key`='custom_roster_pdf_path'")->fetchColumn();
+        if ($old) @unlink(UPLOADS_PATH . '/roster/' . $old);
+        $pdo->exec("DELETE FROM settings WHERE `key`='custom_roster_pdf_path'");
     }
 
     $_SESSION['flash'] = ['type'=>'success','msg'=>'Settings saved successfully.'];
@@ -74,6 +90,39 @@ adminWrap(function() use ($set) {
         <input type="number" name="settings[cert_id_counter]" value="<?= htmlspecialchars($set['cert_id_counter']??'0') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <p class="text-[10px] text-gray-400 mt-1">The numeric counter for the next certificate. e.g., 42 becomes RARL-2025-0043.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Member Directory / Roster</h2>
+    <div class="space-y-3">
+      <?php if (!empty($set['custom_roster_pdf_path'])): ?>
+      <div class="flex items-center justify-between gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm">
+        <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="text-green-700 font-semibold hover:underline"><i class="fa-solid fa-file-pdf"></i> Current roster PDF</a>
+        <label class="flex items-center gap-1.5 text-xs text-red-600 cursor-pointer"><input type="checkbox" name="remove_roster_pdf" value="1" class="accent-red-600"/> Remove</label>
+      </div>
+      <?php endif; ?>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Upload Custom Roster PDF <span class="text-gray-400 font-normal">(optional)</span></label>
+        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs"/>
+        <p class="text-[10px] text-gray-400 mt-1">If set, this exact file is offered for download on the public Membership Roster page (directory.php) alongside the auto-generated one — useful for an officially formatted/signed version.</p>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Registration</h2>
+    <div class="space-y-4">
+      <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+        <input type="checkbox" name="settings[registrations_open]" value="1" <?= ($set['registrations_open']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+        <span class="text-sm text-gray-700 font-semibold">Accepting new registrations</span>
+      </label>
+      <p class="text-[10px] text-gray-400 -mt-2">When off, register.php and both sub-forms redirect to a "Registrations Closed" notice — existing members can still log in and use the site as normal.</p>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Closed Message</label>
+        <textarea name="settings[registrations_closed_message]" rows="2"
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['registrations_closed_message']??'') ?></textarea>
       </div>
     </div>
   </div>

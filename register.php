@@ -9,6 +9,9 @@ echo htmlHead('Join the Community');
 ?>
 <?= publicNav() ?>
 
+<?php if (!registrationsOpen()): ?>
+<?= closedRegistrationHtml() ?>
+<?php else: ?>
 <section class="min-h-[calc(100vh-68px)] flex items-center justify-center py-16 px-4" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
   <div class="w-full max-w-2xl">
     <div class="text-center mb-10">
@@ -61,6 +64,7 @@ echo htmlHead('Join the Community');
     </p>
   </div>
 </section>
+<?php endif; ?>
 
 <?= publicFooter() ?>
 </body></html>

@@ -16,23 +16,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
     $stmt->execute([$memberId]);
     $me = $stmt->fetch();
 
-    if ($action === 'create_post' && $me && $me['status'] === 'active') {
-        // Rich HTML from the Quill editor — sanitized here, this is the only
-        // place community_posts.body is allowed to contain raw HTML (body_format='html').
-        $bodyHtml = sanitizeRichHtml($_POST['body_html'] ?? '');
-        $hasText  = trim(strip_tags($bodyHtml)) !== '';
-
-        $imagePath = null;
-        if (!empty($_FILES['image']['name'])) {
-            $imagePath = validateUpload($_FILES['image'], ['jpg','jpeg','png','webp'], 5 * 1024 * 1024, UPLOADS_PATH . '/community');
-        }
-
-        if ($hasText || $imagePath) {
-            $pdo->prepare('INSERT INTO community_posts (member_id, body, body_format, image_path) VALUES (?,?,?,?)')
-                ->execute([$memberId, $bodyHtml, 'html', $imagePath]);
-        }
-        header('Location: community.php#feed'); exit;
-    }
+    // Member post creation is paused for now — admins post via admin/community.php
+    // ("RARL Community Team"), members can still comment/like below. Deliberately
+    // no create_post handler here anymore so a direct POST can't slip through
+    // even if old composer markup somehow got submitted.
 
     if ($action === 'create_comment' && $me && $me['status'] === 'active') {
         $postId = (int)($_POST['post_id'] ?? 0);
@@ -225,26 +212,29 @@ echo htmlHead('Community Portal');
 ?>
 <?= publicNav('community') ?>
 
-<!-- Hero -->
+<!-- Hero: compact for returning members (they already know what this is), full pitch for guests -->
 <section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 60%,#5865f2 100%);">
   <div class="absolute inset-0" style="background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px;"></div>
-  <div class="relative z-10 max-w-5xl mx-auto px-6 py-20 text-center">
-    <div class="text-6xl mb-5"><i class="fa-solid fa-earth-americas"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">RARL Community Feed</h1>
-    <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
-    <?php if ($isMember): ?>
-    <a href="#feed" class="inline-flex items-center gap-3 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-2xl hover:-translate-y-1 hover:shadow-3xl transition-all text-sm">
+  <?php if ($isMember): ?>
+  <div class="relative z-10 max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <h1 class="font-heading font-black text-xl text-white"><i class="fa-solid fa-earth-americas"></i> RARL Community Feed</h1>
+    <a href="#feed" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-rarl-red font-black rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-xs flex-shrink-0">
       Go to the Feed ↓
     </a>
-    <?php else: ?>
+  </div>
+  <?php else: ?>
+  <div class="relative z-10 max-w-5xl mx-auto px-6 py-14 text-center">
+    <div class="text-4xl mb-4"><i class="fa-solid fa-earth-americas"></i></div>
+    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">RARL Community Feed</h1>
+    <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
     <div class="inline-flex flex-col items-center gap-3">
       <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition-all text-sm">
         <i class="fa-solid fa-lock"></i> Join as a Member to Post &amp; Comment
       </a>
       <p class="text-white/40 text-xs">Membership is free and open to all researchers</p>
     </div>
-    <?php endif; ?>
   </div>
+  <?php endif; ?>
 </section>
 
 <div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
@@ -306,45 +296,7 @@ echo htmlHead('Community Portal');
       <!-- Community Feed -->
       <div id="feed">
         <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-comments"></i> Community Feed</h2>
-
-        <!-- Composer -->
-        <form method="POST" enctype="multipart/form-data" id="post-composer" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm mb-6">
-          <?= csrfField() ?><input type="hidden" name="action" value="create_post">
-          <input type="hidden" name="body_html" id="post-body-html">
-          <div class="flex items-center gap-2.5 mb-3">
-            <?= $myAvatarHtml ?>
-            <span class="text-sm font-semibold text-gray-500 dark:text-gray-400">Share something with the community</span>
-          </div>
-          <div id="post-quill-toolbar">
-            <span class="ql-formats">
-              <button class="ql-bold"></button>
-              <button class="ql-italic"></button>
-              <button class="ql-underline"></button>
-            </span>
-            <span class="ql-formats">
-              <button class="ql-list" value="ordered"></button>
-              <button class="ql-list" value="bullet"></button>
-            </span>
-            <span class="ql-formats">
-              <button class="ql-link"></button>
-              <button class="ql-blockquote"></button>
-            </span>
-          </div>
-          <div id="post-quill-editor" style="min-height:90px;"></div>
-
-          <div id="post-image-preview" class="hidden mt-3 relative inline-block">
-            <img id="post-image-preview-img" src="" class="max-h-48 rounded-xl border border-gray-200 dark:border-gray-700"/>
-            <button type="button" id="post-image-remove" class="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white rounded-full text-xs flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
-          </div>
-
-          <div class="flex items-center justify-between mt-3">
-            <label class="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-rarl-red transition-colors">
-              <input type="file" name="image" id="post-image-input" accept=".jpg,.jpeg,.png,.webp" class="hidden"/>
-              <i class="fa-solid fa-image"></i> Add a photo
-            </label>
-            <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors">Post</button>
-          </div>
-        </form>
+        <p class="text-xs text-gray-400 mb-5">Posts here come from the RARL team — you can comment and like below.</p>
 
         <?php if (empty($posts)): ?>
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
@@ -509,32 +461,8 @@ echo htmlHead('Community Portal');
   .dark [id^="edit-quill-toolbar-"].ql-toolbar, .dark [id^="edit-quill-editor-"].ql-container { border-color: rgb(75 85 99); background: rgb(17 24 39); }
 </style>
 <script>
-  const quill = new Quill('#post-quill-editor', {
-    theme: 'snow',
-    modules: { toolbar: '#post-quill-toolbar' },
-    placeholder: 'Share an update, ask a question…',
-  });
-
-  const composer = document.getElementById('post-composer');
-  composer.addEventListener('submit', () => {
-    document.getElementById('post-body-html').value = quill.root.innerHTML;
-  });
-
-  const imageInput   = document.getElementById('post-image-input');
-  const imagePreview = document.getElementById('post-image-preview');
-  const imagePreviewImg = document.getElementById('post-image-preview-img');
-  imageInput.addEventListener('change', () => {
-    const file = imageInput.files[0];
-    if (!file) return;
-    imagePreviewImg.src = URL.createObjectURL(file);
-    imagePreview.classList.remove('hidden');
-  });
-  document.getElementById('post-image-remove').addEventListener('click', () => {
-    imageInput.value = '';
-    imagePreview.classList.add('hidden');
-  });
-
-  // ── Per-post edit panels — Quill instance created lazily on first open ──
+  // ── Per-post edit panels (member editing their own pre-existing post from
+  // before posting was paused) — Quill instance created lazily on first open ──
   const editQuillInstances = {};
   function rarlToggleEditPanel(postId) {
     const panel = document.getElementById('edit-panel-' + postId);

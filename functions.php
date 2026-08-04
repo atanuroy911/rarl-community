@@ -123,13 +123,13 @@ function generateCertPDF(string $path, string $name, string $event, string $cert
     $pdf->SetY(75); $pdf->Cell(0, 0, 'This is to certify that', 0, 1, 'C');
     $pdf->SetFont('Helvetica', 'B', 26);
     $pdf->SetTextColor($blueR, $blueG, $blueB);
-    $pdf->SetY(85); $pdf->Cell(0, 0, $name, 0, 1, 'C');
+    $pdf->SetY(85); $pdf->Cell(0, 0, fpdfEnc($name), 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 9);
     $pdf->SetTextColor(170, 170, 170);
     $pdf->SetY(110); $pdf->Cell(0, 0, 'has successfully participated in', 0, 1, 'C');
     $pdf->SetFont('Helvetica', 'B', 16);
     $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetY(120); $pdf->Cell(0, 0, $event, 0, 1, 'C');
+    $pdf->SetY(120); $pdf->Cell(0, 0, fpdfEnc($event), 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 8);
     $pdf->SetTextColor(150, 150, 150);
     $pdf->SetY(145); $pdf->Cell(0, 0, 'Date: ' . ($date ? date('d F Y', strtotime($date)) : date('d F Y')) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');
@@ -477,6 +477,7 @@ const RARL_MIGRATIONS = [
     '006_multi_email_accounts.sql'      => 'Multiple emails per account + temp-password / chair-account support',
     '007_certificate_templates.sql'     => 'Uploadable ID card / certificate templates (HTML-based generation)',
     '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
+    '009_admin_only_posts.sql'          => 'Seeds the "RARL Community Team" system account admin posts are authored as',
 ];
 
 function dbTablesExist(): bool {
@@ -760,6 +761,17 @@ function memberNeedsAttention(array $member): bool {
     return !$hasProfileInfo;
 }
 
+// The "RARL Community Team" system account admin-authored feed posts are
+// attributed to (see sql/009_admin_only_posts.sql) — reuses community_posts'
+// existing member_id join instead of adding a parallel admin-post table.
+function systemPosterMemberId(): ?int {
+    static $id = null;
+    if ($id === null) {
+        $id = (int) (db()->query("SELECT id FROM members WHERE email = 'community-team@rarl.internal' LIMIT 1")->fetchColumn() ?: 0);
+    }
+    return $id ?: null;
+}
+
 // ── Community post card renderer ────────────────────────────
 // Shared by the initial community.php page load and the lazy-load AJAX
 // endpoint (?ajax=posts) — one post's full HTML (content, image, like/comment
@@ -782,6 +794,7 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
     $authorName = $post['type'] === 'lab' ? $post['lab_name'] : $post['full_name'];
     $bodyHtml = ($post['body_format'] ?? 'markdown') === 'html' ? $post['body'] : markdownToHtml($post['body']);
     $isOwner = $myMemberId > 0 && (int)$post['member_id'] === $myMemberId;
+    $isOfficial = (int)$post['member_id'] === systemPosterMemberId();
     $pid = (int)$post['id'];
 
     ob_start();
@@ -789,14 +802,18 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
     <div id="post-<?= $pid ?>" class="bg-white dark:bg-gray-900 border-y sm:border sm:border-gray-200 sm:dark:border-gray-700 border-gray-200 dark:border-gray-700 sm:rounded-2xl p-4 sm:p-6 shadow-sm">
       <div class="flex items-start justify-between gap-2 mb-3">
         <div class="flex items-center gap-2 sm:gap-2.5 min-w-0">
+          <?php if ($isOfficial): ?>
+          <img src="<?= BRAND_MARK_PATH ?>" alt="" class="w-10 h-10 sm:w-9 sm:h-9 rounded-full object-contain bg-rarl-navy p-1.5 flex-shrink-0"/>
+          <?php else: ?>
           <?= memberAvatarHtml($post['avatar_path'] ?? null, $authorName, 'w-10 h-10 sm:w-9 sm:h-9 text-sm') ?>
+          <?php endif; ?>
           <div class="min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
               <?php if ($post['is_pinned']): ?><span class="text-xs font-bold text-amber-500"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
               <span class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= htmlspecialchars($authorName) ?></span>
             </div>
             <div class="flex items-center gap-1.5 text-[11px] text-gray-400">
-              <span class="font-bold uppercase tracking-wider text-gray-400"><?= htmlspecialchars(ucfirst($post['type'])) ?></span>
+              <span class="font-bold uppercase tracking-wider <?= $isOfficial ? 'text-rarl-red' : 'text-gray-400' ?>"><?= $isOfficial ? 'RARL Team' : htmlspecialchars(ucfirst($post['type'])) ?></span>
               <span>·</span>
               <span title="<?= date('d M Y, H:i', strtotime($post['created_at'])) ?>"><?= timeAgo($post['created_at']) ?></span>
             </div>
@@ -1014,7 +1031,7 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
 
     $pdf->SetFont('Helvetica', 'B', 7);
     $pdf->SetTextColor(255, 255, 255);
-    $pdf->SetXY(4, 14); $pdf->Cell(0, 4, mb_strtoupper($name), 0, 1);
+    $pdf->SetXY(4, 14); $pdf->Cell(0, 4, fpdfEnc(mb_strtoupper($name)), 0, 1);
 
     if (!empty($member['avatar_path']) && file_exists(UPLOADS_PATH . '/avatars/' . $member['avatar_path'])) {
         try {
@@ -1027,10 +1044,11 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
     $pdf->SetFont('Helvetica', '', 5.5);
     $pdf->SetTextColor(220, 220, 220);
     $pdf->SetXY(22, 22);
-    $pdf->MultiCell(30, 3.2,
+    $pdf->MultiCell(30, 3.2, fpdfEnc(
         "MEMBER ID: #{$member['member_code']}\n" .
         'SINCE: ' . date('Y/m/d', strtotime($member['created_at'])) . "\n" .
-        'SECTION: ' . ($sectionName ?: '—'), 0, 'L');
+        'SECTION: ' . ($sectionName ?: '—')
+    ), 0, 'L');
 
     $qrPath = null;
     if (class_exists('QRcode')) {
@@ -1044,9 +1062,9 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
     $pdf->SetFont('Helvetica', '', 4.5);
     $pdf->SetTextColor(150, 150, 150);
     $pdf->SetXY(4, 40);
-    $pdf->Cell(0, 3, setting('idcard_signer1_name', 'RARL President'), 0, 1);
+    $pdf->Cell(0, 3, fpdfEnc(setting('idcard_signer1_name', 'RARL President')), 0, 1);
     $pdf->SetXY(4, 44);
-    $pdf->Cell(0, 3, $chairName ?: setting('idcard_signer2_name', 'Section Chair'), 0, 1);
+    $pdf->Cell(0, 3, fpdfEnc($chairName ?: setting('idcard_signer2_name', 'Section Chair')), 0, 1);
 
     $pdf->SetFont('Helvetica', '', 4);
     $pdf->SetTextColor(180, 180, 180);
@@ -1072,6 +1090,19 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
 // signer1, signer2, since_date, qr (image), avatar (image, member photo).
 function templateFieldValue(string $key, array $data): string {
     return (string)($data[$key] ?? '');
+}
+
+// FPDF's core fonts (Helvetica etc.) only understand Windows-1252/Latin-1, not
+// UTF-8 — feeding UTF-8 straight into Cell()/MultiCell()/Text() renders as
+// mojibake (e.g. the em-dash "—" comes out as "â€"") because each UTF-8 byte
+// gets shown as its own cp1252 character. Every string reaching FPDF (from
+// DB content, not the hardcoded ASCII labels) must go through this first.
+// //TRANSLIT approximates unmappable characters (curly quotes, etc.) instead
+// of dropping them; //IGNORE silently drops anything that still can't map
+// (e.g. CJK/emoji) rather than throwing.
+function fpdfEnc(string $s): string {
+    $out = @iconv('UTF-8', 'CP1252//TRANSLIT//IGNORE', $s);
+    return $out !== false ? $out : $s;
 }
 
 function renderTemplateHtml(array $template, array $data): string {
@@ -1169,7 +1200,7 @@ function renderTemplatePdf(array $template, array $data, string $outPath): bool 
         $align = $f['align'] ?? 'left';
         $pdf->SetFont('Helvetica', !empty($f['bold']) ? 'B' : '', $fontSize);
         $pdf->SetTextColor($r, $g, $b);
-        $text = $key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data);
+        $text = fpdfEnc($key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data));
         $textW = $pdf->GetStringWidth($text);
         $px = $align === 'center' ? $x - $textW / 2 : ($align === 'right' ? $x - $textW : $x);
         $pdf->SetXY($px, $y);
@@ -1417,11 +1448,11 @@ function generatePlainMembershipCertPDF(string $path, string $name, string $cert
     $pdf->SetFont('Helvetica', 'B', 26);
     [$blueR, $blueG, $blueB] = brandRgb(BRAND_BLUE);
     $pdf->SetTextColor($blueR, $blueG, $blueB);
-    $pdf->SetY(95); $pdf->Cell(0, 0, $name, 0, 1, 'C');
+    $pdf->SetY(95); $pdf->Cell(0, 0, fpdfEnc($name), 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 9);
     $pdf->SetTextColor(120, 120, 120);
     $sectionLine = $sectionName ? " and is a recognized member of the {$sectionName} chapter" : '';
-    $pdf->SetY(115); $pdf->Cell(0, 0, "is a certified member of the RARL Community{$sectionLine}.", 0, 1, 'C');
+    $pdf->SetY(115); $pdf->Cell(0, 0, fpdfEnc("is a certified member of the RARL Community{$sectionLine}."), 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 8);
     $pdf->SetTextColor(150, 150, 150);
     $pdf->SetY(140); $pdf->Cell(0, 0, 'Member since ' . date('d F Y', strtotime($memberSince)) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');
@@ -1463,6 +1494,26 @@ function freeMembershipBannerHtml(): string {
          . '<i class="fa-solid fa-clock"></i> ' . htmlspecialchars($msg)
          . ' <a href="' . (isset($_SESSION['member_id']) ? '#' : 'register.php') . '" class="underline ml-1' . (isset($_SESSION['member_id']) ? ' hidden' : '') . '">Register free →</a>'
          . '</div>';
+}
+
+// Site-wide registration on/off switch (Settings → General). Checked by
+// register.php and both register-individual.php/register-lab.php (deep
+// links to the sub-forms are gated too, not just the chooser page).
+function registrationsOpen(): bool {
+    return setting('registrations_open', '1') === '1';
+}
+
+// Shared "registrations are closed" block for the two sub-forms.
+function closedRegistrationHtml(): string {
+    $msg = setting('registrations_closed_message', 'We are not accepting new member registrations right now. Please check back soon.');
+    return '<section class="min-h-[calc(100vh-68px)] flex items-center justify-center py-16 px-4" style="background:linear-gradient(135deg,' . BRAND_INK . ' 0%,' . BRAND_INK_SOFT . ' 100%);">
+      <div class="w-full max-w-md text-center">
+        <div class="text-5xl mb-5"><i class="fa-solid fa-lock text-white/40"></i></div>
+        <h1 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Registrations Are Closed</h1>
+        <p class="text-white/55 text-sm mb-8">' . htmlspecialchars($msg) . '</p>
+        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm">← Back to Home</a>
+      </div>
+    </section>';
 }
 
 // True if $email's domain is on the admin-configured auto-approve allowlist

@@ -29,6 +29,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         }
         header('Location: community.php'); exit;
     }
+    if ($action === 'add_feed_post') {
+        // Community posting is paused for members for now — only admins can
+        // post to the feed (attributed to the "RARL Community Team" system
+        // account), members can still comment and like.
+        $body = clean($_POST['post_body'] ?? '');
+        $imagePath = null;
+        if (!empty($_FILES['post_image']['name'])) {
+            $imagePath = validateUpload($_FILES['post_image'], ['jpg','jpeg','png','webp'], 5*1024*1024, UPLOADS_PATH.'/community');
+        }
+        $posterId = systemPosterMemberId();
+        if ($posterId && ($body !== '' || $imagePath)) {
+            $pdo->prepare("INSERT INTO community_posts (member_id, body, body_format, image_path) VALUES (?,?,'markdown',?)")
+                ->execute([$posterId, $body, $imagePath]);
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Posted to the community feed.'];
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Write something or attach an image first.'];
+        }
+        header('Location: community.php'); exit;
+    }
     if ($action === 'delete_announcement') {
         $pdo->prepare("DELETE FROM announcements WHERE id=?")->execute([(int)($_POST['ann_id']??0)]);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Announcement deleted.'];
@@ -120,7 +139,22 @@ $comments = $pdo->query("SELECT community_comments.*, members.full_name, members
 adminWrap(function() use ($settings, $announcements, $posts, $comments) {
     adminFlash(); ?>
 <h1 class="text-2xl font-black text-gray-900 mb-1">Community</h1>
-<p class="text-gray-500 text-sm mb-7">Manage community guidelines and announcements</p>
+<p class="text-gray-500 text-sm mb-7">Manage community guidelines, feed posts, and announcements</p>
+
+<!-- Post to Community Feed — member posting is paused for now, this is the only way new posts land in the feed -->
+<div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
+  <h2 class="font-heading font-bold text-base text-gray-800 mb-1"><i class="fa-solid fa-comment"></i> Post to Community Feed</h2>
+  <p class="text-[11px] text-gray-400 mb-4">Member posting is paused — this is the only way new posts appear in the feed right now. Members can still comment and like. Posted as "RARL Community Team." Markdown supported.</p>
+  <form method="POST" enctype="multipart/form-data" class="space-y-3">
+    <?= acsrfField() ?><input type="hidden" name="action" value="add_feed_post">
+    <textarea name="post_body" rows="3" placeholder="Share an update with the community…"
+      class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"></textarea>
+    <div class="flex items-center gap-3">
+      <input type="file" name="post_image" accept=".jpg,.jpeg,.png,.webp" class="text-xs flex-1"/>
+      <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors flex-shrink-0">Post to Feed</button>
+    </div>
+  </form>
+</div>
 
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-7">
   <!-- Community Guidelines -->

@@ -74,6 +74,59 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
         $emailId = (int)($_POST['email_id'] ?? 0);
         $pdo->prepare('DELETE FROM member_emails WHERE id = ? AND member_id = ? AND is_primary = 0')->execute([$emailId, $id]);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Email unlinked.'];
+    } elseif ($assist === 'upload_id_card') {
+        // Manual override — hand-designed or one-off ID card, bypassing the
+        // template renderer entirely. Accepts a PDF or an image.
+        $filename = validateUpload($_FILES['custom_file'] ?? [], ['pdf','jpg','jpeg','png','webp'], 10*1024*1024, UPLOADS_PATH.'/id-cards');
+        if (!$filename) {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Upload failed — must be a PDF or image (JPG/PNG/WEBP), max 10MB.'];
+        } else {
+            $memberCode = $m['member_code'];
+            if (!$memberCode) {
+                $planSlug = 'free';
+                if ($m['plan_id']) { $p = $pdo->prepare('SELECT slug FROM membership_plans WHERE id=?'); $p->execute([$m['plan_id']]); $planSlug = $p->fetchColumn() ?: 'free'; }
+                $memberCode = nextMemberCode($planSlug);
+            }
+            $pdo->prepare('UPDATE members SET member_code=?, id_card_path=?, id_card_issued_at=CURDATE(), id_card_expires_at=DATE_ADD(CURDATE(), INTERVAL 3 YEAR) WHERE id=?')
+                ->execute([$memberCode, $filename, $id]);
+            $sent = false;
+            if (!empty($_POST['send_email'])) {
+                $memberName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
+                $docLabel = 'ID card';
+                ob_start(); require dirname(__DIR__) . '/emails/custom-document-ready.php'; $body = ob_get_clean();
+                $sent = sendEmail($m['email'], $memberName, 'Your RARL ID Card', $body, [
+                    ['path' => UPLOADS_PATH . '/id-cards/' . $filename, 'filename' => 'RARL-ID-Card.' . pathinfo($filename, PATHINFO_EXTENSION)],
+                ]);
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Custom ID card uploaded.' . ($sent ? ' Emailed to member.' : '')];
+        }
+    } elseif ($assist === 'upload_membership_cert') {
+        $filename = validateUpload($_FILES['custom_file'] ?? [], ['pdf','jpg','jpeg','png','webp'], 10*1024*1024, UPLOADS_PATH.'/certificates');
+        if (!$filename) {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Upload failed — must be a PDF or image (JPG/PNG/WEBP), max 10MB.'];
+        } else {
+            $memberName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
+            $existing = $pdo->prepare("SELECT id, pdf_path, uuid FROM certificates WHERE member_id = ? AND cert_type = 'membership'");
+            $existing->execute([$id]);
+            $existing = $existing->fetch();
+            if ($existing) {
+                if ($existing['pdf_path']) @unlink(UPLOADS_PATH . '/certificates/' . $existing['pdf_path']);
+                $pdo->prepare('UPDATE certificates SET pdf_path = ? WHERE id = ?')->execute([$filename, $existing['id']]);
+            } else {
+                $uuid = generateUuid(); $certNo = nextCertNumber();
+                $pdo->prepare('INSERT INTO certificates (uuid, certificate_no, member_id, cert_type, recipient_name, recipient_email, event_id, pdf_path) VALUES (?,?,?,"membership",?,?,NULL,?)')
+                    ->execute([$uuid, $certNo, $id, $memberName, $m['email'], $filename]);
+            }
+            $sent = false;
+            if (!empty($_POST['send_email'])) {
+                $docLabel = 'Certificate of Membership';
+                ob_start(); require dirname(__DIR__) . '/emails/custom-document-ready.php'; $body = ob_get_clean();
+                $sent = sendEmail($m['email'], $memberName, 'Your RARL Certificate of Membership', $body, [
+                    ['path' => UPLOADS_PATH . '/certificates/' . $filename, 'filename' => 'RARL-Membership-Certificate.' . pathinfo($filename, PATHINFO_EXTENSION)],
+                ]);
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Custom certificate uploaded.' . ($sent ? ' Emailed to member.' : '')];
+        }
     }
     header('Location: member-edit.php?id=' . $id); exit;
 }
@@ -93,10 +146,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $yearsExp   = clean($_POST['years_experience'] ?? '');
     $referral   = clean($_POST['referral_source']  ?? '');
     $notes      = clean($_POST['notes'] ?? '');
+    $memberCode = strtoupper(trim(clean($_POST['member_code'] ?? '')));
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = 'A valid email is required.';
     if ($yearsExp !== '' && !array_key_exists($yearsExp, YEARS_OPTIONS)) $errors[] = 'Invalid years of experience value.';
     if ($referral !== '' && !array_key_exists($referral, REFERRAL_OPTIONS)) $errors[] = 'Invalid referral source value.';
+    if ($memberCode !== '') {
+        $dupeCode = $pdo->prepare('SELECT id FROM members WHERE member_code = ? AND id != ?');
+        $dupeCode->execute([$memberCode, $id]);
+        if ($dupeCode->fetch()) $errors[] = 'That Member ID is already assigned to another member.';
+    }
 
     $avatarFile = null;
     if (!empty($_FILES['avatar']['tmp_name'])) {
@@ -115,8 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         if ($dupe->fetch()) {
             $errors[] = 'Another member already uses that email.';
         } else {
-            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, open_to_mentor=?, seeking_mentor=?, years_experience=?, referral_source=?, notes=?';
-            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $openMentor, $seekMentor, $yearsExp ?: null, $referral ?: null, $notes];
+            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, open_to_mentor=?, seeking_mentor=?, years_experience=?, referral_source=?, notes=?, member_code=?';
+            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $openMentor, $seekMentor, $yearsExp ?: null, $referral ?: null, $notes, $memberCode ?: null];
 
             if ($m['type'] === 'lab') {
                 $sql .= ', lab_name=?, pi_name=?, lab_website=?, research_areas=?';
@@ -195,6 +254,12 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
             <?php endforeach; ?>
           </select>
         </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Member ID <span class="text-gray-400 font-normal">(shown on ID card/certificates — leave blank to auto-generate on approval)</span></label>
+        <input type="text" name="member_code" value="<?= htmlspecialchars($m['member_code'] ?? '') ?>" placeholder="e.g. FRE0042"
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
       </div>
 
       <?php if ($m['type'] === 'lab'): ?>
@@ -412,6 +477,29 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <?php $assistBtn('send_temp_password', '<i class="fa-solid fa-key"></i> Reset password & email temp password', 'Generate a new temporary password and email it to this member?'); ?>
       <?php $assistBtn('resend_welcome', '<i class="fa-solid fa-envelope"></i> Resend welcome email'); ?>
       <?php $assistBtn('regenerate_id_card', '<i class="fa-solid fa-id-card"></i> Regenerate ID card'); ?>
+    </div>
+
+    <!-- Custom ID card / certificate upload — bypasses the template renderer
+         entirely for one-off hand-designed documents (PDF or image). -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-4">
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-1"><i class="fa-solid fa-upload"></i> Custom ID Card / Certificate</h2>
+      <p class="text-[11px] text-gray-400 -mt-2">Upload a hand-made ID card or certificate for this member (PDF or image) — overrides the auto-generated one.</p>
+
+      <form method="POST" enctype="multipart/form-data" class="space-y-2">
+        <?= acsrfField() ?><input type="hidden" name="assist_action" value="upload_id_card">
+        <label class="block text-[10px] font-semibold text-gray-500">ID Card</label>
+        <input type="file" name="custom_file" accept=".pdf,.jpg,.jpeg,.png,.webp" required class="w-full text-xs"/>
+        <label class="flex items-center gap-1.5 text-[10px] text-gray-500"><input type="checkbox" name="send_email" value="1" checked class="accent-rarl-red"/> Email it to the member</label>
+        <button type="submit" class="w-full py-2 text-xs font-semibold bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg transition-colors">Upload ID Card</button>
+      </form>
+
+      <form method="POST" enctype="multipart/form-data" class="space-y-2 pt-3 border-t border-gray-100">
+        <?= acsrfField() ?><input type="hidden" name="assist_action" value="upload_membership_cert">
+        <label class="block text-[10px] font-semibold text-gray-500">Certificate of Membership</label>
+        <input type="file" name="custom_file" accept=".pdf,.jpg,.jpeg,.png,.webp" required class="w-full text-xs"/>
+        <label class="flex items-center gap-1.5 text-[10px] text-gray-500"><input type="checkbox" name="send_email" value="1" checked class="accent-rarl-red"/> Email it to the member</label>
+        <button type="submit" class="w-full py-2 text-xs font-semibold bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg transition-colors">Upload Certificate</button>
+      </form>
     </div>
 
     <!-- Linked emails -->
