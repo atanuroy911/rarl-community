@@ -50,14 +50,14 @@ echo htmlHead('Forgot Password');
 
     <?php if ($error): ?>
     <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-      ⚠️ <?= htmlspecialchars($error) ?>
+      <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
     </div>
     <?php endif; ?>
 
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
       <?php if ($sent): ?>
       <div class="text-center">
-        <div class="text-4xl mb-3">📬</div>
+        <div class="text-4xl mb-3"><i class="fa-solid fa-envelope-open-text"></i></div>
         <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2">Check your inbox</h2>
         <p class="text-gray-500 text-sm">If an account exists for that email, a password reset link is on its way. The link expires in 1 hour.</p>
       </div>

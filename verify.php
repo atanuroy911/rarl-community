@@ -48,7 +48,7 @@ echo htmlHead('Verify Certificate');
     <!-- Result -->
     <?php if ($uuid && !$cert): ?>
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-8 text-center">
-      <div class="text-4xl mb-3">❌</div>
+      <div class="text-4xl mb-3"><i class="fa-solid fa-circle-xmark text-red-500"></i></div>
       <h2 class="font-heading font-bold text-lg text-red-700 dark:text-red-300 mb-2">Certificate Not Found</h2>
       <p class="text-red-600 dark:text-red-400 text-sm">No valid certificate found for this ID. It may be invalid, revoked, or marked private.</p>
     </div>
@@ -57,7 +57,7 @@ echo htmlHead('Verify Certificate');
     <div class="bg-white dark:bg-gray-900 border-2 border-green-200 dark:border-green-800 rounded-2xl overflow-hidden shadow-lg">
       <!-- Verified banner -->
       <div class="bg-green-500 px-6 py-3 flex items-center gap-3">
-        <span class="text-xl">✅</span>
+        <span class="text-xl"><i class="fa-solid fa-circle-check"></i></span>
         <div>
           <p class="text-white font-bold text-sm">Certificate Verified</p>
           <p class="text-white/80 text-xs">This certificate is authentic and was issued by RARL Lab</p>

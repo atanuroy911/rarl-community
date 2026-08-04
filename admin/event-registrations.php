@@ -91,14 +91,14 @@ adminWrap(function() use ($event, $registrations, $eventId) {
             <?php if ($r['status'] === 'registered'): ?>
             <div class="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="mark_attended"><input type="hidden" name="reg_id" value="<?= $r['id'] ?>"><input type="hidden" name="event_id" value="<?= $eventId ?>">
-                <button type="submit" class="px-2.5 py-1 text-[10px] font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded-lg">✓ Attended (issues cert)</button>
+                <button type="submit" class="px-2.5 py-1 text-[10px] font-semibold bg-green-100 text-green-700 hover:bg-green-200 rounded-lg"><i class="fa-solid fa-circle-check"></i> Attended (issues cert)</button>
               </form>
               <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="mark_no_show"><input type="hidden" name="reg_id" value="<?= $r['id'] ?>"><input type="hidden" name="event_id" value="<?= $eventId ?>">
                 <button type="submit" class="px-2.5 py-1 text-[10px] font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 rounded-lg">No-show</button>
               </form>
             </div>
             <?php elseif ($r['status'] === 'attended'): ?>
-            <span class="text-[10px] text-green-600">🏆 Certificate issued</span>
+            <span class="text-[10px] text-green-600"><i class="fa-solid fa-trophy"></i> Certificate issued</span>
             <?php endif; ?>
           </td>
         </tr>

@@ -76,7 +76,7 @@ if ($isActiveMember && $events) {
 }
 $regCountStmt = $pdo->prepare("SELECT COUNT(*) FROM event_registrations WHERE event_id = ? AND status != 'cancelled'");
 
-$typeIcons  = ['workshop'=>'🛠️','webinar'=>'🎥','hackathon'=>'💻','competition'=>'🏆','volunteer'=>'🤝','conference'=>'🎤','seminar'=>'📖','other'=>'📌'];
+$typeIcons  = ['workshop'=>'<i class="fa-solid fa-screwdriver-wrench"></i>','webinar'=>'<i class="fa-solid fa-video"></i>','hackathon'=>'<i class="fa-solid fa-laptop-code"></i>','competition'=>'<i class="fa-solid fa-trophy"></i>','volunteer'=>'<i class="fa-solid fa-handshake"></i>','conference'=>'<i class="fa-solid fa-microphone"></i>','seminar'=>'<i class="fa-solid fa-book-open"></i>','other'=>'<i class="fa-solid fa-thumbtack"></i>'];
 
 echo htmlHead('Events & Webinars');
 ?>
@@ -85,7 +85,7 @@ echo htmlHead('Events & Webinars');
 <!-- Hero -->
 <section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
   <div class="relative z-10 max-w-5xl mx-auto px-6 py-16 text-center">
-    <div class="text-5xl mb-4">🎥</div>
+    <div class="text-5xl mb-4"><i class="fa-solid fa-video"></i></div>
     <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Events &amp; Webinars</h1>
     <p class="text-white/60 text-base max-w-lg mx-auto">Workshops, webinars, and conferences from the RARL community — some open to everyone, some reserved for members.</p>
   </div>
@@ -102,7 +102,7 @@ echo htmlHead('Events & Webinars');
 
   <?php if (empty($events)): ?>
   <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-14 text-center text-gray-400">
-    <p class="text-4xl mb-3">📭</p>
+    <p class="text-4xl mb-3"><i class="fa-solid fa-inbox text-4xl text-gray-300"></i></p>
     <p class="font-semibold mb-1"><?= $tab==='upcoming' ? 'No upcoming events yet' : 'No past events to show' ?></p>
     <p class="text-sm">Check back soon, or follow the community feed for announcements.</p>
   </div>
@@ -121,17 +121,17 @@ echo htmlHead('Events & Webinars');
       <?php if (!empty($e['cover_image'])): ?>
       <img src="<?= UPLOADS_URL ?>/events/<?= htmlspecialchars($e['cover_image']) ?>" alt="" class="w-full h-36 object-cover"/>
       <?php else: ?>
-      <div class="w-full h-24 flex items-center justify-center text-4xl" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"><?= $typeIcons[$e['type']] ?? '📌' ?></div>
+      <div class="w-full h-24 flex items-center justify-center text-4xl" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"><?= $typeIcons[$e['type']] ?? '<i class="fa-solid fa-thumbtack"></i>' ?></div>
       <?php endif; ?>
 
       <div class="p-6">
         <div class="flex items-center gap-2 mb-3 flex-wrap">
-          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500"><?= $typeIcons[$e['type']] ?? '📌' ?> <?= ucfirst($e['type']) ?></span>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500"><?= $typeIcons[$e['type']] ?? '<i class="fa-solid fa-thumbtack"></i>' ?> <?= ucfirst($e['type']) ?></span>
           <?php if ($membersOnly): ?>
-          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">🔒 Members Only</span>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lock"></i> Members Only</span>
           <?php endif; ?>
           <?php if ($tab === 'upcoming' && !empty($e['online_url'])): ?>
-          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400">💻 Online</span>
+          <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"><i class="fa-solid fa-laptop-code"></i> Online</span>
           <?php endif; ?>
         </div>
 
@@ -139,10 +139,10 @@ echo htmlHead('Events & Webinars');
 
         <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-3">
           <?php if ($e['event_date']): ?>
-          <div>📅 <?= date('D, d M Y', strtotime($e['event_date'])) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?></div>
+          <div><i class="fa-solid fa-calendar-days"></i> <?= date('D, d M Y', strtotime($e['event_date'])) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?></div>
           <?php endif; ?>
-          <?php if ($e['location']): ?><div>📍 <?= htmlspecialchars($e['location']) ?></div><?php endif; ?>
-          <?php if ($e['speaker_name']): ?><div>🎙️ <?= htmlspecialchars($e['speaker_name']) ?></div><?php endif; ?>
+          <?php if ($e['location']): ?><div><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($e['location']) ?></div><?php endif; ?>
+          <?php if ($e['speaker_name']): ?><div><i class="fa-solid fa-microphone"></i> <?= htmlspecialchars($e['speaker_name']) ?></div><?php endif; ?>
         </div>
 
         <?php if ($e['description']): ?>
@@ -164,21 +164,21 @@ echo htmlHead('Events & Webinars');
         <?php if ($tab === 'past'): ?>
           <?php if (!empty($e['recording_url']) && $isActiveMember): ?>
           <a href="<?= htmlspecialchars($e['recording_url']) ?>" target="_blank" rel="noopener"
-            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-xl transition-colors">▶️ Watch Recording</a>
+            class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-xl transition-colors"><i class="fa-solid fa-play"></i> Watch Recording</a>
           <?php elseif (!empty($e['recording_url'])): ?>
-          <a href="register.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-semibold rounded-xl">🔒 Join Free to Watch Recording</a>
+          <a href="register.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-semibold rounded-xl"><i class="fa-solid fa-lock"></i> Join Free to Watch Recording</a>
           <?php else: ?>
           <span class="text-xs text-gray-300">No recording available</span>
           <?php endif; ?>
         <?php elseif ($locked): ?>
-          <a href="register.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-xl">🔒 Members Only — Join Free</a>
+          <a href="register.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 text-xs font-bold rounded-xl"><i class="fa-solid fa-lock"></i> Members Only — Join Free</a>
         <?php elseif (!$isMember): ?>
           <a href="login.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-white text-xs font-semibold rounded-xl">Sign In to Register</a>
         <?php elseif (!$isActiveMember): ?>
-          <span class="text-xs text-amber-600">⏳ Registration opens once your account is approved</span>
+          <span class="text-xs text-amber-600"><i class="fa-solid fa-hourglass-half"></i> Registration opens once your account is approved</span>
         <?php elseif ($isRegistered): ?>
           <div class="flex items-center gap-3">
-            <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-bold rounded-xl">✓ You're registered</span>
+            <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-bold rounded-xl"><i class="fa-solid fa-circle-check"></i> You're registered</span>
             <?php if (!empty($e['online_url'])): ?>
             <a href="<?= htmlspecialchars($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs text-rarl-red font-semibold hover:underline">Join link →</a>
             <?php endif; ?>

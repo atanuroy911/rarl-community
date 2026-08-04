@@ -106,7 +106,7 @@ echo htmlHead('Research Lab Registration');
     </div>
 
     <div class="mb-8 flex items-center gap-3">
-      <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-xl">🏫</div>
+      <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-xl flex items-center justify-center text-xl"><i class="fa-solid fa-building-columns"></i></div>
       <div>
         <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white">Research Lab Registration</h1>
         <p class="text-gray-500 text-xs">Register your entire research group or lab</p>
@@ -115,7 +115,7 @@ echo htmlHead('Research Lab Registration');
 
     <?php if ($errors): ?>
     <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-1">
-      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span>⚠️</span><span><?= $e ?></span></div><?php endforeach; ?>
+      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= $e ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 

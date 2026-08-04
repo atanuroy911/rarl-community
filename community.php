@@ -225,7 +225,7 @@ echo htmlHead('Community Portal');
 <section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 60%,#5865f2 100%);">
   <div class="absolute inset-0" style="background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px;"></div>
   <div class="relative z-10 max-w-5xl mx-auto px-6 py-20 text-center">
-    <div class="text-6xl mb-5">🌐</div>
+    <div class="text-6xl mb-5"><i class="fa-solid fa-earth-americas"></i></div>
     <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">RARL Community Feed</h1>
     <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
     <?php if ($isMember): ?>
@@ -235,7 +235,7 @@ echo htmlHead('Community Portal');
     <?php else: ?>
     <div class="inline-flex flex-col items-center gap-3">
       <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition-all text-sm">
-        🔐 Join as a Member to Post &amp; Comment
+        <i class="fa-solid fa-lock"></i> Join as a Member to Post &amp; Comment
       </a>
       <p class="text-white/40 text-xs">Membership is free and open to all researchers</p>
     </div>
@@ -259,20 +259,20 @@ echo htmlHead('Community Portal');
             <?= $myFull['type'] === 'lab' ? htmlspecialchars($myFull['pi_name'] ?? '') : htmlspecialchars($myFull['position'] ?? '') ?>
             <?= $myFull['institution'] ? ' · ' . htmlspecialchars(mb_strimwidth($myFull['institution'], 0, 24, '…')) : '' ?>
           </p>
-          <?php if ($myFull['country']): ?><p class="text-[11px] text-gray-400 mt-0.5">📍 <?= htmlspecialchars($myFull['country']) ?></p><?php endif; ?>
+          <?php if ($myFull['country']): ?><p class="text-[11px] text-gray-400 mt-0.5"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($myFull['country']) ?></p><?php endif; ?>
           <?php if ($mySection): ?>
           <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
-            🌍 <?= htmlspecialchars($mySection['name']) ?>
+            <i class="fa-solid fa-earth-americas"></i> <?= htmlspecialchars($mySection['name']) ?>
           </div>
           <?php endif; ?>
         </div>
         <nav class="border-t border-gray-100 dark:border-gray-800 py-2">
-          <a href="profile.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">👤 My Profile</a>
-          <a href="dashboard.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📊 Dashboard</a>
+          <a href="profile.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-user"></i> My Profile</a>
+          <a href="dashboard.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
           <?php if (!empty($myFull['id_card_path'])): ?>
-          <a href="uploads/id-cards/<?= urlencode($myFull['id_card_path']) ?>" target="_blank" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🪪 My ID Card</a>
+          <a href="uploads/id-cards/<?= urlencode($myFull['id_card_path']) ?>" target="_blank" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-id-card"></i> My ID Card</a>
           <?php endif; ?>
-          <a href="directory.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🔎 Member Directory</a>
+          <a href="directory.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-magnifying-glass"></i> Member Directory</a>
         </nav>
       </div>
       <?php else: ?>
@@ -288,10 +288,10 @@ echo htmlHead('Community Portal');
           <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white">Explore</h3>
         </div>
         <nav class="py-2">
-          <a href="events.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📅 Events</a>
-          <a href="resources.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📚 Resources</a>
-          <a href="people.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🧑‍🤝‍🧑 Leadership</a>
-          <a href="partners.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🤝 Partnerships</a>
+          <a href="events.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-calendar-days"></i> Events</a>
+          <a href="resources.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-book"></i> Resources</a>
+          <a href="people.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-people-group"></i> Leadership</a>
+          <a href="partners.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-handshake"></i> Partnerships</a>
         </nav>
       </div>
     </div>
@@ -301,7 +301,7 @@ echo htmlHead('Community Portal');
       <?php if ($isMember): ?>
       <!-- Community Feed -->
       <div id="feed">
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5">🗨️ Community Feed</h2>
+        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-comments"></i> Community Feed</h2>
 
         <!-- Composer -->
         <form method="POST" enctype="multipart/form-data" id="post-composer" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm mb-6">
@@ -330,13 +330,13 @@ echo htmlHead('Community Portal');
 
           <div id="post-image-preview" class="hidden mt-3 relative inline-block">
             <img id="post-image-preview-img" src="" class="max-h-48 rounded-xl border border-gray-200 dark:border-gray-700"/>
-            <button type="button" id="post-image-remove" class="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white rounded-full text-xs flex items-center justify-center">✕</button>
+            <button type="button" id="post-image-remove" class="absolute -top-2 -right-2 w-6 h-6 bg-gray-900 text-white rounded-full text-xs flex items-center justify-center"><i class="fa-solid fa-xmark"></i></button>
           </div>
 
           <div class="flex items-center justify-between mt-3">
             <label class="inline-flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 cursor-pointer hover:text-rarl-red transition-colors">
               <input type="file" name="image" id="post-image-input" accept=".jpg,.jpeg,.png,.webp" class="hidden"/>
-              🖼️ Add a photo
+              <i class="fa-solid fa-image"></i> Add a photo
             </label>
             <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors">Post</button>
           </div>
@@ -344,7 +344,7 @@ echo htmlHead('Community Portal');
 
         <?php if (empty($posts)): ?>
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
-          <p class="text-3xl mb-2">📭</p><p class="text-sm">No posts yet. Be the first to share something!</p>
+          <p class="text-3xl mb-2"><i class="fa-solid fa-inbox text-gray-300"></i></p><p class="text-sm">No posts yet. Be the first to share something!</p>
         </div>
         <?php else: ?>
         <div id="post-list" class="space-y-5">
@@ -359,10 +359,10 @@ echo htmlHead('Community Portal');
 
       <!-- Announcements -->
       <div>
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5">📌 Community Announcements</h2>
+        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-thumbtack"></i> Community Announcements</h2>
         <?php if (empty($announcements)): ?>
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
-          <p class="text-3xl mb-2">📭</p><p class="text-sm">No announcements yet. Check back soon.</p>
+          <p class="text-3xl mb-2"><i class="fa-solid fa-inbox text-gray-300"></i></p><p class="text-sm">No announcements yet. Check back soon.</p>
         </div>
         <?php else: ?>
         <div class="space-y-4">
@@ -376,7 +376,7 @@ echo htmlHead('Community Portal');
           <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
             <div class="flex items-start justify-between gap-3 mb-3">
               <div class="flex items-center gap-2">
-                <?php if ($ann['is_pinned']): ?><span class="text-xs font-bold text-amber-500">📌</span><?php endif; ?>
+                <?php if ($ann['is_pinned']): ?><span class="text-xs font-bold text-amber-500"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
                 <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border <?= $cc ?>"><?= ucfirst($ann['type']) ?></span>
               </div>
               <span class="text-xs text-gray-400"><?= date('d M Y', strtotime($ann['created_at'])) ?></span>
@@ -391,7 +391,7 @@ echo htmlHead('Community Portal');
 
       <!-- Regional Leadership -->
       <div>
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5">🗺️ Regional Leadership</h2>
+        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-map-location-dot"></i> Regional Leadership</h2>
         <?php if (empty($regionGroups)): ?>
         <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
           <p class="text-sm">Regional leadership information coming soon.</p>
@@ -436,7 +436,7 @@ echo htmlHead('Community Portal');
       <?php if ($upcomingEvents): ?>
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
         <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white">📅 Upcoming Events</h3>
+          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white"><i class="fa-solid fa-calendar-days"></i> Upcoming Events</h3>
           <a href="events.php" class="text-[10px] text-rarl-red hover:underline">See all</a>
         </div>
         <div class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -452,7 +452,7 @@ echo htmlHead('Community Portal');
 
       <!-- Community Stats -->
       <div class="rounded-2xl p-6 shadow-sm text-white" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%);">
-        <h3 class="font-heading font-bold text-sm mb-4">🌐 RARL Community</h3>
+        <h3 class="font-heading font-bold text-sm mb-4"><i class="fa-solid fa-earth-americas"></i> RARL Community</h3>
         <div class="grid grid-cols-3 gap-2 text-center">
           <div>
             <div class="font-heading font-black text-xl"><?= $communityStats['members'] ?></div>
@@ -472,7 +472,7 @@ echo htmlHead('Community Portal');
       <!-- Guidelines -->
       <?php if ($guidelines): ?>
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-        <h3 class="font-heading font-bold text-sm text-gray-800 dark:text-white mb-3">📋 Community Guidelines</h3>
+        <h3 class="font-heading font-bold text-sm text-gray-800 dark:text-white mb-3"><i class="fa-solid fa-clipboard-list"></i> Community Guidelines</h3>
         <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed"><?= nl2br(htmlspecialchars($guidelines)) ?></p>
       </div>
       <?php endif; ?>

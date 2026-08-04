@@ -55,6 +55,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $pdo->prepare("UPDATE people SET is_published = 1 - is_published WHERE id=?")->execute([(int)($_POST['person_id']??0)]);
         header('Location: people.php'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'publish') { $pdo->exec("UPDATE people SET is_published=1 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people published.']; }
+            elseif ($bulkOp === 'unpublish') { $pdo->exec("UPDATE people SET is_published=0 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people unpublished.']; }
+            elseif ($bulkOp === 'delete') { $pdo->exec("DELETE FROM people WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people deleted.']; }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one person first.'];
+        }
+        header('Location: people.php'); exit;
+    }
 }
 
 $people = $pdo->query("SELECT * FROM people ORDER BY display_order, id")->fetchAll();
@@ -76,7 +89,7 @@ adminWrap(function() use ($people, $edit) {
   <!-- Left: form -->
   <div class="xl:col-span-1 space-y-6">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $edit ? '✏️ Edit Person' : '➕ Add Person' ?></h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $edit ? '<i class="fa-solid fa-pen-to-square"></i> Edit Person' : '<i class="fa-solid fa-plus"></i> Add Person' ?></h2>
       <form method="POST" enctype="multipart/form-data" class="space-y-3">
         <?= acsrfField() ?>
         <input type="hidden" name="action" value="<?= $edit ? 'update_person' : 'add_person' ?>">
@@ -117,15 +130,25 @@ adminWrap(function() use ($people, $edit) {
   <!-- Right: list -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All People <span class="text-gray-400 font-normal text-xs">(<?= count($people) ?>)</span></h2>
+        <?php if ($people): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
       </div>
+      <?php if ($people): ?>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected people?'],
+      ]) ?>
+      <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($people)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No people added yet.</p>
         <?php endif; ?>
         <?php foreach ($people as $p): ?>
         <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
+          <?= bulkRowCheckbox((int)$p['id']) ?>
           <?php if (!empty($p['photo_path'])): ?>
           <img src="<?= UPLOADS_URL ?>/people/<?= htmlspecialchars($p['photo_path']) ?>" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0"/>
           <?php else: ?>
@@ -154,4 +177,5 @@ adminWrap(function() use ($people, $edit) {
   </div>
 
 </div>
+<?= bulkBarScript() ?>
 <?php }, 'people', 'People & Leadership');

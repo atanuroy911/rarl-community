@@ -156,7 +156,7 @@ echo htmlHead('My Profile');
         <?= strtoupper(substr($displayName, 0, 1)) ?>
       </div>
       <div>
-        <p class="text-white/50 text-xs uppercase tracking-wider mb-0.5"><?= $m['type'] === 'lab' ? '🏫 Research Lab' : '🧑‍🔬 Individual Researcher' ?></p>
+        <p class="text-white/50 text-xs uppercase tracking-wider mb-0.5"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-flask"></i> Research Lab' : '<i class="fa-solid fa-user"></i> Individual Researcher' ?></p>
         <h1 class="font-heading font-black text-xl text-white"><?= htmlspecialchars($displayName) ?></h1>
       </div>
     </div>
@@ -167,13 +167,13 @@ echo htmlHead('My Profile');
 
     <?php if ($errors): ?>
     <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm space-y-1">
-      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span>⚠️</span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 
     <?php if (!empty($m['must_change_password']) || !empty($_GET['force_password'])): ?>
     <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-sm">
-      🔐 Your password was reset by an admin. Please set a new one below before continuing.
+      <i class="fa-solid fa-lock"></i> Your password was reset by an admin. Please set a new one below before continuing.
     </div>
     <?php endif; ?>
 
@@ -192,12 +192,12 @@ echo htmlHead('My Profile');
       <?php if (!empty($m['id_card_path'])): ?>
         <?php if ($cardExpired): ?>
         <div class="flex items-center justify-between gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-sm">
-          <span class="text-amber-700 dark:text-amber-300">⚠️ Your ID card expired on <?= date('d M Y', strtotime($m['id_card_expires_at'])) ?>.</span>
+          <span class="text-amber-700 dark:text-amber-300"><i class="fa-solid fa-triangle-exclamation"></i> Your ID card expired on <?= date('d M Y', strtotime($m['id_card_expires_at'])) ?>.</span>
           <a href="reverify.php" class="px-3 py-1.5 bg-rarl-red text-white text-xs font-semibold rounded-lg hover:bg-rarl-dark whitespace-nowrap">Reverify →</a>
         </div>
         <?php else: ?>
         <div class="flex items-center justify-between gap-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm">
-          <span class="text-green-700 dark:text-green-300">🪪 ID card valid until <?= date('d M Y', strtotime($m['id_card_expires_at'])) ?></span>
+          <span class="text-green-700 dark:text-green-300"><i class="fa-solid fa-id-card"></i> ID card valid until <?= date('d M Y', strtotime($m['id_card_expires_at'])) ?></span>
           <a href="uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="px-3 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-lg hover:bg-gray-900 whitespace-nowrap">Download</a>
         </div>
         <?php endif; ?>
@@ -366,14 +366,14 @@ echo htmlHead('My Profile');
           <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
             <input type="checkbox" name="open_to_mentor" value="1" <?= !empty($m['open_to_mentor']) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
             <div>
-              <strong class="text-sm text-gray-800 dark:text-white">🧭 I'm open to mentoring others</strong>
+              <strong class="text-sm text-gray-800 dark:text-white"><i class="fa-solid fa-compass"></i> I'm open to mentoring others</strong>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Shown with a badge in the directory so students/early-career researchers can find you.</p>
             </div>
           </label>
           <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
             <input type="checkbox" name="seeking_mentor" value="1" <?= !empty($m['seeking_mentor']) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
             <div>
-              <strong class="text-sm text-gray-800 dark:text-white">🎯 I'm looking for a mentor</strong>
+              <strong class="text-sm text-gray-800 dark:text-white"><i class="fa-solid fa-bullseye"></i> I'm looking for a mentor</strong>
               <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Shown with a badge in the directory so potential mentors can reach out.</p>
             </div>
           </label>

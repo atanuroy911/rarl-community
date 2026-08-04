@@ -22,25 +22,25 @@ adminWrap(function() use ($s, $certCount, $nlCount, $eventCount, $recentMembers,
 <div class="flex items-center justify-between mb-7">
   <div><h1 class="text-2xl font-black text-gray-900">Dashboard</h1><p class="text-gray-500 text-sm mt-0.5">RARL Community Platform overview</p></div>
   <a href="members.php?status=pending" class="inline-flex items-center gap-2 px-4 py-2 bg-rarl-red text-white text-sm font-semibold rounded-xl hover:bg-rarl-dark transition-colors shadow">
-    ⏳ <?= (int)$s['pending'] ?> Pending Approvals
+    <i class="fa-solid fa-hourglass-half"></i> <?= (int)$s['pending'] ?> Pending Approvals
   </a>
 </div>
 
 <!-- Stats -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
   <?php
-  statCard('Total Members', (int)$s['total'], '👥', 'blue', 'members.php');
-  statCard('Active Members', (int)$s['active'], '✅', 'green', 'members.php?status=active');
-  statCard('Newsletter Subscribers', (int)$s['newsletter'], '📧', 'amber', 'newsletter.php');
-  statCard('Certificates Issued', (int)$certCount, '🏆', 'purple', 'certificates.php');
+  statCard('Total Members', (int)$s['total'], '<i class="fa-solid fa-users"></i>', 'blue', 'members.php');
+  statCard('Active Members', (int)$s['active'], '<i class="fa-solid fa-circle-check"></i>', 'green', 'members.php?status=active');
+  statCard('Newsletter Subscribers', (int)$s['newsletter'], '<i class="fa-solid fa-envelope"></i>', 'amber', 'newsletter.php');
+  statCard('Certificates Issued', (int)$certCount, '<i class="fa-solid fa-trophy"></i>', 'purple', 'certificates.php');
   ?>
 </div>
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
   <?php
-  statCard('Individuals', (int)$s['individuals'], '🧑‍🔬', 'blue', 'members.php?type=individual');
-  statCard('Research Labs', (int)$s['labs'], '🏫', 'blue', 'members.php?type=lab');
-  statCard('Active Events', (int)$eventCount, '📅', 'green', 'events.php');
-  statCard('Newsletters Sent', (int)$nlCount, '📨', 'gray', 'newsletter.php');
+  statCard('Individuals', (int)$s['individuals'], '<i class="fa-solid fa-user-graduate"></i>', 'blue', 'members.php?type=individual');
+  statCard('Research Labs', (int)$s['labs'], '<i class="fa-solid fa-building-columns"></i>', 'blue', 'members.php?type=lab');
+  statCard('Active Events', (int)$eventCount, '<i class="fa-solid fa-calendar-days"></i>', 'green', 'events.php');
+  statCard('Newsletters Sent', (int)$nlCount, '<i class="fa-solid fa-paper-plane"></i>', 'gray', 'newsletter.php');
   ?>
 </div>
 
@@ -59,7 +59,7 @@ adminWrap(function() use ($s, $certCount, $nlCount, $eventCount, $recentMembers,
       <div class="flex items-center justify-between px-5 py-3 hover:bg-gray-50">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-xs font-bold text-gray-600"><?= strtoupper(substr($name,0,1)) ?></div>
-          <div><p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($name) ?></p><p class="text-[10px] text-gray-400"><?= $m['type'] === 'lab' ? '🏫 Lab' : '🧑‍🔬 Researcher' ?> · <?= date('d M', strtotime($m['created_at'])) ?></p></div>
+          <div><p class="text-sm font-medium text-gray-800"><?= htmlspecialchars($name) ?></p><p class="text-[10px] text-gray-400"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Lab' : '<i class="fa-solid fa-user-graduate"></i> Researcher' ?> · <?= date('d M', strtotime($m['created_at'])) ?></p></div>
         </div>
         <span class="text-[10px] font-bold px-2 py-0.5 rounded-full <?= $sc ?>"><?= ucfirst($m['status']) ?></span>
       </div>
@@ -79,7 +79,7 @@ adminWrap(function() use ($s, $certCount, $nlCount, $eventCount, $recentMembers,
       <?php endif; ?>
       <?php foreach ($recentCerts as $c): ?>
       <div class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
-        <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-sm">🏆</div>
+        <div class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-sm"><i class="fa-solid fa-trophy"></i></div>
         <div class="flex-1 min-w-0">
           <p class="text-sm font-medium text-gray-800 truncate"><?= htmlspecialchars($c['recipient_name']) ?></p>
           <p class="text-[10px] text-gray-400"><?= htmlspecialchars($c['certificate_no']) ?> · <?= htmlspecialchars(mb_strimwidth($c['event_title'] ?? '', 0, 30, '…')) ?></p>

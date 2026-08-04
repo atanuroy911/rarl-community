@@ -164,13 +164,13 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
   </div>
   <div>
     <h1 class="text-2xl font-black text-gray-900"><?= htmlspecialchars($displayName ?: '(unnamed)') ?></h1>
-    <p class="text-gray-500 text-sm"><?= $m['type'] === 'lab' ? '🏫 Research Lab' : '🧑‍🔬 Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?></p>
+    <p class="text-gray-500 text-sm"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?></p>
   </div>
 </div>
 
 <?php if ($errors): ?>
 <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-1">
-  <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span>⚠️</span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+  <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
 </div>
 <?php endif; ?>
 
@@ -329,10 +329,10 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
           <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible']??1)?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Visible in directory
         </label>
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="open_to_mentor" value="1" <?= !empty($m['open_to_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> 🧭 Open to mentor
+          <input type="checkbox" name="open_to_mentor" value="1" <?= !empty($m['open_to_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> <i class="fa-solid fa-compass"></i> Open to mentor
         </label>
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="seeking_mentor" value="1" <?= !empty($m['seeking_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> 🎯 Seeking mentor
+          <input type="checkbox" name="seeking_mentor" value="1" <?= !empty($m['seeking_mentor'])?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> <i class="fa-solid fa-bullseye"></i> Seeking mentor
         </label>
       </div>
 
@@ -363,7 +363,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="text-xs">
         <p class="text-gray-500 mb-1">CV / Resume</p>
         <?php if (!empty($m['cv_path'])): ?>
-        <a href="../uploads/cv/<?= urlencode($m['cv_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100">📄 View CV</a>
+        <a href="../uploads/cv/<?= urlencode($m['cv_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-lines"></i> View CV</a>
         <?php else: ?>
         <span class="text-gray-300">Not uploaded</span>
         <?php endif; ?>
@@ -371,7 +371,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="text-xs">
         <p class="text-gray-500 mb-1">ID Card</p>
         <?php if (!empty($m['id_card_path'])): ?>
-        <a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg font-semibold hover:bg-purple-100">🪪 <?= htmlspecialchars($m['member_code'] ?? '') ?></a>
+        <a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg font-semibold hover:bg-purple-100"><i class="fa-solid fa-id-card"></i> <?= htmlspecialchars($m['member_code'] ?? '') ?></a>
         <p class="text-gray-400 mt-1">Expires <?= $m['id_card_expires_at'] ? date('d M Y', strtotime($m['id_card_expires_at'])) : '—' ?></p>
         <?php else: ?>
         <span class="text-gray-300">Not generated</span>
@@ -385,12 +385,12 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="flex justify-between"><span class="text-gray-500">Email verified</span><span class="text-gray-700"><?= $m['email_verified_at'] ? date('d M Y', strtotime($m['email_verified_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Last login</span><span class="text-gray-700"><?= $m['last_login_at'] ? date('d M Y H:i', strtotime($m['last_login_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Welcome email sent</span><span class="text-gray-700"><?= $m['discord_invited'] ? 'Yes' : 'No' ?></span></div>
-      <div class="flex justify-between"><span class="text-gray-500">Must change password</span><span class="text-gray-700"><?= !empty($m['must_change_password']) ? '⚠️ Yes' : 'No' ?></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Must change password</span><span class="text-gray-700"><?= !empty($m['must_change_password']) ? '<i class="fa-solid fa-triangle-exclamation"></i> Yes' : 'No' ?></span></div>
     </div>
 
     <!-- Admin Assist -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-2">
-      <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">🛟 Admin Assist</h2>
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-1"><i class="fa-solid fa-life-ring"></i> Admin Assist</h2>
       <p class="text-[11px] text-gray-400 mb-2">Common help-desk actions for this member.</p>
       <?php
         $assistBtn = function(string $action, string $label, string $confirmMsg = '', string $classes = 'bg-gray-50 hover:bg-gray-100 text-gray-700') {
@@ -401,15 +401,15 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         };
       ?>
       <?php if (empty($m['email_verified_at'])): ?>
-        <?php $assistBtn('resend_verification', '✉️ Resend verification email'); ?>
-        <?php $assistBtn('mark_verified', '✅ Manually mark email verified'); ?>
+        <?php $assistBtn('resend_verification', '<i class="fa-solid fa-envelope"></i> Resend verification email'); ?>
+        <?php $assistBtn('mark_verified', '<i class="fa-solid fa-circle-check"></i> Manually mark email verified'); ?>
       <?php endif; ?>
       <?php if ($m['status'] === 'pending'): ?>
-        <?php $assistBtn('approve_now', '👍 Approve & activate now', '', 'bg-green-50 hover:bg-green-100 text-green-700'); ?>
+        <?php $assistBtn('approve_now', '<i class="fa-solid fa-thumbs-up"></i> Approve & activate now', '', 'bg-green-50 hover:bg-green-100 text-green-700'); ?>
       <?php endif; ?>
-      <?php $assistBtn('send_temp_password', '🔑 Reset password & email temp password', 'Generate a new temporary password and email it to this member?'); ?>
-      <?php $assistBtn('resend_welcome', '📧 Resend welcome email'); ?>
-      <?php $assistBtn('regenerate_id_card', '🪪 Regenerate ID card'); ?>
+      <?php $assistBtn('send_temp_password', '<i class="fa-solid fa-key"></i> Reset password & email temp password', 'Generate a new temporary password and email it to this member?'); ?>
+      <?php $assistBtn('resend_welcome', '<i class="fa-solid fa-envelope"></i> Resend welcome email'); ?>
+      <?php $assistBtn('regenerate_id_card', '<i class="fa-solid fa-id-card"></i> Regenerate ID card'); ?>
     </div>
 
     <!-- Linked emails -->
@@ -420,7 +420,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         <span class="truncate"><?= htmlspecialchars($le['email']) ?> <?= $le['is_primary'] ? '· primary' : ($le['verified_at'] ? '· verified' : '· pending') ?></span>
         <?php if (!$le['is_primary']): ?>
         <form method="POST" onsubmit="return confirm('Unlink this email?')"><?= acsrfField() ?><input type="hidden" name="assist_action" value="remove_email"><input type="hidden" name="email_id" value="<?= $le['id'] ?>">
-          <button type="submit" class="text-red-500 font-semibold flex-shrink-0">✕</button>
+          <button type="submit" class="text-red-500 font-semibold flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
         </form>
         <?php endif; ?>
       </div>

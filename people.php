@@ -15,7 +15,7 @@ echo htmlHead('Our People');
 <!-- Hero -->
 <section class="bg-rarl-navy text-white py-14 px-6 text-center">
   <div class="max-w-2xl mx-auto">
-    <div class="text-4xl mb-4">🧑‍🤝‍🧑</div>
+    <div class="text-4xl mb-4"><i class="fa-solid fa-people-group"></i></div>
     <h1 class="font-heading font-black text-3xl md:text-4xl mb-3">Our People</h1>
     <p class="text-white/60 text-sm max-w-lg mx-auto">Meet the leadership and section chairs behind RARL's global research community.</p>
   </div>
@@ -42,13 +42,13 @@ echo htmlHead('Our People');
       <?php endif; ?>
       <div class="flex items-center justify-center gap-3">
         <?php if (!empty($p['email'])): ?>
-        <a href="mailto:<?= htmlspecialchars($p['email']) ?>" title="Email" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-rarl-red hover:text-white text-gray-500 dark:text-gray-300 flex items-center justify-center text-sm transition-colors">✉️</a>
+        <a href="mailto:<?= htmlspecialchars($p['email']) ?>" title="Email" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-rarl-red hover:text-white text-gray-500 dark:text-gray-300 flex items-center justify-center text-sm transition-colors"><i class="fa-solid fa-envelope"></i></a>
         <?php endif; ?>
         <?php if (!empty($p['linkedin_url'])): ?>
         <a href="<?= htmlspecialchars($p['linkedin_url']) ?>" target="_blank" rel="noopener" title="LinkedIn" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-rarl-red hover:text-white text-gray-500 dark:text-gray-300 flex items-center justify-center text-sm transition-colors">in</a>
         <?php endif; ?>
         <?php if (!empty($p['google_scholar_url'])): ?>
-        <a href="<?= htmlspecialchars($p['google_scholar_url']) ?>" target="_blank" rel="noopener" title="Google Scholar" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-rarl-red hover:text-white text-gray-500 dark:text-gray-300 flex items-center justify-center text-sm transition-colors">🎓</a>
+        <a href="<?= htmlspecialchars($p['google_scholar_url']) ?>" target="_blank" rel="noopener" title="Google Scholar" class="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-800 hover:bg-rarl-red hover:text-white text-gray-500 dark:text-gray-300 flex items-center justify-center text-sm transition-colors"><i class="fa-solid fa-graduation-cap"></i></a>
         <?php endif; ?>
       </div>
     </div>

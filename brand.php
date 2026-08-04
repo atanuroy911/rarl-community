@@ -12,8 +12,13 @@ define('BRAND_INK',       '#101010');
 define('BRAND_INK_SOFT',  '#1a1a1a');
 define('BRAND_WHITE',     '#FFFFFF');
 
-define('BRAND_FONT_SANS',       'Poppins');
-define('BRAND_FONT_GOOGLE_URL', 'https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap');
+// Inter — designed for on-screen UI legibility at small sizes (taller x-height,
+// more open letterforms than Poppins), used for both body copy and headings.
+define('BRAND_FONT_SANS',       'Inter');
+define('BRAND_FONT_GOOGLE_URL', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+// FontAwesome — swapped in for emoji icons across the site (see rarlIconCss()/rarlFaCdn()).
+define('FONTAWESOME_CDN_URL', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
 
 define('BRAND_LOGO_PATH', '/assets/logo.png'); // full lockup: icon + "RARL" wordmark + tagline
 define('BRAND_MARK_PATH', '/assets/mark.png'); // square icon only — nav, sidebar, login cards, certs

@@ -63,6 +63,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $pdo->prepare("UPDATE resources SET is_featured = 1 - is_featured WHERE id=?")->execute([(int)($_POST['res_id']??0)]);
         header('Location: resources.php'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'delete') {
+                $pdo->exec("DELETE FROM resources WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' resource(s) deleted.'];
+            } elseif ($bulkOp === 'feature') {
+                $pdo->exec("UPDATE resources SET is_featured = 1 WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' resource(s) featured.'];
+            } elseif ($bulkOp === 'unfeature') {
+                $pdo->exec("UPDATE resources SET is_featured = 0 WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' resource(s) unfeatured.'];
+            } elseif ($bulkOp === 'make_public') {
+                $pdo->exec("UPDATE resources SET access_level = 'public' WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' resource(s) made public.'];
+            } elseif ($bulkOp === 'make_premium') {
+                $pdo->exec("UPDATE resources SET access_level = 'member' WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' resource(s) made members-only.'];
+            }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one resource first.'];
+        }
+        header('Location: resources.php'); exit;
+    }
 }
 
 $categories = $pdo->query("SELECT * FROM resource_categories ORDER BY display_order")->fetchAll();
@@ -80,7 +106,7 @@ adminWrap(function() use ($categories, $resources) {
 
     <!-- Add Resource -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4">🔗 Add Resource Link</h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><i class="fa-solid fa-link"></i> Add Resource Link</h2>
       <?php if (empty($categories)): ?>
       <p class="text-xs text-amber-600 bg-amber-50 p-3 rounded-lg border border-amber-200">Please create a category first before adding resources.</p>
       <?php else: ?>
@@ -107,11 +133,11 @@ adminWrap(function() use ($categories, $resources) {
 
         <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer mt-2 hover:border-amber-300">
           <input type="checkbox" name="res_feat" value="1" class="accent-amber-500 w-4 h-4"/>
-          <span class="text-xs font-semibold text-gray-700">⭐ Feature this resource</span>
+          <span class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-star"></i> Feature this resource</span>
         </label>
         <label class="flex items-center gap-2 p-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer mt-2">
           <input type="checkbox" name="res_access" value="member" class="accent-amber-600 w-4 h-4"/>
-          <span class="text-xs font-semibold text-amber-700">🔒 Members-only (premium content)</span>
+          <span class="text-xs font-semibold text-amber-700"><i class="fa-solid fa-lock"></i> Members-only (premium content)</span>
         </label>
         <button type="submit" class="w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors">Add Resource</button>
       </form>
@@ -120,7 +146,7 @@ adminWrap(function() use ($categories, $resources) {
 
     <!-- Add Category -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4">📁 Add Category</h2>
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4"><i class="fa-solid fa-folder"></i> Add Category</h2>
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="add_category">
         <div class="flex gap-2">
@@ -129,7 +155,7 @@ adminWrap(function() use ($categories, $resources) {
         </div>
         <textarea name="cat_desc" rows="2" placeholder="Description" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"></textarea>
         <label class="flex items-center gap-2 mb-2"><input type="checkbox" name="cat_pub" value="1" checked class="accent-rarl-red w-3.5 h-3.5"/><span class="text-xs text-gray-600">Publish immediately</span></label>
-        <label class="flex items-center gap-2 mb-2"><input type="checkbox" name="cat_access" value="member" class="accent-amber-600 w-3.5 h-3.5"/><span class="text-xs text-amber-700 font-semibold">🔒 Members-only category</span></label>
+        <label class="flex items-center gap-2 mb-2"><input type="checkbox" name="cat_access" value="member" class="accent-amber-600 w-3.5 h-3.5"/><span class="text-xs text-amber-700 font-semibold"><i class="fa-solid fa-lock"></i> Members-only category</span></label>
         <button type="submit" class="w-full py-2 bg-gray-800 hover:bg-gray-900 text-white font-semibold text-xs rounded-xl transition-colors">Create Category</button>
       </form>
 
@@ -140,7 +166,7 @@ adminWrap(function() use ($categories, $resources) {
           <div class="flex items-center gap-2">
             <span class="text-base"><?= $c['icon_emoji'] ?></span>
             <span class="text-xs font-semibold text-gray-700"><?= htmlspecialchars($c['name']) ?></span>
-            <?php if (($c['access_level'] ?? 'public') === 'member'): ?><span class="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">🔒</span><?php endif; ?>
+            <?php if (($c['access_level'] ?? 'public') === 'member'): ?><span class="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded"><i class="fa-solid fa-lock"></i></span><?php endif; ?>
           </div>
           <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
             <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_cat_access"><input type="hidden" name="cat_id" value="<?= $c['id'] ?>">
@@ -160,22 +186,32 @@ adminWrap(function() use ($categories, $resources) {
   <!-- Right Col: Resources List -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Resources <span class="text-gray-400 font-normal text-xs">(<?= count($resources) ?>)</span></h2>
+        <label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label>
       </div>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'<i class="fa-solid fa-star"></i> Feature','op'=>'feature','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Unfeature','op'=>'unfeature','class'=>'bg-gray-600 hover:bg-gray-500'],
+          ['label'=>'Make Public','op'=>'make_public','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'<i class="fa-solid fa-lock"></i> Make Premium','op'=>'make_premium','class'=>'bg-purple-600 hover:bg-purple-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected resources?'],
+      ]) ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($resources)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No resources added yet.</p>
         <?php endif; ?>
         <?php foreach ($resources as $r):
-          $icons = ['youtube_playlist'=>'▶️','youtube_video'=>'🎬','article'=>'📄','book'=>'📚','tool'=>'🔧','course'=>'🎓','other'=>'🔗'];
+          $icons = ['youtube_playlist'=>'fa-square-caret-right','youtube_video'=>'fa-clapperboard','article'=>'fa-file-lines','book'=>'fa-book','tool'=>'fa-wrench','course'=>'fa-graduation-cap','other'=>'fa-link'];
         ?>
         <div class="p-4 flex gap-4 hover:bg-gray-50 group">
-          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><?= $icons[$r['type']] ?? '🔗' ?></div>
+          <div class="flex items-center"><?= bulkRowCheckbox((int)$r['id']) ?></div>
+          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><i class="fa-solid <?= $icons[$r['type']] ?? 'fa-link' ?>"></i></div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
-              <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">⭐ Featured</span><?php endif; ?>
-              <?php if (($r['access_level']??'public')==='member'): ?><span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded">🔒 Premium</span><?php endif; ?>
+              <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded"><i class="fa-solid fa-star"></i> Featured</span><?php endif; ?>
+              <?php if (($r['access_level']??'public')==='member'): ?><span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded"><i class="fa-solid fa-lock"></i> Premium</span><?php endif; ?>
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($r['cat_name']??'Unknown') ?></span>
               <a href="<?= htmlspecialchars($r['url']) ?>" target="_blank" class="text-[10px] text-blue-500 hover:underline truncate max-w-[150px]"><?= htmlspecialchars($r['url']) ?></a>
             </div>
@@ -200,4 +236,5 @@ adminWrap(function() use ($categories, $resources) {
   </div>
 
 </div>
+<?= bulkBarScript() ?>
 <?php }, 'resources', 'Resources');

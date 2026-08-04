@@ -25,7 +25,7 @@ echo htmlHead('Unsubscribe');
 <?= publicNav() ?>
 <div class="min-h-[calc(100vh-64px)] flex items-center justify-center bg-gray-50 dark:bg-gray-950 px-4">
   <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 p-8 rounded-2xl shadow-sm text-center max-w-sm w-full">
-    <div class="text-4xl mb-4">📬</div>
+    <div class="text-4xl mb-4"><i class="fa-solid fa-envelope-open-text"></i></div>
     <h1 class="font-heading font-bold text-xl text-gray-900 dark:text-white mb-2">Newsletter</h1>
     <p class="text-sm text-gray-500 dark:text-gray-400 mb-6"><?= htmlspecialchars($msg) ?></p>
     <a href="index.php" class="text-sm text-rarl-red font-semibold hover:underline">Return to Home</a>

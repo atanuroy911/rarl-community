@@ -39,6 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: templates.php?edit=' . $pdo->lastInsertId()); exit;
     }
 
+    if ($action === 'upload_field_image') {
+        $filename = validateUpload($_FILES['field_image'] ?? [], ['jpg','jpeg','png','webp'], 3*1024*1024, UPLOADS_PATH.'/templates');
+        header('Content-Type: application/json');
+        echo $filename ? json_encode(['ok'=>true,'filename'=>$filename]) : json_encode(['ok'=>false]);
+        exit;
+    }
+
     if ($action === 'save_config') {
         $id = (int)($_POST['template_id'] ?? 0);
         $config = $_POST['config_json'] ?? '[]';
@@ -89,7 +96,7 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-1">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4">➕ New Template</h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><i class="fa-solid fa-plus"></i> New Template</h2>
       <form method="POST" enctype="multipart/form-data" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="create_template">
         <input type="text" name="name" required placeholder="Template name (e.g. 2026 Gold Certificate)"
@@ -99,7 +106,7 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
           <option value="id_card">ID Card (credit-card size)</option>
         </select>
         <div class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-5 text-center relative">
-          <div class="text-2xl mb-1">🖼️</div>
+          <div class="text-2xl mb-1"><i class="fa-solid fa-image"></i></div>
           <p class="text-xs text-gray-500">Upload background image</p>
           <input type="file" name="background" accept=".jpg,.jpeg,.png,.webp" required class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
         </div>
@@ -163,11 +170,16 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
         <?php foreach ($keys as $k => $label): ?>
         <button type="button" onclick="addField('<?= $k ?>')" class="w-full text-left px-3 py-2 text-xs font-medium bg-gray-50 hover:bg-rarl-red/10 hover:text-rarl-red border border-gray-200 rounded-lg transition-colors">+ <?= htmlspecialchars($label) ?></button>
         <?php endforeach; ?>
+        <button type="button" onclick="addCustomText()" class="w-full text-left px-3 py-2 text-xs font-medium bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded-lg transition-colors"><i class="fa-solid fa-font"></i> Custom Text…</button>
+        <button type="button" onclick="triggerSignatureUpload()" class="w-full text-left px-3 py-2 text-xs font-medium bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg transition-colors"><i class="fa-solid fa-signature"></i> Signature / Stamp Image…</button>
+        <input type="file" id="signature-upload" accept=".jpg,.jpeg,.png,.webp" class="hidden"/>
       </div>
     </div>
     <div id="field-editor" class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hidden">
       <h3 class="font-heading font-bold text-sm text-gray-800 mb-3">Field Settings</h3>
       <div class="space-y-2.5">
+        <div id="f-text-wrap" class="hidden"><label class="text-[10px] font-semibold text-gray-500">Text</label>
+          <textarea id="f-text" rows="2" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs"></textarea></div>
         <div><label class="text-[10px] font-semibold text-gray-500">Font size</label>
           <input type="number" id="f-size" min="3" max="60" class="w-full px-2 py-1.5 border border-gray-300 rounded-lg text-xs"/></div>
         <div><label class="text-[10px] font-semibold text-gray-500">Color</label>
@@ -186,7 +198,7 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
       <?= acsrfField() ?><input type="hidden" name="action" value="save_config">
       <input type="hidden" name="template_id" value="<?= $edit['id'] ?>">
       <input type="hidden" name="config_json" id="config_json">
-      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5">💾 Save Layout</button>
+      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5"><i class="fa-solid fa-floppy-disk"></i> Save Layout</button>
     </form>
   </div>
 </div>
@@ -195,6 +207,9 @@ adminWrap(function() use ($templates, $edit, $FIELD_KEYS) {
 let fields = <?= json_encode($config) ?>;
 const wrap = document.getElementById('canvas-wrap');
 let selected = null;
+const ACSRF = <?= json_encode($GLOBALS['acsrf'] ?? '') ?>;
+const TEMPLATE_ID = <?= (int)$edit['id'] ?>;
+const IMAGE_KEYS = ['qr', 'avatar', 'signature'];
 
 function render() {
   wrap.querySelectorAll('.field-el').forEach(el => el.remove());
@@ -205,18 +220,29 @@ function render() {
     el.style.left = f.x + '%';
     el.style.top = f.y + '%';
     el.style.cursor = 'move';
-    el.style.border = '1px dashed #E11D2A';
-    el.style.padding = '2px 4px';
-    el.style.fontSize = (f.key === 'qr' || f.key === 'avatar') ? '10px' : ((f.font_size || 12) * 0.9) + 'px';
-    el.style.color = f.color || '#111';
-    el.style.fontWeight = f.bold ? 'bold' : 'normal';
-    el.style.background = 'rgba(255,255,255,.6)';
-    el.style.whiteSpace = 'nowrap';
-    el.style.transform = f.align === 'center' ? 'translateX(-50%)' : (f.align === 'right' ? 'translateX(-100%)' : 'none');
-    el.textContent = (f.key === 'qr' || f.key === 'avatar') ? '[' + f.key + ']' : ('{' + f.key + '}');
     el.dataset.idx = i;
     el.addEventListener('mousedown', startDrag);
     el.addEventListener('click', (e) => { e.stopPropagation(); selectField(i); });
+
+    if (f.key === 'signature' && f.image) {
+      el.style.width = (f.w || 15) + '%';
+      const img = document.createElement('img');
+      img.src = '../uploads/templates/' + f.image;
+      img.style.width = '100%';
+      img.style.display = 'block';
+      img.style.border = '1px dashed #E11D2A';
+      el.appendChild(img);
+    } else {
+      el.style.border = '1px dashed #E11D2A';
+      el.style.padding = '2px 4px';
+      el.style.fontSize = IMAGE_KEYS.includes(f.key) ? '10px' : ((f.font_size || 12) * 0.9) + 'px';
+      el.style.color = f.color || '#111';
+      el.style.fontWeight = f.bold ? 'bold' : 'normal';
+      el.style.background = 'rgba(255,255,255,.6)';
+      el.style.whiteSpace = 'nowrap';
+      el.style.transform = f.align === 'center' ? 'translateX(-50%)' : (f.align === 'right' ? 'translateX(-100%)' : 'none');
+      el.textContent = IMAGE_KEYS.includes(f.key) ? '[' + f.key + ']' : (f.key === 'custom_text' ? (f.text || '(empty text)') : ('{' + f.key + '}'));
+    }
     wrap.appendChild(el);
   });
 }
@@ -227,17 +253,54 @@ function addField(key) {
   selectField(fields.length - 1);
 }
 
+function addCustomText() {
+  const text = prompt('Text to show on the card (e.g. "Robotics & Automation Research Lab"):');
+  if (!text) return;
+  fields.push({key: 'custom_text', text, x: 40, y: 40, font_size: 12, color: '#111111', align: 'left', bold: false});
+  render();
+  selectField(fields.length - 1);
+}
+
+function triggerSignatureUpload() {
+  document.getElementById('signature-upload').click();
+}
+document.getElementById('signature-upload').addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const fd = new FormData();
+  fd.append('action', 'upload_field_image');
+  fd.append('acsrf', ACSRF);
+  fd.append('field_image', file);
+  const res = await fetch('templates.php', { method: 'POST', body: fd });
+  const data = await res.json();
+  if (data.ok) {
+    fields.push({key: 'signature', image: data.filename, x: 40, y: 40, w: 20, h: 12});
+    render();
+    selectField(fields.length - 1);
+  } else {
+    alert('Upload failed — check file type/size (max 3MB, jpg/png/webp).');
+  }
+  e.target.value = '';
+});
+
 function selectField(i) {
   selected = i;
   const f = fields[i];
   document.getElementById('field-editor').classList.remove('hidden');
+  const isText = f.key === 'custom_text';
+  const isImage = IMAGE_KEYS.includes(f.key);
+  document.getElementById('f-text-wrap').classList.toggle('hidden', !isText);
+  if (isText) document.getElementById('f-text').value = f.text || '';
   document.getElementById('f-size').value = f.font_size || 12;
   document.getElementById('f-color').value = f.color || '#111111';
   document.getElementById('f-align').value = f.align || 'left';
   document.getElementById('f-bold').checked = !!f.bold;
   document.getElementById('f-wh').value = f.w || 15;
+  document.getElementById('f-size').closest('div').style.display = isImage ? 'none' : '';
+  document.getElementById('f-color').closest('div').style.display = isImage ? 'none' : '';
+  document.getElementById('f-align').closest('div').style.display = isImage ? 'none' : '';
 }
-['f-size','f-color','f-align','f-bold','f-wh'].forEach(id => {
+['f-size','f-color','f-align','f-bold','f-wh','f-text'].forEach(id => {
   document.getElementById(id).addEventListener('input', () => {
     if (selected === null) return;
     const f = fields[selected];
@@ -246,6 +309,7 @@ function selectField(i) {
     f.align = document.getElementById('f-align').value;
     f.bold = document.getElementById('f-bold').checked;
     f.w = f.h = parseFloat(document.getElementById('f-wh').value) || 15;
+    if (f.key === 'custom_text') f.text = document.getElementById('f-text').value;
     render();
   });
 });

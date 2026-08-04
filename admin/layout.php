@@ -11,28 +11,29 @@ function htmlAdminHead(string $title): void {
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:' . brandTailwindConfigJson() . ',fontFamily:{heading:["' . BRAND_FONT_SANS . '","system-ui","sans-serif"]}}}}</script>
 <link href="' . BRAND_FONT_GOOGLE_URL . '" rel="stylesheet"/>
-<style>body{font-family:"' . BRAND_FONT_SANS . '",sans-serif;}h1,h2,h3,h4{font-family:"' . BRAND_FONT_SANS . '",sans-serif;}</style>
+<link href="' . FONTAWESOME_CDN_URL . '" rel="stylesheet"/>
+<style>body{font-family:"' . BRAND_FONT_SANS . '",sans-serif;}h1,h2,h3,h4{font-family:"' . BRAND_FONT_SANS . '",sans-serif;}' . rarlFontSizeCss() . '</style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">';
 }
 
 function adminSidebar(string $active = ''): void {
     $nav = [
-        'index'       => ['index.php',       '📊', 'Dashboard'],
-        'members'     => ['members.php',      '👥', 'Members'],
-        'events'      => ['events.php',       '📅', 'Events'],
-        'certificates'=> ['certificates.php', '🏆', 'Certificates'],
-        'templates'   => ['templates.php',    '🖼️', 'Templates'],
-        'newsletter'  => ['newsletter.php',   '📧', 'Newsletter'],
-        'compose'     => ['compose-email.php','✉️', 'Compose Email'],
-        'import'      => ['import-members.php','📥', 'Import Members'],
-        'resources'   => ['resources.php',    '📚', 'Resources'],
-        'community'   => ['community.php',    '💬', 'Community'],
-        'partnerships'=> ['partnerships.php',  '🤝', 'Partnerships'],
-        'plans'       => ['plans.php',        '🎓', 'Plans'],
-        'sections'    => ['sections.php',     '🌍', 'Sections'],
-        'people'      => ['people.php',       '🧑‍🤝‍🧑', 'People'],
-        'migrate'     => ['migrate.php',      '🗄️', 'Migrations'],
-        'settings'    => ['settings.php',     '⚙️', 'Settings'],
+        'index'       => ['index.php',       '<i class="fa-solid fa-chart-simple"></i>', 'Dashboard'],
+        'members'     => ['members.php',      '<i class="fa-solid fa-users"></i>', 'Members'],
+        'events'      => ['events.php',       '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
+        'certificates'=> ['certificates.php', '<i class="fa-solid fa-trophy"></i>', 'Certificates'],
+        'templates'   => ['templates.php',    '<i class="fa-solid fa-image"></i>', 'Templates'],
+        'newsletter'  => ['newsletter.php',   '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
+        'compose'     => ['compose-email.php','<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email'],
+        'import'      => ['import-members.php','<i class="fa-solid fa-download"></i>', 'Import Members'],
+        'resources'   => ['resources.php',    '<i class="fa-solid fa-book"></i>', 'Resources'],
+        'community'   => ['community.php',    '<i class="fa-solid fa-comment"></i>', 'Community'],
+        'partnerships'=> ['partnerships.php',  '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
+        'plans'       => ['plans.php',        '<i class="fa-solid fa-graduation-cap"></i>', 'Plans'],
+        'sections'    => ['sections.php',     '<i class="fa-solid fa-earth-americas"></i>', 'Sections'],
+        'people'      => ['people.php',       '<i class="fa-solid fa-people-group"></i>', 'People'],
+        'migrate'     => ['migrate.php',      '<i class="fa-solid fa-database"></i>', 'Migrations'],
+        'settings'    => ['settings.php',     '<i class="fa-solid fa-gear"></i>', 'Settings'],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
     <aside id="admin-sidebar" class="w-64 sm:w-56 flex-shrink-0 bg-rarl-navy text-white flex flex-col min-h-screen fixed top-0 left-0 z-40 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200">
@@ -41,7 +42,7 @@ function adminSidebar(string $active = ''): void {
         <img src="' . BRAND_MARK_PATH . '" alt="RARL" class="w-8 h-8 rounded-lg object-contain flex-shrink-0"/>
         <div class="min-w-0"><div class="font-heading font-bold text-xs leading-tight truncate">RARL Admin</div><div class="text-white/35 text-[9px] truncate">Community Platform</div></div>
       </div>
-      <button type="button" onclick="toggleAdminSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white flex-shrink-0" aria-label="Close menu">✕</button>
+      <button type="button" onclick="toggleAdminSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white flex-shrink-0" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <nav class="flex-1 p-3 flex flex-col gap-0.5">';
     foreach ($nav as $key => [$href, $icon, $label]) {
@@ -52,8 +53,8 @@ function adminSidebar(string $active = ''): void {
     }
     echo '</nav>
     <div class="p-3 border-t border-white/10 space-y-0.5">
-      <a href="../index.php" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors">🌐 Public Site</a>
-      <a href="logout.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors">🚪 Logout</a>
+      <a href="../index.php" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors"><i class="fa-solid fa-earth-americas"></i> Public Site</a>
+      <a href="logout.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
     </div>
     </aside>
     <script>
@@ -101,11 +102,79 @@ function statCard(string $label, int|string $val, string $icon, string $color, s
 </" . ($href ? 'a' : 'div') . ">";
 }
 
+// ── Reusable bulk-action toolbar (checkbox column + floating action bar) ──
+// Usage per list page:
+//   1. echo bulkFormOpen(); right before the table (a detached <form id="bulk-form">
+//      the checkboxes/buttons point at via form="bulk-form", so it never nests
+//      inside the existing per-row single-action <form> elements in each <td>).
+//   2. echo bulkBar([...actions]) where each action is either
+//      ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Sure?']
+//      or ['label'=>'Export','name'=>'action','value'=>'export_csv','class'=>'...'] for a plain field override.
+//   3. Give the <table>'s header row a `<th><?= bulkSelectAllCheckbox() ?></th>` and each row
+//      `<td><?= bulkRowCheckbox($id) ?></td>`.
+//   4. echo bulkBarScript(); once, anywhere after the table.
+// The page's own POST handler reads $_POST['ids'] (array) and $_POST['bulk_op'] when action=='bulk'.
+// $group distinguishes multiple independent bulk-selection sets on the same
+// page (e.g. admin/community.php has separate Posts / Comments / Announcements
+// bulk bars) — pass e.g. 'posts' so ids don't collide; omit it for the common
+// single-bulk-group-per-page case.
+function bulkFormOpen(string $group = '', array $extraFields = []): string {
+    $extra = '';
+    foreach ($extraFields as $k => $v) $extra .= '<input type="hidden" name="' . htmlspecialchars($k) . '" value="' . htmlspecialchars($v) . '">';
+    return '<form id="bulk-form' . $group . '" method="POST">' . acsrfField() . '<input type="hidden" name="action" value="bulk"><input type="hidden" name="bulk_op" id="bulk-op' . $group . '">' . $extra . '</form>';
+}
+function bulkSelectAllCheckbox(string $group = ''): string {
+    return '<input type="checkbox" id="select-all' . $group . '" class="accent-rarl-red w-4 h-4"/>';
+}
+function bulkRowCheckbox(int $id, string $group = ''): string {
+    return '<input type="checkbox" class="row-check' . $group . ' accent-rarl-red w-4 h-4" name="ids[]" value="' . $id . '" form="bulk-form' . $group . '"/>';
+}
+function bulkBar(array $actions, string $group = ''): string {
+    $btns = '';
+    foreach ($actions as $a) {
+        $confirmAttr = !empty($a['confirm'])
+            ? " onclick=\"document.getElementById('bulk-op{$group}').value='" . htmlspecialchars($a['op'] ?? '', ENT_QUOTES) . "'; return confirm('" . htmlspecialchars($a['confirm'], ENT_QUOTES) . "');\""
+            : (isset($a['op']) ? " onclick=\"document.getElementById('bulk-op{$group}').value='" . htmlspecialchars($a['op'], ENT_QUOTES) . "'\"" : '');
+        $nameVal = isset($a['name']) ? ' name="' . htmlspecialchars($a['name']) . '" value="' . htmlspecialchars($a['value'] ?? '') . '"' : '';
+        $cls = $a['class'] ?? 'bg-gray-700 hover:bg-gray-600';
+        $btns .= '<button type="submit" form="bulk-form' . $group . '"' . $nameVal . $confirmAttr . ' class="px-3 py-1.5 ' . $cls . ' text-xs font-semibold rounded-lg">' . $a['label'] . '</button>';
+    }
+    return '<div id="bulk-bar' . $group . '" class="hidden sticky top-2 z-20 mb-4 bg-gray-900 text-white rounded-2xl shadow-lg px-5 py-3 flex flex-wrap items-center gap-3">
+      <span class="text-sm font-semibold"><span id="bulk-count' . $group . '">0</span> selected</span>
+      <div class="flex flex-wrap gap-2 ml-auto">' . $btns . '</div>
+    </div>';
+}
+// Pass every $group used on the page (e.g. bulkBarScript(['', 'comments'])); each
+// gets its own independent select-all/checked-count wiring.
+function bulkBarScript(array $groups = ['']): string {
+    $groupsJson = json_encode($groups);
+    return <<<HTML
+<script>
+  (function() {
+    {$groupsJson}.forEach(function(group) {
+      const selectAll = document.getElementById('select-all' + group);
+      const rowClass = 'row-check' + group;
+      const rowChecks = () => Array.from(document.querySelectorAll('.' + rowClass));
+      const bulkBarEl = document.getElementById('bulk-bar' + group);
+      const bulkCountEl = document.getElementById('bulk-count' + group);
+      function syncBulkBar() {
+        const checked = rowChecks().filter(c => c.checked);
+        if (bulkCountEl) bulkCountEl.textContent = checked.length;
+        if (bulkBarEl) bulkBarEl.classList.toggle('hidden', checked.length === 0);
+      }
+      selectAll?.addEventListener('change', () => { rowChecks().forEach(c => c.checked = selectAll.checked); syncBulkBar(); });
+      document.addEventListener('change', (e) => { if (e.target.classList.contains(rowClass)) syncBulkBar(); });
+    });
+  })();
+</script>
+HTML;
+}
+
 function adminFlash(): void {
     $f = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
     if (!$f) return;
     $cls = $f['type'] === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700';
-    $ic  = $f['type'] === 'success' ? '✅' : '⚠️';
+    $ic  = $f['type'] === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
     echo "<div class=\"flex items-center gap-3 p-4 rounded-xl border mb-5 text-sm {$cls}\">{$ic} " . htmlspecialchars($f['msg']) . "</div>";
 }

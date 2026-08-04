@@ -43,7 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>
-<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}</style>
+<link href="<?= FONTAWESOME_CDN_URL ?>" rel="stylesheet"/>
+<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}<?= rarlFontSizeCss() ?></style>
 </head>
 <body class="min-h-screen flex items-center justify-center py-10" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
 <div class="w-full max-w-lg mx-4">
@@ -58,14 +59,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="text-gray-400 text-sm mb-5">This looks like a fresh install. Click below to create all tables and seed the default data — safe to run, it won't overwrite anything if tables already partially exist.</p>
 
     <?php if ($error): ?>
-    <div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">⚠️ <?= htmlspecialchars($error) ?></div>
+    <div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?></div>
     <?php endif; ?>
 
     <?php if ($results): ?>
     <div class="mb-4 space-y-2">
       <?php foreach ($results as $file => $r): ?>
       <div class="flex items-start gap-2 text-xs">
-        <span><?= $r['ok'] ? '✅' : '❌' ?></span>
+        <span><?= $r['ok'] ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-circle-xmark"></i>' ?></span>
         <div>
           <span class="font-mono font-semibold text-gray-800"><?= htmlspecialchars($file) ?></span>
           <?php if (!$r['ok']): ?><div class="text-red-600 mt-1"><?= htmlspecialchars($r['error']) ?></div><?php endif; ?>

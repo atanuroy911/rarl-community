@@ -56,6 +56,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: partnerships.php'); exit;
     }
 
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'publish') { $pdo->exec("UPDATE partnership_tiers SET is_published=1 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' tier(s) published.']; }
+            elseif ($bulkOp === 'unpublish') { $pdo->exec("UPDATE partnership_tiers SET is_published=0 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' tier(s) unpublished.']; }
+            elseif ($bulkOp === 'delete') { $pdo->exec("DELETE FROM partnership_tiers WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' tier(s) deleted.']; }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one tier first.'];
+        }
+        header('Location: partnerships.php'); exit;
+    }
+
     if ($action === 'save_copy') {
         $keys = ['partner_page_intro', 'partner_benefits_member', 'partner_benefits_partner', 'partner_ethics_note', 'partner_contact_name', 'partner_contact_email'];
         foreach ($keys as $k) {
@@ -88,7 +102,7 @@ adminWrap(function() use ($tiers, $set, $editTier) {
   <!-- Left: tier form -->
   <div class="xl:col-span-1 space-y-6">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editTier ? '✏️ Edit Tier' : '➕ Add Tier' ?></h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editTier ? '<i class="fa-solid fa-pen-to-square"></i> Edit Tier' : '<i class="fa-solid fa-plus"></i> Add Tier' ?></h2>
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?>
         <input type="hidden" name="action" value="<?= $editTier ? 'update_tier' : 'add_tier' ?>">
@@ -136,16 +150,26 @@ adminWrap(function() use ($tiers, $set, $editTier) {
   <!-- Right: tier list -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Tiers <span class="text-gray-400 font-normal text-xs">(<?= count($tiers) ?>)</span></h2>
+        <?php if ($tiers): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
       </div>
+      <?php if ($tiers): ?>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected tiers?'],
+      ]) ?>
+      <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($tiers)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No tiers yet. Add one on the left.</p>
         <?php endif; ?>
         <?php foreach ($tiers as $t): ?>
         <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
-          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><?= $t['is_addon'] ? '✨' : ($t['category'] === 'membership' ? '🎓' : '🤝') ?></div>
+          <?= bulkRowCheckbox((int)$t['id']) ?>
+          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><?= $t['is_addon'] ? '<i class="fa-solid fa-sparkles"></i>' : ($t['category'] === 'membership' ? '<i class="fa-solid fa-graduation-cap"></i>' : '<i class="fa-solid fa-handshake"></i>') ?></div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($t['category']) ?></span>
@@ -168,7 +192,7 @@ adminWrap(function() use ($tiers, $set, $editTier) {
 
     <!-- Page copy -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mt-6">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4">📝 Partners Page Content</h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><i class="fa-solid fa-file-lines"></i> Partners Page Content</h2>
       <form method="POST" class="space-y-4">
         <?= acsrfField() ?><input type="hidden" name="action" value="save_copy">
         <div>
@@ -208,4 +232,5 @@ adminWrap(function() use ($tiers, $set, $editTier) {
   </div>
 
 </div>
+<?= bulkBarScript() ?>
 <?php }, 'partnerships', 'Partnerships');

@@ -53,6 +53,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $pdo->prepare("UPDATE membership_plans SET is_published = 1 - is_published WHERE id=?")->execute([(int)($_POST['plan_id']??0)]);
         header('Location: plans.php'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'publish') { $pdo->exec("UPDATE membership_plans SET is_published=1 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' plan(s) published.']; }
+            elseif ($bulkOp === 'unpublish') { $pdo->exec("UPDATE membership_plans SET is_published=0 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' plan(s) unpublished.']; }
+            elseif ($bulkOp === 'delete') { $pdo->exec("DELETE FROM membership_plans WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' plan(s) deleted.']; }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one plan first.'];
+        }
+        header('Location: plans.php'); exit;
+    }
 }
 
 $plans = $pdo->query("SELECT * FROM membership_plans ORDER BY display_order, id")->fetchAll();
@@ -74,7 +87,7 @@ adminWrap(function() use ($plans, $editPlan) {
   <!-- Left: form -->
   <div class="xl:col-span-1 space-y-6">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editPlan ? '✏️ Edit Plan' : '➕ Add Plan' ?></h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editPlan ? '<i class="fa-solid fa-pen-to-square"></i> Edit Plan' : '<i class="fa-solid fa-plus"></i> Add Plan' ?></h2>
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?>
         <input type="hidden" name="action" value="<?= $editPlan ? 'update_plan' : 'add_plan' ?>">
@@ -133,16 +146,26 @@ adminWrap(function() use ($plans, $editPlan) {
   <!-- Right: list -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Plans <span class="text-gray-400 font-normal text-xs">(<?= count($plans) ?>)</span></h2>
+        <?php if ($plans): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
       </div>
+      <?php if ($plans): ?>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected plans?'],
+      ]) ?>
+      <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($plans)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No plans yet. Add one on the left.</p>
         <?php endif; ?>
         <?php foreach ($plans as $p): ?>
         <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
-          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0">🎓</div>
+          <?= bulkRowCheckbox((int)$p['id']) ?>
+          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><i class="fa-solid fa-graduation-cap"></i></div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($p['audience']) ?></span>
@@ -169,4 +192,5 @@ adminWrap(function() use ($plans, $editPlan) {
   </div>
 
 </div>
+<?= bulkBarScript() ?>
 <?php }, 'plans', 'Membership Plans');

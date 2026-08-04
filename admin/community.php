@@ -76,6 +76,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Comment deleted.'];
         header('Location: community.php#moderation'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        $bulkGroup = $_POST['bulk_group'] ?? '';
+        if ($ids && $bulkGroup) {
+            $inClause = implode(',', $ids);
+            if ($bulkGroup === 'announcements') {
+                if ($bulkOp === 'pin') $pdo->exec("UPDATE announcements SET is_pinned=1 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'unpin') $pdo->exec("UPDATE announcements SET is_pinned=0 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'delete') $pdo->exec("DELETE FROM announcements WHERE id IN ({$inClause})");
+            } elseif ($bulkGroup === 'posts') {
+                if ($bulkOp === 'hide') $pdo->exec("UPDATE community_posts SET is_hidden=1 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'unhide') $pdo->exec("UPDATE community_posts SET is_hidden=0 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'delete') {
+                    $pdo->exec("DELETE FROM community_comments WHERE post_id IN ({$inClause})");
+                    $pdo->exec("DELETE FROM community_likes WHERE post_id IN ({$inClause})");
+                    $pdo->exec("DELETE FROM community_posts WHERE id IN ({$inClause})");
+                }
+            } elseif ($bulkGroup === 'comments') {
+                if ($bulkOp === 'hide') $pdo->exec("UPDATE community_comments SET is_hidden=1 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'unhide') $pdo->exec("UPDATE community_comments SET is_hidden=0 WHERE id IN ({$inClause})");
+                elseif ($bulkOp === 'delete') $pdo->exec("DELETE FROM community_comments WHERE id IN ({$inClause})");
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' item(s) updated.'];
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one item first.'];
+        }
+        header('Location: community.php#moderation'); exit;
+    }
 }
 
 $settings = [];
@@ -96,7 +125,7 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-7">
   <!-- Community Guidelines -->
   <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-    <h2 class="font-heading font-bold text-base text-gray-800 mb-5">📋 Community Guidelines</h2>
+    <h2 class="font-heading font-bold text-base text-gray-800 mb-5"><i class="fa-solid fa-file-lines"></i> Community Guidelines</h2>
     <form method="POST" class="space-y-4">
       <?= acsrfField() ?><input type="hidden" name="action" value="save_settings">
       <div>
@@ -110,7 +139,7 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
 
   <!-- Add Announcement -->
   <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-    <h2 class="font-heading font-bold text-base text-gray-800 mb-5">📢 New Announcement</h2>
+    <h2 class="font-heading font-bold text-base text-gray-800 mb-5"><i class="fa-solid fa-bullhorn"></i> New Announcement</h2>
     <form method="POST" class="space-y-4">
       <?= acsrfField() ?><input type="hidden" name="action" value="add_announcement">
       <div>
@@ -134,7 +163,7 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
         </div>
         <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-rarl-red/30 transition-colors mt-5">
           <input type="checkbox" name="ann_pinned" value="1" class="accent-rarl-red w-4 h-4"/>
-          <span class="text-xs font-semibold text-gray-700">📌 Pin this</span>
+          <span class="text-xs font-semibold text-gray-700"><i class="fa-solid fa-thumbtack"></i> Pin this</span>
         </label>
       </div>
       <button type="submit" class="w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors">Publish Announcement</button>
@@ -144,18 +173,26 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
 
 <!-- Announcements list -->
 <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-  <div class="px-5 py-4 border-b border-gray-100">
+  <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
     <h2 class="font-heading font-bold text-sm text-gray-800">All Announcements <span class="text-gray-400 font-normal text-xs">(<?= count($announcements) ?>)</span></h2>
+    <?php if ($announcements): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox('ann') ?> Select all</label><?php endif; ?>
   </div>
   <?php if (empty($announcements)): ?>
   <p class="p-8 text-center text-gray-400 text-sm">No announcements yet.</p>
   <?php else: ?>
+  <?= bulkFormOpen('ann', ['bulk_group' => 'announcements']) ?>
+  <?= bulkBar([
+      ['label'=>'<i class="fa-solid fa-thumbtack"></i> Pin','op'=>'pin','class'=>'bg-amber-600 hover:bg-amber-500'],
+      ['label'=>'Unpin','op'=>'unpin','class'=>'bg-gray-600 hover:bg-gray-500'],
+      ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected announcements?'],
+  ], 'ann') ?>
   <div class="divide-y divide-gray-100">
     <?php foreach ($announcements as $ann): ?>
     <div class="p-5 flex items-start gap-4 hover:bg-gray-50 group">
+      <div class="flex items-center pt-0.5"><?= bulkRowCheckbox((int)$ann['id'], 'ann') ?></div>
       <div class="flex-1 min-w-0">
         <div class="flex items-center gap-2 mb-1">
-          <?php if ($ann['is_pinned']): ?><span class="text-amber-500 text-xs">📌</span><?php endif; ?>
+          <?php if ($ann['is_pinned']): ?><span class="text-amber-500 text-xs"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
           <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400"><?= ucfirst($ann['type']) ?></span>
           <span class="text-[10px] text-gray-400">· <?= date('d M Y', strtotime($ann['created_at'])) ?></span>
         </div>
@@ -179,17 +216,25 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
 <!-- Posts & Comments Moderation -->
 <div id="moderation" class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-7">
   <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
       <h2 class="font-heading font-bold text-sm text-gray-800">Community Posts <span class="text-gray-400 font-normal text-xs">(<?= count($posts) ?>)</span></h2>
+      <?php if ($posts): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox('posts') ?> Select all</label><?php endif; ?>
     </div>
     <?php if (empty($posts)): ?>
     <p class="p-8 text-center text-gray-400 text-sm">No posts yet.</p>
     <?php else: ?>
+    <?= bulkFormOpen('posts', ['bulk_group' => 'posts']) ?>
+    <?= bulkBar([
+        ['label'=>'Hide','op'=>'hide','class'=>'bg-gray-600 hover:bg-gray-500'],
+        ['label'=>'Unhide','op'=>'unhide','class'=>'bg-blue-600 hover:bg-blue-500'],
+        ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected posts and their comments/likes?'],
+    ], 'posts') ?>
     <div class="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
       <?php foreach ($posts as $post): $authorName = $post['type']==='lab' ? $post['lab_name'] : $post['full_name']; ?>
       <div class="p-5 hover:bg-gray-50 group">
         <div class="flex items-center gap-2 mb-1">
-          <?php if ($post['is_pinned']): ?><span class="text-amber-500 text-xs">📌</span><?php endif; ?>
+          <?= bulkRowCheckbox((int)$post['id'], 'posts') ?>
+          <?php if ($post['is_pinned']): ?><span class="text-amber-500 text-xs"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
           <?php if ($post['is_hidden']): ?><span class="text-[10px] font-bold uppercase tracking-wider text-red-500">Hidden</span><?php endif; ?>
           <span class="font-semibold text-xs text-gray-900"><?= htmlspecialchars($authorName) ?></span>
           <span class="text-[10px] text-gray-400">· <?= date('d M Y', strtotime($post['created_at'])) ?></span>
@@ -216,16 +261,24 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
   </div>
 
   <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-    <div class="px-5 py-4 border-b border-gray-100">
+    <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
       <h2 class="font-heading font-bold text-sm text-gray-800">Community Comments <span class="text-gray-400 font-normal text-xs">(<?= count($comments) ?>)</span></h2>
+      <?php if ($comments): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox('comments') ?> Select all</label><?php endif; ?>
     </div>
     <?php if (empty($comments)): ?>
     <p class="p-8 text-center text-gray-400 text-sm">No comments yet.</p>
     <?php else: ?>
+    <?= bulkFormOpen('comments', ['bulk_group' => 'comments']) ?>
+    <?= bulkBar([
+        ['label'=>'Hide','op'=>'hide','class'=>'bg-gray-600 hover:bg-gray-500'],
+        ['label'=>'Unhide','op'=>'unhide','class'=>'bg-blue-600 hover:bg-blue-500'],
+        ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected comments?'],
+    ], 'comments') ?>
     <div class="divide-y divide-gray-100 max-h-[600px] overflow-y-auto">
       <?php foreach ($comments as $c): $cAuthor = $c['type']==='lab' ? $c['lab_name'] : $c['full_name']; ?>
       <div class="p-5 hover:bg-gray-50 group">
         <div class="flex items-center gap-2 mb-1">
+          <?= bulkRowCheckbox((int)$c['id'], 'comments') ?>
           <?php if ($c['is_hidden']): ?><span class="text-[10px] font-bold uppercase tracking-wider text-red-500">Hidden</span><?php endif; ?>
           <span class="font-semibold text-xs text-gray-900"><?= htmlspecialchars($cAuthor) ?></span>
           <span class="text-[10px] text-gray-400">· <?= date('d M Y', strtotime($c['created_at'])) ?></span>
@@ -245,4 +298,5 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
     <?php endif; ?>
   </div>
 </div>
+<?= bulkBarScript(['ann', 'posts', 'comments']) ?>
 <?php }, 'community', 'Community');

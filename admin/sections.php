@@ -52,6 +52,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $pdo->prepare("UPDATE regional_sections SET is_published = 1 - is_published WHERE id=?")->execute([(int)($_POST['section_id']??0)]);
         header('Location: sections.php'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'publish') { $pdo->exec("UPDATE regional_sections SET is_published=1 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' section(s) published.']; }
+            elseif ($bulkOp === 'unpublish') { $pdo->exec("UPDATE regional_sections SET is_published=0 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' section(s) unpublished.']; }
+            elseif ($bulkOp === 'delete') { $pdo->exec("DELETE FROM regional_sections WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' section(s) deleted.']; }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one section first.'];
+        }
+        header('Location: sections.php'); exit;
+    }
 }
 
 $sections = $pdo->query("SELECT * FROM regional_sections ORDER BY continent, scope, display_order, id")->fetchAll();
@@ -73,7 +86,7 @@ adminWrap(function() use ($sections, $edit) {
   <!-- Left: form -->
   <div class="xl:col-span-1 space-y-6">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $edit ? '✏️ Edit Section' : '➕ Add Section' ?></h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $edit ? '<i class="fa-solid fa-pen"></i> Edit Section' : '<i class="fa-solid fa-plus"></i> Add Section' ?></h2>
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?>
         <input type="hidden" name="action" value="<?= $edit ? 'update_section' : 'add_section' ?>">
@@ -119,16 +132,26 @@ adminWrap(function() use ($sections, $edit) {
   <!-- Right: list -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Sections <span class="text-gray-400 font-normal text-xs">(<?= count($sections) ?>)</span></h2>
+        <?php if ($sections): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
       </div>
+      <?php if ($sections): ?>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected sections?'],
+      ]) ?>
+      <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($sections)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No sections yet. Add one on the left.</p>
         <?php endif; ?>
         <?php foreach ($sections as $s): ?>
         <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
-          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><?= $s['scope'] === 'continent' ? '🌍' : '📍' ?></div>
+          <?= bulkRowCheckbox((int)$s['id']) ?>
+          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><?= $s['scope'] === 'continent' ? '<i class="fa-solid fa-earth-americas"></i>' : '<i class="fa-solid fa-location-dot"></i>' ?></div>
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($s['continent']) ?><?= $s['country'] ? ' / ' . htmlspecialchars($s['country']) : '' ?></span>
@@ -164,4 +187,5 @@ adminWrap(function() use ($sections, $edit) {
   scopeSel.addEventListener('change', syncCountryField);
   syncCountryField();
 </script>
+<?= bulkBarScript() ?>
 <?php }, 'sections', 'Regional Sections');

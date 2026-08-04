@@ -62,14 +62,14 @@ echo htmlHead('Reverify ID Card');
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4">
   <div class="max-w-xl mx-auto">
     <div class="mb-8 text-center">
-      <div class="text-4xl mb-3">🪪</div>
+      <div class="text-4xl mb-3"><i class="fa-solid fa-id-card"></i></div>
       <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1">Reverify Your ID Card</h1>
       <p class="text-gray-500 text-sm">Your RARL member ID card has expired. Confirm your details below to renew it for another 3 years.</p>
     </div>
 
     <?php if ($errors): ?>
     <div class="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm space-y-1">
-      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span>⚠️</span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 

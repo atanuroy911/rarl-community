@@ -53,7 +53,7 @@ echo htmlHead('Reset Password');
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
       <?php if ($done): ?>
       <div class="text-center">
-        <div class="text-4xl mb-3">✅</div>
+        <div class="text-4xl mb-3"><i class="fa-solid fa-circle-check text-green-500"></i></div>
         <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2">Password updated</h2>
         <p class="text-gray-500 text-sm mb-5">You can now sign in with your new password.</p>
         <a href="login.php" class="inline-flex items-center gap-2 px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition-all">Sign In →</a>
@@ -61,7 +61,7 @@ echo htmlHead('Reset Password');
       <?php else: ?>
       <?php if ($error): ?>
       <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-        ⚠️ <?= htmlspecialchars($error) ?>
+        <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
       </div>
       <?php endif; ?>
       <form method="POST" class="space-y-4">

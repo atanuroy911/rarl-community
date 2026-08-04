@@ -60,6 +60,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Event deleted.'];
         header('Location: events.php'); exit;
     }
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids) {
+            $inClause = implode(',', $ids);
+            if ($bulkOp === 'activate') {
+                $pdo->exec("UPDATE events SET is_active = 1 WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' event(s) activated.'];
+            } elseif ($bulkOp === 'deactivate') {
+                $pdo->exec("UPDATE events SET is_active = 0 WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' event(s) deactivated.'];
+            } elseif ($bulkOp === 'delete') {
+                $pdo->exec("DELETE FROM event_registrations WHERE event_id IN ({$inClause})");
+                $pdo->exec("DELETE FROM events WHERE id IN ({$inClause})");
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' event(s) deleted.'];
+            }
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one event first.'];
+        }
+        header('Location: events.php'); exit;
+    }
 }
 
 $events = $pdo->query("SELECT e.*,
@@ -78,7 +99,7 @@ adminWrap(function() use ($events) {
   <!-- Create Event -->
   <div class="xl:col-span-1">
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4">📅 Create New Event</h2>
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4"><i class="fa-solid fa-calendar-days"></i> Create New Event</h2>
       <form method="POST" enctype="multipart/form-data" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="create_event">
         <input type="text" name="ev_title" required placeholder="Event title" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
@@ -90,8 +111,8 @@ adminWrap(function() use ($events) {
             <?php endforeach; ?>
           </select>
           <select name="ev_visibility" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
-            <option value="public">🌐 Public</option>
-            <option value="members_only">🔒 Members Only</option>
+            <option value="public">Public</option>
+            <option value="members_only">Members Only</option>
           </select>
         </div>
 
@@ -123,9 +144,16 @@ adminWrap(function() use ($events) {
   <!-- Events List -->
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100">
+      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Events</h2>
+        <label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label>
       </div>
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'Activate','op'=>'activate','class'=>'bg-green-600 hover:bg-green-500'],
+          ['label'=>'Deactivate','op'=>'deactivate','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected events? This removes their registrations too.'],
+      ]) ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($events)): ?>
         <p class="p-8 text-center text-gray-400 text-sm">No events created yet.</p>
@@ -133,17 +161,18 @@ adminWrap(function() use ($events) {
         <?php foreach ($events as $e): ?>
         <div class="p-5 hover:bg-gray-50 group">
           <div class="flex items-center justify-between gap-3">
-            <div class="min-w-0">
+            <div class="flex items-center pr-1"><?= bulkRowCheckbox((int)$e['id']) ?></div>
+            <div class="min-w-0 flex-1">
               <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span class="text-[10px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($e['type']) ?></span>
-                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded <?= $e['visibility']==='members_only' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600' ?>"><?= $e['visibility']==='members_only' ? '🔒 Members' : '🌐 Public' ?></span>
+                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded <?= $e['visibility']==='members_only' ? 'bg-amber-50 text-amber-600' : 'bg-blue-50 text-blue-600' ?>"><?= $e['visibility']==='members_only' ? '<i class="fa-solid fa-lock"></i> Members' : '<i class="fa-solid fa-globe"></i> Public' ?></span>
                 <span class="text-[10px] text-gray-400 font-semibold"><?= $e['event_date'] ? date('d M Y', strtotime($e['event_date'])) : 'No date' ?></span>
                 <?php if (!$e['is_active']): ?><span class="text-[10px] font-bold text-red-500 bg-red-50 px-2 py-0.5 rounded">Inactive</span><?php endif; ?>
               </div>
               <h3 class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($e['title']) ?></h3>
               <p class="text-[10px] text-gray-500 mt-1">
-                👥 <?= (int)$e['reg_count'] ?><?= $e['capacity'] ? '/' . (int)$e['capacity'] : '' ?> registered
-                &nbsp;·&nbsp; 🏆 <?= (int)$e['cert_count'] ?> certificates
+                <i class="fa-solid fa-users"></i> <?= (int)$e['reg_count'] ?><?= $e['capacity'] ? '/' . (int)$e['capacity'] : '' ?> registered
+                &nbsp;·&nbsp; <i class="fa-solid fa-trophy"></i> <?= (int)$e['cert_count'] ?> certificates
               </p>
             </div>
             <div class="flex flex-col gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
@@ -171,4 +200,5 @@ adminWrap(function() use ($events) {
   </div>
 
 </div>
+<?= bulkBarScript() ?>
 <?php }, 'events', 'Events');

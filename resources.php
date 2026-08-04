@@ -30,7 +30,7 @@ if ($catSlug) {
     }
 }
 
-$typeIcons = ['youtube_playlist'=>'▶️','youtube_video'=>'🎬','article'=>'📄','book'=>'📚','tool'=>'🔧','course'=>'🎓','other'=>'🔗'];
+$typeIcons = ['youtube_playlist'=>'<i class="fa-solid fa-play"></i>','youtube_video'=>'<i class="fa-solid fa-film"></i>','article'=>'<i class="fa-solid fa-file-lines"></i>','book'=>'<i class="fa-solid fa-book"></i>','tool'=>'<i class="fa-solid fa-wrench"></i>','course'=>'<i class="fa-solid fa-graduation-cap"></i>','other'=>'<i class="fa-solid fa-link"></i>'];
 $typeLabels = ['youtube_playlist'=>'YouTube Playlist','youtube_video'=>'YouTube Video','article'=>'Article','book'=>'Free Book','tool'=>'Tool','course'=>'Course','other'=>'Resource'];
 
 echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
@@ -40,7 +40,7 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
 <!-- Hero -->
 <section class="bg-rarl-navy text-white py-14 px-6 text-center">
   <div class="max-w-3xl mx-auto">
-    <div class="text-4xl mb-4">📚</div>
+    <div class="text-4xl mb-4"><i class="fa-solid fa-book"></i></div>
     <h1 class="font-heading font-black text-3xl md:text-4xl mb-3">Learning Hub</h1>
     <p class="text-white/60 text-sm max-w-lg mx-auto">Curated YouTube playlists, free books, articles, and tools for researchers — organised by topic. All free, all external.</p>
   </div>
@@ -56,7 +56,7 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
     <a href="resources.php?cat=<?= urlencode($cat['slug']) ?>"
       class="group block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-rarl-red/40 transition-all relative">
       <?php if (($cat['access_level'] ?? 'public') === 'member'): ?>
-      <span class="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400">🔒 Premium</span>
+      <span class="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lock"></i> Premium</span>
       <?php endif; ?>
       <div class="text-3xl mb-3"><?= $cat['icon_emoji'] ?></div>
       <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1"><?= htmlspecialchars($cat['name']) ?></h3>
@@ -81,14 +81,14 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
 
   <?php if (empty($resources)): ?>
   <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-12 text-center text-gray-400">
-    <div class="text-4xl mb-3">📭</div>
+    <i class="fa-solid fa-inbox text-4xl mb-3 text-gray-300"></i>
     <p class="font-semibold mb-1">No resources yet</p>
     <p class="text-sm">Resources are being added. Check back soon.</p>
   </div>
   <?php else: ?>
   <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
     <?php foreach ($resources as $r):
-      $icon  = $typeIcons[$r['type']] ?? '🔗';
+      $icon  = $typeIcons[$r['type']] ?? '<i class="fa-solid fa-link"></i>';
       $label = $typeLabels[$r['type']] ?? 'Resource';
       $isYT  = in_array($r['type'], ['youtube_playlist','youtube_video']);
       $isPremium = ($r['access_level'] ?? 'public') === 'member' || ($activecat['access_level'] ?? 'public') === 'member';
@@ -98,11 +98,11 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
     <<?= $tag ?> <?= $isLocked ? '' : 'href="' . htmlspecialchars($r['url']) . '" target="_blank" rel="noopener"' ?>
       class="group flex gap-4 bg-white dark:bg-gray-900 border rounded-2xl p-5 transition-all <?= $isLocked ? 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md' ?>">
       <div class="w-12 h-12 rounded-xl <?= $isLocked ? 'bg-amber-100 dark:bg-amber-900/30' : ($isYT ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800') ?> flex items-center justify-center text-xl flex-shrink-0">
-        <?= $isLocked ? '🔒' : $icon ?>
+        <?= $isLocked ? '<i class="fa-solid fa-lock"></i>' : $icon ?>
       </div>
       <div class="flex-1 min-w-0">
-        <?php if ($isPremium): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">🔒 Premium · </span><?php endif; ?>
-        <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider">⭐ Featured · </span><?php endif; ?>
+        <?php if ($isPremium): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider"><i class="fa-solid fa-lock"></i> Premium · </span><?php endif; ?>
+        <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider"><i class="fa-solid fa-star"></i> Featured · </span><?php endif; ?>
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"><?= $label ?></span>
         <h3 class="font-semibold text-sm text-gray-900 dark:text-white mt-1 mb-1 leading-snug <?= $isLocked ? '' : 'group-hover:text-rarl-red transition-colors' ?>"><?= htmlspecialchars($r['title']) ?></h3>
         <?php if ($r['description']): ?>

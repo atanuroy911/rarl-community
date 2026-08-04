@@ -237,7 +237,7 @@ function renderFlash(): string {
         : ($f['type'] === 'error'
             ? 'bg-red-50 border-red-200 text-red-700'
             : 'bg-blue-50 border-blue-200 text-blue-700');
-    $icon = $f['type'] === 'success' ? '✅' : ($f['type'] === 'error' ? '⚠️' : 'ℹ️');
+    $icon = $f['type'] === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : ($f['type'] === 'error' ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-info"></i>');
     return '<div class="flex items-center gap-3 p-4 rounded-xl border mb-5 text-sm ' . $classes . '">'
          . '<span>' . $icon . '</span><span>' . htmlspecialchars($f['msg']) . '</span></div>';
 }
@@ -247,11 +247,37 @@ function redirect(string $url): never {
     header('Location: ' . $url); exit;
 }
 
+// ── Global font-size bump ───────────────────────────────────
+// The whole site was built almost entirely on Tailwind's text-xs/text-sm
+// utilities, which read as cramped (12px/14px). Rather than touch the class
+// on every element across 100+ files, override the utility classes
+// themselves, one tier up, with !important — same markup, larger type
+// everywhere at once. Shared by both htmlHead() (public) and
+// htmlAdminHead() (admin/layout.php).
+function rarlFontSizeCss(): string {
+    return <<<CSS
+    html { font-size: 17px; }
+    .text-\[9px\]  { font-size: 11px !important; line-height: 14px !important; }
+    .text-\[10px\] { font-size: 12px !important; line-height: 16px !important; }
+    .text-\[11px\] { font-size: 13px !important; line-height: 18px !important; }
+    .text-xs   { font-size: 0.9rem   !important; line-height: 1.4rem  !important; }
+    .text-sm   { font-size: 1rem     !important; line-height: 1.6rem  !important; }
+    .text-base { font-size: 1.125rem !important; line-height: 1.75rem !important; }
+    .text-lg   { font-size: 1.25rem  !important; line-height: 1.85rem !important; }
+    .text-xl   { font-size: 1.4rem   !important; line-height: 1.9rem  !important; }
+    .text-2xl  { font-size: 1.65rem  !important; line-height: 2.1rem  !important; }
+    .text-3xl  { font-size: 2rem     !important; line-height: 2.3rem  !important; }
+    .text-4xl  { font-size: 2.5rem   !important; line-height: 2.7rem  !important; }
+    CSS;
+}
+
 // ── Shared HTML head ───────────────────────────────────────
 function htmlHead(string $title, bool $isAdmin = false): string {
     $fullTitle  = htmlspecialchars($title) . ' — ' . SITE_NAME;
     $colorsJson = brandTailwindConfigJson();
     $fontUrl    = BRAND_FONT_GOOGLE_URL;
+    $faUrl      = FONTAWESOME_CDN_URL;
+    $sizeCss    = rarlFontSizeCss();
     return <<<HTML
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -266,17 +292,19 @@ function htmlHead(string $title, bool $isAdmin = false): string {
       theme: { extend: {
         colors: {$colorsJson},
         fontFamily: {
-          sans:    ['Poppins','system-ui','sans-serif'],
-          heading: ['Poppins','system-ui','sans-serif'],
+          sans:    ['Inter','system-ui','sans-serif'],
+          heading: ['Inter','system-ui','sans-serif'],
         }
       }}
     }
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="{$fontUrl}" rel="stylesheet"/>
+  <link href="{$faUrl}" rel="stylesheet"/>
   <style>
-    body { font-family:'Poppins',system-ui,sans-serif; }
-    h1,h2,h3,h4 { font-family:'Poppins',system-ui,sans-serif; }
+    body { font-family:'Inter',system-ui,sans-serif; }
+    h1,h2,h3,h4 { font-family:'Inter',system-ui,sans-serif; }
+    {$sizeCss}
     .reveal { opacity:0; transform:translateY(20px); transition:opacity .5s ease,transform .5s ease; }
     .reveal.visible { opacity:1; transform:none; }
     select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235a6478' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 1rem center; padding-right:2.5rem!important; -webkit-appearance:none; }
@@ -745,7 +773,7 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
           <?= memberAvatarHtml($post['avatar_path'] ?? null, $authorName, 'w-10 h-10 sm:w-9 sm:h-9 text-sm') ?>
           <div class="min-w-0">
             <div class="flex items-center gap-1.5 flex-wrap">
-              <?php if ($post['is_pinned']): ?><span class="text-xs font-bold text-amber-500">📌</span><?php endif; ?>
+              <?php if ($post['is_pinned']): ?><span class="text-xs font-bold text-amber-500"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
               <span class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= htmlspecialchars($authorName) ?></span>
             </div>
             <div class="flex items-center gap-1.5 text-[11px] text-gray-400">
@@ -757,10 +785,10 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
         </div>
         <?php if ($isOwner): ?>
         <div class="flex items-center gap-3 flex-shrink-0 pl-2">
-          <button type="button" onclick="rarlToggleEditPanel(<?= $pid ?>)" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-sm" title="Edit">✏️</button>
+          <button type="button" onclick="rarlToggleEditPanel(<?= $pid ?>)" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-sm" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <form method="POST" onsubmit="return confirm('Delete this post?')" class="inline">
             <?= csrfField() ?><input type="hidden" name="action" value="delete_own_post"><input type="hidden" name="post_id" value="<?= $pid ?>">
-            <button type="submit" class="text-gray-300 hover:text-red-500 text-sm" title="Delete">🗑️</button>
+            <button type="submit" class="text-gray-300 hover:text-red-500 text-sm" title="Delete"><i class="fa-solid fa-trash"></i></button>
           </form>
         </div>
         <?php endif; ?>
@@ -805,10 +833,10 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
         <form method="POST">
           <?= csrfField() ?><input type="hidden" name="action" value="toggle_like"><input type="hidden" name="post_id" value="<?= $pid ?>">
           <button type="submit" class="inline-flex items-center gap-1.5 text-xs font-semibold py-2 <?= $likedByMe ? 'text-rarl-red' : 'text-gray-400 hover:text-rarl-red' ?> transition-colors">
-            <?= $likedByMe ? '❤️' : '🤍' ?> <?= $likeCount ?>
+            <?= $likedByMe ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>' ?> <?= $likeCount ?>
           </button>
         </form>
-        <span class="text-xs text-gray-400 py-2">💬 <?= count($comments) ?></span>
+        <span class="text-xs text-gray-400 py-2"><i class="fa-solid fa-comment"></i> <?= count($comments) ?></span>
       </div>
 
       <?php if (!empty($comments)): ?>
@@ -828,10 +856,10 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
                 <div class="flex items-center gap-2 flex-shrink-0">
                   <span class="text-[10px] text-gray-400"><?= date('d M Y, H:i', strtotime($c['created_at'])) ?></span>
                   <?php if ($cIsOwner): ?>
-                  <button type="button" onclick="document.getElementById('comment-edit-<?= $cid ?>').classList.toggle('hidden')" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-[10px]" title="Edit">✏️</button>
+                  <button type="button" onclick="document.getElementById('comment-edit-<?= $cid ?>').classList.toggle('hidden')" class="text-gray-300 hover:text-gray-600 dark:hover:text-gray-300 text-[10px]" title="Edit"><i class="fa-solid fa-pen"></i></button>
                   <form method="POST" onsubmit="return confirm('Delete this comment?')" class="inline">
                     <?= csrfField() ?><input type="hidden" name="action" value="delete_own_comment"><input type="hidden" name="comment_id" value="<?= $cid ?>"><input type="hidden" name="post_id" value="<?= $pid ?>">
-                    <button type="submit" class="text-gray-300 hover:text-red-500 text-[10px]" title="Delete">🗑️</button>
+                    <button type="submit" class="text-gray-300 hover:text-red-500 text-[10px]" title="Delete"><i class="fa-solid fa-trash"></i></button>
                   </form>
                   <?php endif; ?>
                 </div>
@@ -1038,13 +1066,16 @@ function renderTemplateHtml(array $template, array $data): string {
     foreach ($config as $f) {
         $key = $f['key'] ?? '';
         $x = (float)($f['x'] ?? 0); $y = (float)($f['y'] ?? 0);
-        if ($key === 'qr' || $key === 'avatar') {
+        if ($key === 'qr' || $key === 'avatar' || $key === 'signature') {
             $imgW = (float)($f['w'] ?? 15); $imgH = (float)($f['h'] ?? 15);
-            $src = $key === 'qr'
-                ? 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#eee"/><text x="30" y="34" font-size="8" text-anchor="middle" fill="#999">QR</text></svg>')
-                : (!empty($data['avatar_url']) ? $data['avatar_url'] : 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#eee"/></svg>'));
+            $placeholder = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#eee"/></svg>');
+            $src = match (true) {
+                $key === 'qr' => 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#eee"/><text x="30" y="34" font-size="8" text-anchor="middle" fill="#999">QR</text></svg>'),
+                $key === 'signature' => !empty($f['image']) ? SITE_URL . '/uploads/templates/' . rawurlencode($f['image']) : $placeholder,
+                default => !empty($data['avatar_url']) ? $data['avatar_url'] : $placeholder,
+            };
             $html .= sprintf(
-                '<img src="%s" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:cover;" />',
+                '<img src="%s" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:contain;" />',
                 htmlspecialchars($src), $x, $y, ($imgW / $w * 100), ($imgH / $h * 100)
             );
             continue;
@@ -1054,9 +1085,10 @@ function renderTemplateHtml(array $template, array $data): string {
         $align    = $f['align'] ?? 'left';
         $bold     = !empty($f['bold']) ? 'font-weight:bold;' : '';
         $transform = $align === 'center' ? 'translateX(-50%)' : ($align === 'right' ? 'translateX(-100%)' : 'none');
+        $text = $key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data);
         $html .= sprintf(
             '<div style="position:absolute;left:%s%%;top:%s%%;transform:%s;font-family:Helvetica,Arial,sans-serif;font-size:%spx;color:%s;%swhite-space:nowrap;">%s</div>',
-            $x, $y, $transform, $fontSize * 1.5, htmlspecialchars($color), $bold, htmlspecialchars(templateFieldValue($key, $data))
+            $x, $y, $transform, $fontSize * 1.5, htmlspecialchars($color), $bold, htmlspecialchars($text)
         );
     }
     $html .= '</div>';
@@ -1104,13 +1136,21 @@ function renderTemplatePdf(array $template, array $data, string $outPath): bool 
             }
             continue;
         }
+        if ($key === 'signature') {
+            $imgW = (float)($f['w'] ?? 20); $imgH = (float)($f['h'] ?? 12);
+            $sigPath = !empty($f['image']) ? UPLOADS_PATH . '/templates/' . $f['image'] : null;
+            if ($sigPath && file_exists($sigPath)) {
+                try { $pdf->Image($sigPath, $x, $y, $imgW, $imgH); } catch (Throwable $e) {}
+            }
+            continue;
+        }
         $fontSize = (float)($f['font_size'] ?? 12);
         $color = $f['color'] ?? '#111111';
         [$r, $g, $b] = sscanf(ltrim($color, '#'), '%02x%02x%02x') ?: [17, 17, 17];
         $align = $f['align'] ?? 'left';
         $pdf->SetFont('Helvetica', !empty($f['bold']) ? 'B' : '', $fontSize);
         $pdf->SetTextColor($r, $g, $b);
-        $text = templateFieldValue($key, $data);
+        $text = $key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data);
         $textW = $pdf->GetStringWidth($text);
         $px = $align === 'center' ? $x - $textW / 2 : ($align === 'right' ? $x - $textW : $x);
         $pdf->SetXY($px, $y);
@@ -1268,16 +1308,16 @@ function issueIdCard(int $memberId): bool {
 function publicNav(string $active = ''): string {
     // Icon-based primary nav (LinkedIn-style: icon + tiny label, underline on active)
     $icons = [
-        'home'      => ['index.php',     '🏠', 'Home'],
-        'community' => ['community.php', '🗨️', 'Community'],
-        'events'    => ['events.php',    '📅', 'Events'],
-        'resources' => ['resources.php', '📚', 'Learning'],
-        'directory' => ['directory.php', '🔎', 'Directory'],
+        'home'      => ['index.php',     '<i class="fa-solid fa-house"></i>', 'Home'],
+        'community' => ['community.php', '<i class="fa-solid fa-comments"></i>', 'Community'],
+        'events'    => ['events.php',    '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
+        'resources' => ['resources.php', '<i class="fa-solid fa-book"></i>', 'Learning'],
+        'directory' => ['directory.php', '<i class="fa-solid fa-magnifying-glass"></i>', 'Directory'],
     ];
     // Secondary links tucked into the "Me" account menu rather than the top bar
     $moreLinks = [
-        'people'   => ['people.php',   '🧑‍🤝‍🧑 Leadership'],
-        'partners' => ['partners.php', '🤝 Partner With Us'],
+        'people'   => ['people.php',   '<i class="fa-solid fa-people-group"></i> Leadership'],
+        'partners' => ['partners.php', '<i class="fa-solid fa-handshake"></i> Partner With Us'],
     ];
 
     $isLoggedIn = isset($_SESSION['member_id']);
@@ -1325,12 +1365,12 @@ function publicNav(string $active = ''): string {
     <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
       <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{$myName}</p>
     </div>
-    <a href="profile.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">👤 View Profile</a>
-    <a href="dashboard.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">📊 Dashboard</a>
-    <a href="profile.php#account" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">⚙️ Account Settings</a>
+    <a href="profile.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-user"></i> View Profile</a>
+    <a href="dashboard.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
+    <a href="profile.php#account" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-gear"></i> Account Settings</a>
     {$moreMenuItems}
     <div class="border-t border-gray-100 dark:border-gray-800">
-      <a href="logout.php" class="block px-4 py-2 text-xs text-rarl-red font-semibold hover:bg-gray-50 dark:hover:bg-gray-800">🚪 Sign Out</a>
+      <a href="logout.php" class="block px-4 py-2 text-xs text-rarl-red font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a>
     </div>
   </div>
 </div>
@@ -1341,9 +1381,9 @@ function publicNav(string $active = ''): string {
   });
 </script>
 HTML;
-        $mobileMemberLinks = '<a href="profile.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">👤 Profile &amp; Account Settings</a>
-                               <a href="dashboard.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red border-b border-gray-100 dark:border-gray-800">📊 Dashboard</a>
-                               <a href="logout.php" class="block px-4 py-3 text-sm text-rarl-red">🚪 Sign Out</a>';
+        $mobileMemberLinks = '<a href="profile.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-user"></i> Profile &amp; Account Settings</a>
+                               <a href="dashboard.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
+                               <a href="logout.php" class="block px-4 py-3 text-sm text-rarl-red"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a>';
     } else {
         $accountMenu = '<div class="flex items-center gap-2 flex-shrink-0">
             <a href="login.php" class="text-sm text-gray-600 hover:text-rarl-red transition-colors hidden sm:inline">Sign In</a>
@@ -1361,7 +1401,7 @@ HTML;
     return <<<HTML
 <div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
   <div class="w-full px-6 flex justify-between items-center">
-    <span>🔬 {$tagline}</span>
+    <span><i class="fa-solid fa-flask"></i> {$tagline}</span>
     <div class="flex gap-5">
       <a href="{$mainUrl}" class="hover:text-white transition-colors">rarl-lab.com</a>
       <a href="mailto:{$replyTo}" class="hover:text-white transition-colors">{$replyTo}</a>
@@ -1375,7 +1415,7 @@ HTML;
     </a>
     <form action="directory.php" method="GET" class="hidden sm:flex items-center flex-1 max-w-xs">
       <div class="relative w-full">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔎</span>
+        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><i class="fa-solid fa-magnifying-glass"></i></span>
         <input type="text" name="q" value="{$searchQ}" placeholder="Search members, labs, research…"
           class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-rarl-red/40 focus:bg-white dark:focus:bg-gray-900 rounded-lg text-xs outline-none transition-colors"/>
       </div>
@@ -1418,8 +1458,8 @@ function publicFooter(): string {
       </div>
     </div>
     <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-4 border-t border-white/10 text-white/35">
-      <span>🌐 Website: <a href="{$mainUrl}" class="hover:text-white transition-colors">www.rarl-lab.com</a></span>
-      <span>📍 Robotics &amp; Automation Research Lab (RARL), Queens Building, Leicester, LE1 9BH, United Kingdom</span>
+      <span><i class="fa-solid fa-globe"></i> Website: <a href="{$mainUrl}" class="hover:text-white transition-colors">www.rarl-lab.com</a></span>
+      <span><i class="fa-solid fa-location-dot"></i> Robotics &amp; Automation Research Lab (RARL), Queens Building, Leicester, LE1 9BH, United Kingdom</span>
     </div>
   </div>
 </footer>

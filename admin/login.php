@@ -32,7 +32,8 @@ unset($_SESSION['flash']);
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>
-<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}</style>
+<link href="<?= FONTAWESOME_CDN_URL ?>" rel="stylesheet"/>
+<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}<?= rarlFontSizeCss() ?></style>
 </head>
 <body class="min-h-screen flex items-center justify-center" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
 <div class="w-full max-w-sm mx-4">
@@ -42,9 +43,9 @@ unset($_SESSION['flash']);
       <div class="text-left"><div class="font-heading font-black text-white text-base">RARL Admin</div><div class="text-white/35 text-xs">Community Platform</div></div>
     </div>
   </div>
-  <?php if ($flash): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm">✅ <?= htmlspecialchars($flash['msg']) ?></div><?php endif; ?>
-  <?php if ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm">⏱️ Session expired. Please sign in again.</div><?php endif; ?>
-  <?php if ($error): ?><div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">⚠️ <?= htmlspecialchars($error) ?></div><?php endif; ?>
+  <?php if ($flash): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($flash['msg']) ?></div><?php endif; ?>
+  <?php if ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-regular fa-clock"></i> Session expired. Please sign in again.</div><?php endif; ?>
+  <?php if ($error): ?><div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?></div><?php endif; ?>
   <div class="bg-white rounded-2xl shadow-2xl p-8">
     <h1 class="text-xl font-black text-gray-900 mb-1">Sign In</h1>
     <p class="text-gray-400 text-sm mb-5">Access the admin dashboard</p>

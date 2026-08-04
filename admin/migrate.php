@@ -48,7 +48,7 @@ adminWrap(function() use ($results) {
   <div class="space-y-3">
     <?php foreach ($results as $file => $r): ?>
     <div class="flex items-start gap-2 text-xs">
-      <span><?= $r['ok'] ? '✅' : '❌' ?></span>
+      <span><?= $r['ok'] ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-circle-xmark"></i>' ?></span>
       <div>
         <span class="font-mono font-semibold text-gray-800"><?= htmlspecialchars($file) ?></span>
         <?php if ($r['ok']): ?>

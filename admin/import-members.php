@@ -99,7 +99,7 @@ adminWrap(function() use ($report) {
 <?php if ($report): ?>
 <div class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
   <h2 class="font-heading font-bold text-sm text-gray-800 mb-3">Import Results</h2>
-  <p class="text-sm text-gray-700 mb-2">✅ Created <strong><?= $report['created'] ?></strong> accounts · ⚠️ Skipped <strong><?= $report['skipped'] ?></strong> rows</p>
+  <p class="text-sm text-gray-700 mb-2"><i class="fa-solid fa-circle-check"></i> Created <strong><?= $report['created'] ?></strong> accounts · <i class="fa-solid fa-triangle-exclamation"></i> Skipped <strong><?= $report['skipped'] ?></strong> rows</p>
   <?php if ($report['skippedRows']): ?>
   <div class="max-h-48 overflow-y-auto text-xs text-gray-500 bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-1">
     <?php foreach ($report['skippedRows'] as $s): ?><div><?= htmlspecialchars($s) ?></div><?php endforeach; ?>
@@ -112,12 +112,12 @@ adminWrap(function() use ($report) {
   <form method="POST" enctype="multipart/form-data" class="space-y-4">
     <?= acsrfField() ?>
     <div class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-6 text-center relative">
-      <div class="text-2xl mb-1">📥</div>
+      <div class="text-2xl mb-1"><i class="fa-solid fa-download"></i></div>
       <p class="text-sm text-gray-600 mb-1">Upload <strong>.csv</strong> or <strong>.xlsx</strong></p>
       <p class="text-[11px] text-gray-400">Must include the standard RARL registration-form columns</p>
       <input type="file" name="import_file" accept=".csv,.xlsx" required class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
     </div>
-    <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5">📤 Import & Create Accounts</button>
+    <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5"><i class="fa-solid fa-upload"></i> Import & Create Accounts</button>
   </form>
 
   <div class="mt-5 pt-5 border-t border-gray-100">

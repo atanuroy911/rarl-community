@@ -29,7 +29,7 @@ echo htmlHead('Join the RARL Community');
       </h1>
       <?php if ($loggedInMember['status'] !== 'active'): ?>
       <p class="text-amber-600 dark:text-amber-400 text-base max-w-xl leading-relaxed mb-9">
-        ⏳ Your account is still pending approval — you'll get an email as soon as it's reviewed. In the meantime, feel free to browse the community and learning hub.
+        <i class="fa-solid fa-hourglass-half"></i> Your account is still pending approval — you'll get an email as soon as it's reviewed. In the meantime, feel free to browse the community and learning hub.
       </p>
       <?php else: ?>
       <p class="text-gray-500 dark:text-gray-400 text-xl max-w-xl leading-relaxed mb-9">
@@ -129,14 +129,14 @@ echo htmlHead('Join the RARL Community');
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
       <?php $achievements = [
-        ['📄', 'Publication of several research papers', 'Published several impactful research papers across reputed journals and conferences.'],
-        ['🎓', 'Successful mentorship of 12 students', 'Successfully mentored 12 students, guiding them through academic and professional growth.'],
-        ['©️', 'Securing 12 copyrights', 'Secured 12 copyrights showcasing innovation and original contributions.'],
-        ['📚', 'Authorship of 3 books and 4 book chapters', 'Authored 3 books and 4 book chapters, advancing knowledge in the field.'],
+        ['fa-file-lines', 'Publication of several research papers', 'Published several impactful research papers across reputed journals and conferences.'],
+        ['fa-graduation-cap', 'Successful mentorship of 12 students', 'Successfully mentored 12 students, guiding them through academic and professional growth.'],
+        ['fa-copyright', 'Securing 12 copyrights', 'Secured 12 copyrights showcasing innovation and original contributions.'],
+        ['fa-book', 'Authorship of 3 books and 4 book chapters', 'Authored 3 books and 4 book chapters, advancing knowledge in the field.'],
       ]; ?>
       <?php foreach ($achievements as $i => [$icon, $title, $desc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-250">
-        <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-2xl mb-4"><?= $icon ?></div>
+        <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-2xl mb-4"><i class="fa-solid <?= $icon ?>"></i></div>
         <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2 leading-snug"><?= htmlspecialchars($title) ?></h3>
         <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= htmlspecialchars($desc) ?></p>
       </div>
@@ -157,19 +157,19 @@ echo htmlHead('Join the RARL Community');
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
       <?php $modules = [
-        ['👥','Member Profiles','Individual researchers and research labs register with rich academic profiles — ORCID, Google Scholar, research interests, institution.','bg-blue-50 dark:bg-blue-900/20','text-blue-600 dark:text-blue-400','border-blue-200 dark:border-blue-800'],
-        ['💬','Community Feed','Approved members can post updates, discuss research, and connect with fellow researchers on the community feed.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
-        ['📚','Learning Hub','Curated YouTube playlists, articles, and free books — plus premium courses unlocked exclusively for members.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
-        ['🎥','Events &amp; Webinars','Register for workshops and webinars, some open to everyone, some reserved for members — with recordings archived afterward.','bg-indigo-50 dark:bg-indigo-900/20','text-indigo-600 dark:text-indigo-400','border-indigo-200 dark:border-indigo-800'],
-        ['🧑‍🤝‍🧑','Member Directory','Search the community by country, institution, or research interest — and find or become a mentor.','bg-pink-50 dark:bg-pink-900/20','text-pink-600 dark:text-pink-400','border-pink-200 dark:border-pink-800'],
-        ['🏆','Certificates','Attend workshops, webinars, or competitions and receive a verifiable PDF certificate with a unique ID and QR code — ready for LinkedIn and your CV.','bg-red-50 dark:bg-red-900/20','text-red-600 dark:text-red-400','border-red-200 dark:border-red-800'],
-        ['📧','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
-        ['🔐','Member Dashboard','Log in anytime to view and download your certificates, update your profile, and manage your newsletter preferences.','bg-gray-50 dark:bg-gray-800','text-gray-600 dark:text-gray-300','border-gray-200 dark:border-gray-700'],
+        ['fa-users','Member Profiles','Individual researchers and research labs register with rich academic profiles — ORCID, Google Scholar, research interests, institution.','bg-blue-50 dark:bg-blue-900/20','text-blue-600 dark:text-blue-400','border-blue-200 dark:border-blue-800'],
+        ['fa-comment','Community Feed','Approved members can post updates, discuss research, and connect with fellow researchers on the community feed.','bg-purple-50 dark:bg-purple-900/20','text-purple-600 dark:text-purple-400','border-purple-200 dark:border-purple-800'],
+        ['fa-book','Learning Hub','Curated YouTube playlists, articles, and free books — plus premium courses unlocked exclusively for members.','bg-green-50 dark:bg-green-900/20','text-green-600 dark:text-green-400','border-green-200 dark:border-green-800'],
+        ['fa-video','Events &amp; Webinars','Register for workshops and webinars, some open to everyone, some reserved for members — with recordings archived afterward.','bg-indigo-50 dark:bg-indigo-900/20','text-indigo-600 dark:text-indigo-400','border-indigo-200 dark:border-indigo-800'],
+        ['fa-people-group','Member Directory','Search the community by country, institution, or research interest — and find or become a mentor.','bg-pink-50 dark:bg-pink-900/20','text-pink-600 dark:text-pink-400','border-pink-200 dark:border-pink-800'],
+        ['fa-trophy','Certificates','Attend workshops, webinars, or competitions and receive a verifiable PDF certificate with a unique ID and QR code — ready for LinkedIn and your CV.','bg-red-50 dark:bg-red-900/20','text-red-600 dark:text-red-400','border-red-200 dark:border-red-800'],
+        ['fa-envelope','Newsletter','Regular updates on RARL research, upcoming events, funding opportunities, and featured community members delivered to your inbox.','bg-amber-50 dark:bg-amber-900/20','text-amber-600 dark:text-amber-400','border-amber-200 dark:border-amber-800'],
+        ['fa-lock','Member Dashboard','Log in anytime to view and download your certificates, update your profile, and manage your newsletter preferences.','bg-gray-50 dark:bg-gray-800','text-gray-600 dark:text-gray-300','border-gray-200 dark:border-gray-700'],
       ]; ?>
 
       <?php foreach ($modules as $i => [$icon, $name, $desc, $bg, $tc, $bc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> group p-6 rounded-2xl border <?= $bg ?> <?= $bc ?> hover:-translate-y-1 hover:shadow-lg transition-all duration-250 cursor-default">
-        <div class="w-11 h-11 rounded-xl <?= $bg ?> flex items-center justify-center text-xl mb-4"><?= $icon ?></div>
+        <div class="w-11 h-11 rounded-xl <?= $bg ?> flex items-center justify-center text-xl mb-4"><i class="fa-solid <?= $icon ?>"></i></div>
         <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2"><?= $name ?></h3>
         <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= $desc ?></p>
       </div>
@@ -208,12 +208,12 @@ echo htmlHead('Join the RARL Community');
     <div class="rounded-3xl overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
       <div class="p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center gap-10">
         <div class="flex-1 reveal">
-          <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5">🏆 Certificates</span>
+          <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-5"><i class="fa-solid fa-trophy"></i> Certificates</span>
           <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-4">Verifiable Digital Certificates</h2>
           <p class="text-white/60 text-base leading-relaxed mb-6 max-w-lg">Every workshop, webinar, and competition you attend generates a professional PDF certificate with a unique ID and QR code that anyone can verify instantly online.</p>
           <ul class="space-y-2 mb-8">
             <?php foreach (['Unique certificate ID (e.g. RARL-2025-0042)', 'QR code links to public verification page', 'Download anytime from your member dashboard', 'LinkedIn-ready — add to your profile with a click'] as $pt): ?>
-            <li class="flex items-center gap-2.5 text-white/70 text-base"><span class="w-4 h-4 rounded-full bg-green-900/40 text-green-400 flex items-center justify-center text-[10px] font-bold">✓</span><?= $pt ?></li>
+            <li class="flex items-center gap-2.5 text-white/70 text-base"><span class="w-4 h-4 rounded-full bg-green-900/40 text-green-400 flex items-center justify-center text-[10px] font-bold"><i class="fa-solid fa-check"></i></span><?= $pt ?></li>
             <?php endforeach; ?>
           </ul>
           <a href="register.php" class="inline-flex items-center gap-2 px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition-all hover:-translate-y-0.5">Get Started Free →</a>
@@ -272,7 +272,7 @@ echo htmlHead('Join the RARL Community');
 <!-- Homepage Popup -->
 <div id="rarl-popup-overlay" class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm items-center justify-center p-6">
   <div class="relative max-w-md w-full">
-    <button id="rarl-popup-close" type="button" aria-label="Close" class="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white text-gray-700 font-bold shadow-lg flex items-center justify-center hover:bg-gray-100 z-10">✕</button>
+    <button id="rarl-popup-close" type="button" aria-label="Close" class="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white text-gray-700 font-bold shadow-lg flex items-center justify-center hover:bg-gray-100 z-10"><i class="fa-solid fa-xmark"></i></button>
     <a href="<?= htmlspecialchars(setting('popup_link_url', '')) ?>" target="_blank" rel="noopener">
       <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($popupImage) ?>" alt="<?= htmlspecialchars(setting('popup_alt_text', '')) ?>" class="w-full rounded-2xl shadow-2xl"/>
     </a>

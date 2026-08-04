@@ -78,13 +78,13 @@ echo htmlHead('Verify Your Email');
 
     <?php if ($error): ?>
     <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-      ⚠️ <?= htmlspecialchars($error) ?>
+      <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
     </div>
     <?php endif; ?>
 
     <?php if ($resendMsg): ?>
     <div class="mb-5 flex items-center gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-700 dark:text-blue-300 text-sm">
-      ℹ️ <?= htmlspecialchars($resendMsg) ?>
+      <i class="fa-solid fa-circle-info"></i> <?= htmlspecialchars($resendMsg) ?>
     </div>
     <?php endif; ?>
 

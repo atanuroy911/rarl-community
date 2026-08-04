@@ -71,7 +71,7 @@ adminWrap(function() use ($sections, $plans, $result) {
 
 <?php if ($result): ?>
 <div class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
-  <h2 class="font-heading font-bold text-sm text-gray-800 mb-3">👁️ Preview <span class="text-gray-400 font-normal">(will send to <?= $result['count'] ?> recipients)</span></h2>
+  <h2 class="font-heading font-bold text-sm text-gray-800 mb-3"><i class="fa-solid fa-eye"></i> Preview <span class="text-gray-400 font-normal">(will send to <?= $result['count'] ?> recipients)</span></h2>
   <div class="border border-gray-200 rounded-xl p-4 bg-gray-50 max-h-96 overflow-y-auto">
     <?= $result['preview'] ?>
   </div>
@@ -85,7 +85,7 @@ adminWrap(function() use ($sections, $plans, $result) {
     <input type="hidden" name="raw_emails" value="<?= htmlspecialchars($result['raw_emails']) ?>">
     <button type="submit" name="submit_action" value="send"
       onclick="return confirm('Send this email to <?= $result['count'] ?> recipients now?')"
-      class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5">📨 Send to <?= $result['count'] ?> Recipients</button>
+      class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5"><i class="fa-solid fa-paper-plane"></i> Send to <?= $result['count'] ?> Recipients</button>
     <a href="compose-email.php" class="ml-2 text-xs text-gray-400 hover:text-gray-600">Start over</a>
   </form>
 </div>
@@ -133,7 +133,7 @@ adminWrap(function() use ($sections, $plans, $result) {
       <textarea name="body" required rows="10" class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono resize-y"></textarea>
     </div>
     <div class="flex gap-3">
-      <button type="submit" name="submit_action" value="preview" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl">👁️ Preview</button>
+      <button type="submit" name="submit_action" value="preview" class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl"><i class="fa-solid fa-eye"></i> Preview</button>
     </div>
   </form>
 </div>

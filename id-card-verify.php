@@ -45,7 +45,7 @@ echo htmlHead('Verify Member ID');
 
     <?php if ($code && !$member): ?>
     <div class="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-2xl p-8 text-center">
-      <div class="text-4xl mb-3">❌</div>
+      <div class="text-4xl mb-3"><i class="fa-solid fa-circle-xmark text-red-500"></i></div>
       <h2 class="font-heading font-bold text-lg text-red-700 dark:text-red-300 mb-2">ID Not Found</h2>
       <p class="text-red-600 dark:text-red-400 text-sm">No active member matches this ID code.</p>
     </div>
@@ -55,7 +55,7 @@ echo htmlHead('Verify Member ID');
     ?>
     <div class="bg-white dark:bg-gray-900 border-2 <?= $isExpired ? 'border-amber-200 dark:border-amber-800' : 'border-green-200 dark:border-green-800' ?> rounded-2xl overflow-hidden shadow-lg">
       <div class="<?= $isExpired ? 'bg-amber-500' : 'bg-green-500' ?> px-6 py-3 flex items-center gap-3">
-        <span class="text-xl"><?= $isExpired ? '⚠️' : '✅' ?></span>
+        <span class="text-xl"><?= $isExpired ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-check"></i>' ?></span>
         <div>
           <p class="text-white font-bold text-sm"><?= $isExpired ? 'ID Card Expired' : 'Member ID Verified' ?></p>
           <p class="text-white/80 text-xs"><?= $isExpired ? 'This card is past its 3-year validity period.' : 'This member ID is authentic and current.' ?></p>

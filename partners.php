@@ -19,7 +19,7 @@ echo htmlHead('Partner With Us');
 <!-- Hero -->
 <section class="bg-rarl-navy text-white py-14 px-6 text-center">
   <div class="max-w-2xl mx-auto">
-    <div class="text-4xl mb-4">🤝</div>
+    <div class="text-4xl mb-4"><i class="fa-solid fa-handshake"></i></div>
     <h1 class="font-heading font-black text-3xl md:text-4xl mb-3">Partner With RARL</h1>
     <p class="text-white/60 text-sm max-w-lg mx-auto"><?= htmlspecialchars($set['partner_page_intro'] ?? '') ?></p>
   </div>
@@ -37,14 +37,14 @@ echo htmlHead('Partner With Us');
       <div data-panel="member">
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <?php foreach ($memberBenefits as $b): ?>
-          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 text-rarl-red flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5">✓</span><?= htmlspecialchars($b) ?></li>
+          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 text-rarl-red flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= htmlspecialchars($b) ?></li>
           <?php endforeach; ?>
         </ul>
       </div>
       <div data-panel="partner" class="hidden">
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <?php foreach ($partnerBenefits as $b): ?>
-          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-rarl-blue flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5">✓</span><?= htmlspecialchars($b) ?></li>
+          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-rarl-blue flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= htmlspecialchars($b) ?></li>
           <?php endforeach; ?>
         </ul>
       </div>
@@ -53,7 +53,7 @@ echo htmlHead('Partner With Us');
 
   <!-- Free membership CTA -->
   <div class="rounded-2xl p-10 mb-10 text-center" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
-    <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4">🎉 Free Membership</span>
+    <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4"><i class="fa-solid fa-gift"></i> Free Membership</span>
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">RARL membership is free and open to all researchers and labs</h2>
     <p class="text-white/60 text-sm max-w-lg mx-auto mb-6">No tiers, no pricing — just join and get full access to the community, learning resources, and certificates.</p>
     <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
@@ -74,7 +74,7 @@ echo htmlHead('Partner With Us');
   <!-- Ethics note -->
   <?php if (!empty($set['partner_ethics_note'])): ?>
   <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center mb-10">
-    <p class="text-amber-700 dark:text-amber-300 text-sm">📜 <?= htmlspecialchars($set['partner_ethics_note']) ?></p>
+    <p class="text-amber-700 dark:text-amber-300 text-sm"><i class="fa-solid fa-scroll"></i> <?= htmlspecialchars($set['partner_ethics_note']) ?></p>
   </div>
   <?php endif; ?>
 

@@ -95,7 +95,7 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
   <div class="xl:col-span-2">
     <div class="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm">
       <h2 class="font-heading font-bold text-base text-gray-800 mb-5">
-        <?= $editing ? '✏️ Edit Draft' : '📝 Compose Newsletter' ?>
+        <?= $editing ? '<i class="fa-solid fa-pen-to-square"></i> Edit Draft' : '<i class="fa-solid fa-pen-to-square"></i> Compose Newsletter' ?>
       </h2>
       <form method="POST" class="space-y-4">
         <?= acsrfField() ?>
@@ -141,12 +141,12 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
         <div class="flex flex-wrap gap-3 pt-2">
           <button type="submit" name="action" value="save_draft"
             class="px-6 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-sm rounded-xl transition-colors">
-            💾 Save Draft
+            <i class="fa-solid fa-floppy-disk"></i> Save Draft
           </button>
           <button type="submit" name="action" value="send"
             onclick="return confirm('Send now to all matching active subscribers? This cannot be undone.')"
             class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition-colors shadow-lg hover:-translate-y-0.5">
-            📨 Send Now
+            <i class="fa-solid fa-paper-plane"></i> Send Now
           </button>
         </div>
       </form>
@@ -157,7 +157,7 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
   <div class="space-y-5">
     <!-- Subscriber stats -->
     <div class="bg-rarl-navy text-white rounded-2xl p-6">
-      <h3 class="font-heading font-bold text-sm mb-4">📧 Subscriber Stats</h3>
+      <h3 class="font-heading font-bold text-sm mb-4"><i class="fa-solid fa-envelope"></i> Subscriber Stats</h3>
       <div class="space-y-2.5">
         <div class="flex justify-between items-center py-2 border-b border-white/10 text-sm">
           <span class="text-white/60">Total subscribers</span>
@@ -193,7 +193,7 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
             <span class="text-[9px] font-bold px-2 py-0.5 rounded-full <?= $sc ?> flex-shrink-0"><?= ucfirst($nl['status']) ?></span>
           </div>
           <p class="text-[10px] text-gray-400 mb-1.5">
-            <?= $nl['status']==='sent' ? '📨 Sent to ' . $nl['recipient_count'] . ' · ' . date('d M Y', strtotime($nl['sent_at'])) : '📝 ' . date('d M Y', strtotime($nl['created_at'])) ?>
+            <?= $nl['status']==='sent' ? '<i class="fa-solid fa-paper-plane"></i> Sent to ' . $nl['recipient_count'] . ' · ' . date('d M Y', strtotime($nl['sent_at'])) : '<i class="fa-solid fa-pen-to-square"></i> ' . date('d M Y', strtotime($nl['created_at'])) ?>
           </p>
           <?php if ($isDraft): ?>
           <div class="flex gap-2">

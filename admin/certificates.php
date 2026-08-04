@@ -151,6 +151,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Certificate deleted.'];
         header('Location: certificates.php'); exit;
     }
+
+    // ── Bulk actions on checked certificates ──────────────────
+    if ($action === 'bulk') {
+        $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
+        $bulkOp = $_POST['bulk_op'] ?? '';
+        if ($ids && $bulkOp === 'delete') {
+            $inClause = implode(',', $ids);
+            $rows = $pdo->query("SELECT pdf_path FROM certificates WHERE id IN ({$inClause})")->fetchAll();
+            foreach ($rows as $r) if ($r['pdf_path']) @unlink(UPLOADS_PATH . '/certificates/' . $r['pdf_path']);
+            $pdo->exec("DELETE FROM certificates WHERE id IN ({$inClause})");
+            $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' certificate(s) deleted.'];
+        } elseif ($ids && $bulkOp === 'send') {
+            $inClause = implode(',', $ids);
+            $rows = $pdo->query("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id=e.id WHERE c.id IN ({$inClause}) AND c.emailed_at IS NULL AND c.pdf_path IS NOT NULL")->fetchAll();
+            $sent = 0;
+            foreach ($rows as $c) {
+                $verifyUrl  = CERT_VERIFY_URL . '?id=' . $c['uuid'];
+                $eventTitle = $c['event_title']; $eventDate = $c['event_date'] ? date('d F Y', strtotime($c['event_date'])) : date('d F Y');
+                $certNumber = $c['certificate_no']; $memberName = $c['recipient_name'];
+                ob_start(); require dirname(__DIR__) . '/emails/certificate.php'; $body = ob_get_clean();
+                sendEmail($c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body);
+                $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$c['id']]);
+                $sent++;
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Emailed {$sent} certificate(s)."];
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one certificate first.'];
+        }
+        header('Location: certificates.php'); exit;
+    }
 }
 
 // ── List all certificates ──────────────────────────────────
@@ -185,7 +215,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
 
     <!-- Issue from CSV -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4">📤 Issue from CSV</h2>
+      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><i class="fa-solid fa-upload"></i> Issue from CSV</h2>
       <form method="POST" enctype="multipart/form-data" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="issue_csv">
 
@@ -208,14 +238,14 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
             <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
             <?php endforeach; ?>
           </select>
-          <a href="#" id="cert-preview-link" target="_blank" class="hidden mt-1.5 inline-block text-[11px] text-rarl-red hover:underline">👁️ Preview sample →</a>
+          <a href="#" id="cert-preview-link" target="_blank" class="hidden mt-1.5 inline-block text-[11px] text-rarl-red hover:underline"><i class="fa-solid fa-eye"></i> Preview sample →</a>
         </div>
         <?php endif; ?>
 
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Participant CSV <span class="text-rarl-red">*</span></label>
           <div class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-5 text-center transition-colors cursor-pointer relative">
-            <div class="text-2xl mb-1">📎</div>
+            <div class="text-2xl mb-1"><i class="fa-solid fa-paperclip"></i></div>
             <p class="text-xs text-gray-500 mb-0.5">Upload CSV with <strong>name</strong> and <strong>email</strong> columns</p>
             <p class="text-[10px] text-gray-400">Max 500 rows</p>
             <input type="file" name="csv_file" accept=".csv" required class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
@@ -231,7 +261,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
         </label>
 
         <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition-all shadow hover:-translate-y-0.5">
-          🏆 Generate & Issue
+          <i class="fa-solid fa-trophy"></i> Generate & Issue
         </button>
       </form>
       <script>
@@ -246,13 +276,13 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
         <p class="text-xs font-semibold text-gray-500 mb-2">CSV Template:</p>
         <code class="block text-[10px] bg-gray-50 border border-gray-200 rounded-lg p-2 text-gray-600">name,email<br>Dr. Jane Smith,jane@uni.edu<br>John Doe,john@lab.org</code>
         <a href="data:text/csv;charset=utf-8,name%2Cemail%0ADr.%20Jane%20Smith%2Cjane%40university.edu" download="rarl_cert_template.csv"
-          class="mt-2 block text-xs text-center text-rarl-red hover:underline">⬇ Download CSV Template</a>
+          class="mt-2 block text-xs text-center text-rarl-red hover:underline"><i class="fa-solid fa-arrow-down"></i> Download CSV Template</a>
       </div>
     </div>
 
     <!-- Create event -->
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4">📅 Create New Event</h2>
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-4"><i class="fa-solid fa-calendar-days"></i> Create New Event</h2>
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="create_event">
         <input type="text" name="ev_title" required placeholder="Event title" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
@@ -288,10 +318,16 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
         </form>
       </div>
 
+      <?= bulkFormOpen() ?>
+      <?= bulkBar([
+          ['label'=>'<i class="fa-solid fa-envelope"></i> Send Unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
+          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected certificates? This cannot be undone.'],
+      ]) ?>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
           <thead class="bg-gray-50 border-b border-gray-200">
             <tr>
+              <th class="px-4 py-3 w-8"><?= bulkSelectAllCheckbox() ?></th>
               <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Recipient</th>
               <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Certificate</th>
               <th class="text-left px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Event</th>
@@ -301,17 +337,18 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
           </thead>
           <tbody class="divide-y divide-gray-100">
             <?php if (empty($certificates)): ?>
-            <tr><td colspan="5" class="py-12 text-center text-gray-400 text-sm">No certificates yet. Upload a CSV to get started.</td></tr>
+            <tr><td colspan="6" class="py-12 text-center text-gray-400 text-sm">No certificates yet. Upload a CSV to get started.</td></tr>
             <?php endif; ?>
             <?php foreach ($certificates as $c): ?>
             <tr class="hover:bg-gray-50 group">
+              <td class="px-4 py-3"><?= bulkRowCheckbox((int)$c['id']) ?></td>
               <td class="px-4 py-3">
                 <p class="font-medium text-gray-900 text-xs"><?= htmlspecialchars($c['recipient_name']) ?></p>
                 <p class="text-[10px] text-gray-400"><?= htmlspecialchars($c['recipient_email']) ?></p>
               </td>
               <td class="px-4 py-3">
                 <span class="font-mono text-[10px] text-gray-600 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($c['certificate_no']) ?></span>
-                <?php if ($c['emailed_at']): ?><span class="block text-[9px] text-green-500 mt-0.5">✉ Emailed</span><?php endif; ?>
+                <?php if ($c['emailed_at']): ?><span class="block text-[9px] text-green-500 mt-0.5"><i class="fa-solid fa-envelope"></i> Emailed</span><?php endif; ?>
               </td>
               <td class="px-4 py-3 text-[10px] text-gray-600"><?= htmlspecialchars(mb_strimwidth($c['event_title']??'',0,30,'…')) ?></td>
               <td class="px-4 py-3 text-[10px] text-gray-400"><?= date('d M Y', strtotime($c['issued_at'])) ?></td>
@@ -325,7 +362,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
                   <?php endif; ?>
                   <?php if (!$c['emailed_at']): ?>
                   <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>">
-                    <button type="submit" class="px-2 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors">✉ Send</button>
+                    <button type="submit" class="px-2 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors"><i class="fa-solid fa-envelope"></i> Send</button>
                   </form>
                   <?php endif; ?>
                   <form method="POST" class="inline" onsubmit="return confirm('Delete this certificate?')">
@@ -343,5 +380,5 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
   </div>
 
 </div>
-
+<?= bulkBarScript() ?>
 <?php }, 'certificates', 'Certificates');
