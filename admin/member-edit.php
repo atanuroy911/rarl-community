@@ -172,8 +172,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         if ($dupe->fetch()) {
             $errors[] = 'Another member already uses that email.';
         } else {
-            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, years_experience=?, referral_source=?, notes=?, member_code=?';
-            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $yearsExp ?: null, $referral ?: null, $notes, $memberCode ?: null];
+            $cvUrl = cleanUrl($_POST['cv_url'] ?? '');
+            $sql = 'UPDATE members SET email=?, status=?, plan_id=?, section_id=?, country=?, city_state=?, newsletter_opt_in=?, community_notify=?, directory_visible=?, years_experience=?, referral_source=?, notes=?, member_code=?, cv_url=?';
+            $params = [$email, $status, $planId, $sectionId, $country, $cityState, $newsletter, $commNotify, $dirVisible, $yearsExp ?: null, $referral ?: null, $notes, $memberCode ?: null, $cvUrl ?: null];
 
             if ($m['type'] === 'lab') {
                 $sql .= ', lab_name=?, pi_name=?, lab_website=?, research_areas=?';
@@ -407,6 +408,12 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       </div>
 
       <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">CV / Resume Link <span class="text-gray-400 font-normal">(e.g. Google Drive — used if no file is uploaded above)</span></label>
+        <input type="url" name="cv_url" value="<?= htmlspecialchars($m['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
+          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+      </div>
+
+      <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Admin Notes <span class="text-gray-400 font-normal">(internal only, never shown to the member)</span></label>
         <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['notes'] ?? '') ?></textarea>
       </div>
@@ -423,6 +430,8 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         <p class="text-gray-500 mb-1">CV / Resume</p>
         <?php if (!empty($m['cv_path'])): ?>
         <a href="../uploads/cv/<?= urlencode($m['cv_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-lines"></i> View CV</a>
+        <?php elseif (!empty($m['cv_url'])): ?>
+        <a href="<?= htmlspecialchars($m['cv_url']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-arrow-up-right-from-square"></i> CV Link (external)</a>
         <?php else: ?>
         <span class="text-gray-300">Not uploaded</span>
         <?php endif; ?>

@@ -75,11 +75,16 @@ function generateResetToken(): string {
 }
 
 // ── Certificate number ─────────────────────────────────────
+// Deliberately bypasses setting()'s per-request cache and does the increment
+// in SQL (not read-then-write in PHP): setting()'s cache is populated once
+// and never invalidated on write, so a second call in the same request (e.g.
+// bulk-activating several members, each issuing a certificate) would read
+// the same pre-increment cached value and mint a duplicate number, which
+// then fails on the certificate_no UNIQUE constraint.
 function nextCertNumber(): string {
-    $pdo     = db();
-    $counter = (int) setting('cert_id_counter', '0');
-    $counter++;
-    $pdo->prepare("UPDATE settings SET value = ? WHERE `key` = 'cert_id_counter'")->execute([$counter]);
+    $pdo = db();
+    $pdo->exec("UPDATE settings SET value = value + 1 WHERE `key` = 'cert_id_counter'");
+    $counter = (int) $pdo->query("SELECT value FROM settings WHERE `key` = 'cert_id_counter'")->fetchColumn();
     return CERT_PREFIX . '-' . date('Y') . '-' . str_pad($counter, 4, '0', STR_PAD_LEFT);
 }
 
@@ -478,6 +483,7 @@ const RARL_MIGRATIONS = [
     '007_certificate_templates.sql'     => 'Uploadable ID card / certificate templates (HTML-based generation)',
     '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
     '009_admin_only_posts.sql'          => 'Seeds the "RARL Community Team" system account admin posts are authored as',
+    '010_cv_url.sql'                    => 'Optional external CV/Resume link (e.g. Google Drive) alongside the local upload',
 ];
 
 function dbTablesExist(): bool {
@@ -599,11 +605,13 @@ function planIdFor(string $memberType): ?int {
 }
 
 // ── Member code / ID card numbering ─────────────────────────
+// Same fix as nextCertNumber(): SQL-side atomic increment instead of
+// read-through-cache-then-write, so repeated calls within one request (bulk
+// activate issuing cards for several members) don't hand out the same number twice.
 function nextMemberCode(string $planSlug): string {
-    $pdo     = db();
-    $counter = (int) setting('id_card_counter', '0');
-    $counter++;
-    $pdo->prepare("UPDATE settings SET value = ? WHERE `key` = 'id_card_counter'")->execute([$counter]);
+    $pdo = db();
+    $pdo->exec("UPDATE settings SET value = value + 1 WHERE `key` = 'id_card_counter'");
+    $counter = (int) $pdo->query("SELECT value FROM settings WHERE `key` = 'id_card_counter'")->fetchColumn();
     $prefix = strtoupper(substr($planSlug ?: 'MEM', 0, 3));
     return $prefix . str_pad((string)$counter, 4, '0', STR_PAD_LEFT);
 }

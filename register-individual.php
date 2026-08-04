@@ -48,12 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($vals['research_interests'])) $errors[] = 'Please share your research interests.';
     if ($vals['google_scholar_url'] !== '' && !filter_var($vals['google_scholar_url'], FILTER_VALIDATE_URL)) $errors[] = 'Google Scholar URL must be a valid URL.';
 
+    // Either an uploaded file or an external link (e.g. Google Drive, for
+    // anyone migrating from the old Google Form flow) satisfies the CV requirement.
     $cvFilename = null;
-    if (empty($_FILES['cv_file']['name'])) {
-        $errors[] = 'Please upload a valid CV — PDF/DOC/DOCX, max 10MB.';
-    } else {
+    $vals['cv_url'] = cleanUrl($_POST['cv_url'] ?? '');
+    if (!empty($_FILES['cv_file']['name'])) {
         $cvFilename = validateUpload($_FILES['cv_file'], ['pdf','doc','docx'], 10 * 1024 * 1024, UPLOADS_PATH . '/cv');
-        if (!$cvFilename) $errors[] = 'Please upload a valid CV — PDF/DOC/DOCX, max 10MB.';
+        if (!$cvFilename) $errors[] = 'CV file must be a PDF/DOC/DOCX under 10MB.';
+    } elseif ($vals['cv_url'] === '') {
+        $errors[] = 'Please upload a CV file or provide a link to it (e.g. Google Drive).';
     }
 
     if (empty($errors)) {
@@ -75,16 +78,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("
                 INSERT INTO members
                   (uuid, type, email, password_hash, full_name, institution, department, position,
-                   country, city_state, primary_lab_name, years_experience, referral_source, cv_path,
+                   country, city_state, primary_lab_name, years_experience, referral_source, cv_path, cv_url,
                    research_interests, google_scholar_url, orcid_id, linkedin_url,
                    newsletter_opt_in, unsubscribe_token, status, plan_id, section_id)
                 VALUES
-                  (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                  (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ")->execute([
                 $uuid, 'individual', $vals['email'], $hash, $vals['full_name'],
                 $vals['institution'], $vals['department'], $vals['position'],
                 $vals['country'], $vals['city_state'], $vals['primary_lab_name'],
-                $vals['years_experience'], $vals['referral_source'], $cvFilename,
+                $vals['years_experience'], $vals['referral_source'], $cvFilename, $vals['cv_url'] ?: null,
                 $vals['research_interests'],
                 $vals['google_scholar_url'], $vals['orcid_id'], $vals['linkedin_url'],
                 $vals['newsletter_opt_in'], $token, $status, $planId, $sectionId,
@@ -232,9 +235,17 @@ echo htmlHead('Individual Researcher Registration');
       <!-- CV Upload -->
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">CV / Resume <span class="text-rarl-red">*</span></label>
-        <input type="file" name="cv_file" required accept=".pdf,.doc,.docx"
+        <input type="file" name="cv_file" accept=".pdf,.doc,.docx"
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
-        <p class="text-[11px] text-gray-400 mt-1">PDF, DOC, or DOCX — max 10MB.</p>
+        <p class="text-[11px] text-gray-400 mt-1">PDF, DOC, or DOCX — max 10MB. Or, skip the upload and paste a link below instead.</p>
+      </div>
+
+      <!-- CV Link (optional alternative to uploading a file) -->
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Or, link to your CV / Resume <span class="text-gray-400 font-normal">(e.g. Google Drive)</span></label>
+        <input type="url" name="cv_url" value="<?= htmlspecialchars($vals['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+        <p class="text-[11px] text-gray-400 mt-1">Make sure link sharing is turned on so we can access it. Either the upload above or this link is required.</p>
       </div>
 
       <!-- Research Interests -->
