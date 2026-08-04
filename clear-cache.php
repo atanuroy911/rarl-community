@@ -59,4 +59,27 @@ if (function_exists('realpath_cache_size')) {
     echo "realpath cache cleared (was " . realpath_cache_size() . " bytes).\n";
 }
 
+echo "\n=== Direct file check (bypasses everything above) ===\n";
+$layoutPath = __DIR__ . '/admin/layout.php';
+if (!is_file($layoutPath)) {
+    echo "admin/layout.php does not exist at {$layoutPath}!\n";
+} else {
+    $bytes = file_get_contents($layoutPath);
+    echo "File size: " . strlen($bytes) . " bytes\n";
+    echo "MD5: " . md5($bytes) . "\n";
+    echo "Last modified: " . date('c', filemtime($layoutPath)) . "\n";
+    $hasDefinition = (bool) preg_match('/function\s+bulkRowCheckbox\s*\(/', $bytes);
+    echo "Contains 'function bulkRowCheckbox(' (real definition, not just the word in a comment): " . ($hasDefinition ? 'YES' : 'NO — this file was never actually updated with the fix') . "\n";
+
+    // Fresh-include in an isolated function scope, bypassing any opcode cache
+    // entry that might exist under a different resolved path, then check.
+    $probe = function() use ($layoutPath) {
+        if (!function_exists('bulkRowCheckbox')) {
+            require $layoutPath;
+        }
+        return function_exists('bulkRowCheckbox');
+    };
+    echo "function_exists('bulkRowCheckbox') after fresh require: " . ($probe() ? 'YES — the function loads correctly in isolation' : 'NO — even a direct require of this exact file does not define it') . "\n";
+}
+
 echo "\nDone at " . date('c') . "\n";
