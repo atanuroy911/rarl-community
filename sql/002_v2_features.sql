@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS `regional_sections` (
   `name`          VARCHAR(150) NOT NULL,
   `chair_name`    VARCHAR(150) DEFAULT NULL,
   `chair_email`   VARCHAR(255) DEFAULT NULL,
-  `chair_title`   VARCHAR(100) NOT NULL DEFAULT 'Section Chair',
+  `chair_title`   VARCHAR(100) NOT NULL DEFAULT 'Chapter Chair',
   `display_order` INT(11)      NOT NULL DEFAULT 0,
   `is_published`  TINYINT(1)   NOT NULL DEFAULT 1,
   `created_at`    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -123,16 +123,10 @@ CREATE TABLE IF NOT EXISTS `regional_sections` (
   UNIQUE KEY `name` (`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-INSERT INTO `regional_sections` (`scope`,`continent`,`country`,`name`,`chair_name`,`chair_email`,`chair_title`,`display_order`) VALUES
-('continent','Asia',NULL,       'Asia Section',        'Seyed Ali Eftekhari',            'sae@rarl-lab.com', 'Section Chair', 1),
-('country',  'Asia','Korea',    'Korea Chapter',        'Seyed Ali Eftekhari',            'sae@rarl-lab.com', 'Section Chair', 2),
-('country',  'Asia','Bangladesh','Bangladesh Chapter',  'Atanu Shuvam Roy',               'asr@rarl-lab.com', 'Section Chair', 3),
-('country',  'Asia','Pakistan', 'Pakistan Chapter',      'Dr. Zeashan Hamid Khan',         'zhk@rarl.com',     'Chapter Chair', 4),
-('continent','Asia',NULL,       'Asia Vice Chair',      'Dr. Zeashan Hamid Khan',          'zhk@rarl.com',     'Vice Chair',     5),
-('country',  'Asia','Malaysia', 'Malaysia Chapter',      'Dr. Mohammad Ali Toufigh',       NULL,               'Section Chair', 6),
-('country',  'Asia','China',    'China Chapter',         'Dr. Arash Sioofy Khoojine',      NULL,               'Section Chair', 7),
-('continent','Africa',NULL,     'Africa Section',        'Dr. Mukhtar Iderawumi Abdulraheem', NULL,            'Section Chair', 8)
-ON DUPLICATE KEY UPDATE `chair_name` = VALUES(`chair_name`), `chair_title` = VALUES(`chair_title`), `display_order` = VALUES(`display_order`);
+-- Chapter leadership rows are no longer seeded here — the table starts empty and
+-- editable via admin/sections.php (see functions.php: seedRegionalSectionsIfEmpty()),
+-- so a fresh install never carries fixed people's data that a schema reseed could
+-- later overwrite.
 
 -- (no formal FK constraint, matching the rest of this schema's app-level-only relationships)
 

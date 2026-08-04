@@ -17,6 +17,64 @@ $m = $stmt->fetch();
 if (!$m) { $_SESSION['flash'] = ['type'=>'error','msg'=>'Member not found.']; header('Location: members.php'); exit; }
 
 $errors = [];
+$displayNameFor = fn(array $mm) => $mm['type'] === 'lab' ? $mm['lab_name'] : $mm['full_name'];
+
+// ── Admin-assist actions (resend/verify/reset/impersonate/regenerate) ──
+// These let an admin unblock a stuck member without needing DB access.
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['assist_action'])) {
+    $assist = $_POST['assist_action'];
+
+    if ($assist === 'resend_verification' && empty($m['email_verified_at'])) {
+        $code = generateOtp($m['email'], 'verify');
+        $memberName = $displayNameFor($m);
+        ob_start(); require dirname(__DIR__) . '/emails/otp-verify.php'; $body = ob_get_clean();
+        sendEmail($m['email'], $memberName, 'Verify your RARL Community email', $body);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Verification code resent to ' . $m['email'] . '.'];
+    } elseif ($assist === 'mark_verified') {
+        $pdo->prepare('UPDATE members SET email_verified_at = NOW() WHERE id = ?')->execute([$id]);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Email manually marked as verified.'];
+    } elseif ($assist === 'approve_now') {
+        $pdo->prepare("UPDATE members SET status = 'active' WHERE id = ?")->execute([$id]);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member approved and activated.'];
+    } elseif ($assist === 'send_temp_password') {
+        $temp = bin2hex(random_bytes(5));
+        $pdo->prepare('UPDATE members SET password_hash = ?, must_change_password = 1 WHERE id = ?')
+            ->execute([password_hash($temp, PASSWORD_BCRYPT), $id]);
+        $memberName = $displayNameFor($m); $tempPassword = $temp;
+        ob_start(); require dirname(__DIR__) . '/emails/admin-temp-password.php'; $body = ob_get_clean();
+        sendEmail($m['email'], $memberName, 'Your RARL Community password has been reset', $body);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Temporary password generated and emailed to ' . $m['email'] . '.'];
+    } elseif ($assist === 'resend_welcome') {
+        $memberName = $displayNameFor($m); $isApproval = false;
+        ob_start(); require dirname(__DIR__) . '/emails/welcome.php'; $body = ob_get_clean();
+        sendEmail($m['email'], $memberName, 'Welcome to RARL Community', $body);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Welcome email resent.'];
+    } elseif ($assist === 'regenerate_id_card') {
+        $ok = issueIdCard($id);
+        $_SESSION['flash'] = $ok
+            ? ['type'=>'success','msg'=>'ID card regenerated.']
+            : ['type'=>'error','msg'=>'Could not generate ID card — member needs an avatar photo uploaded first.'];
+    } elseif ($assist === 'add_email') {
+        $newEmail = cleanEmail($_POST['new_email'] ?? '');
+        if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Enter a valid email to link.'];
+        } else {
+            $dupe = $pdo->prepare('SELECT id FROM member_emails WHERE email = ?'); $dupe->execute([$newEmail]);
+            if ($dupe->fetch()) {
+                $_SESSION['flash'] = ['type'=>'error','msg'=>'That email is already linked to an account.'];
+            } else {
+                $pdo->prepare('INSERT INTO member_emails (member_id, email, label, verified_at) VALUES (?,?,?,NOW())')
+                    ->execute([$id, $newEmail, clean($_POST['email_label'] ?? '') ?: null]);
+                $_SESSION['flash'] = ['type'=>'success','msg'=>'Linked ' . $newEmail . ' — they can now log in with it too.'];
+            }
+        }
+    } elseif ($assist === 'remove_email') {
+        $emailId = (int)($_POST['email_id'] ?? 0);
+        $pdo->prepare('DELETE FROM member_emails WHERE id = ? AND member_id = ? AND is_primary = 0')->execute([$emailId, $id]);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Email unlinked.'];
+    }
+    header('Location: member-edit.php?id=' . $id); exit;
+}
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $email      = cleanEmail($_POST['email'] ?? '');
@@ -90,8 +148,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
 $plans    = $pdo->query("SELECT id, name FROM membership_plans WHERE is_published=1 ORDER BY display_order")->fetchAll();
 $sections = $pdo->query("SELECT id, name FROM regional_sections WHERE is_published=1 ORDER BY continent, scope DESC, display_order")->fetchAll();
 $displayName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
+$linkedEmails = $pdo->prepare('SELECT * FROM member_emails WHERE member_id = ? ORDER BY is_primary DESC, id');
+$linkedEmails->execute([$id]);
+$linkedEmails = $linkedEmails->fetchAll();
 
-adminWrap(function() use ($m, $errors, $plans, $sections, $displayName) { ?>
+adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedEmails) { ?>
 <a href="members.php" class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-rarl-red transition-colors mb-4">← Back to Members</a>
 <div class="flex items-center gap-3 mb-6">
   <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
@@ -324,6 +385,51 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName) { ?>
       <div class="flex justify-between"><span class="text-gray-500">Email verified</span><span class="text-gray-700"><?= $m['email_verified_at'] ? date('d M Y', strtotime($m['email_verified_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Last login</span><span class="text-gray-700"><?= $m['last_login_at'] ? date('d M Y H:i', strtotime($m['last_login_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Welcome email sent</span><span class="text-gray-700"><?= $m['discord_invited'] ? 'Yes' : 'No' ?></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">Must change password</span><span class="text-gray-700"><?= !empty($m['must_change_password']) ? '⚠️ Yes' : 'No' ?></span></div>
+    </div>
+
+    <!-- Admin Assist -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-2">
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">🛟 Admin Assist</h2>
+      <p class="text-[11px] text-gray-400 mb-2">Common help-desk actions for this member.</p>
+      <?php
+        $assistBtn = function(string $action, string $label, string $confirmMsg = '', string $classes = 'bg-gray-50 hover:bg-gray-100 text-gray-700') {
+            $onsubmit = $confirmMsg ? " onsubmit=\"return confirm('" . htmlspecialchars($confirmMsg, ENT_QUOTES) . "')\"" : '';
+            echo '<form method="POST"' . $onsubmit . '>' . acsrfField()
+               . '<input type="hidden" name="assist_action" value="' . $action . '">'
+               . '<button type="submit" class="w-full text-left px-3 py-2 text-xs font-semibold ' . $classes . ' rounded-lg transition-colors">' . $label . '</button></form>';
+        };
+      ?>
+      <?php if (empty($m['email_verified_at'])): ?>
+        <?php $assistBtn('resend_verification', '✉️ Resend verification email'); ?>
+        <?php $assistBtn('mark_verified', '✅ Manually mark email verified'); ?>
+      <?php endif; ?>
+      <?php if ($m['status'] === 'pending'): ?>
+        <?php $assistBtn('approve_now', '👍 Approve & activate now', '', 'bg-green-50 hover:bg-green-100 text-green-700'); ?>
+      <?php endif; ?>
+      <?php $assistBtn('send_temp_password', '🔑 Reset password & email temp password', 'Generate a new temporary password and email it to this member?'); ?>
+      <?php $assistBtn('resend_welcome', '📧 Resend welcome email'); ?>
+      <?php $assistBtn('regenerate_id_card', '🪪 Regenerate ID card'); ?>
+    </div>
+
+    <!-- Linked emails -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-2">
+      <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">Linked Emails</h2>
+      <?php foreach ($linkedEmails as $le): ?>
+      <div class="flex items-center justify-between gap-2 text-xs p-2 bg-gray-50 rounded-lg">
+        <span class="truncate"><?= htmlspecialchars($le['email']) ?> <?= $le['is_primary'] ? '· primary' : ($le['verified_at'] ? '· verified' : '· pending') ?></span>
+        <?php if (!$le['is_primary']): ?>
+        <form method="POST" onsubmit="return confirm('Unlink this email?')"><?= acsrfField() ?><input type="hidden" name="assist_action" value="remove_email"><input type="hidden" name="email_id" value="<?= $le['id'] ?>">
+          <button type="submit" class="text-red-500 font-semibold flex-shrink-0">✕</button>
+        </form>
+        <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
+      <form method="POST" class="flex gap-1.5 pt-2">
+        <?= acsrfField() ?><input type="hidden" name="assist_action" value="add_email">
+        <input type="email" name="new_email" placeholder="Add email" required class="flex-1 min-w-0 px-2 py-1.5 border border-gray-300 rounded-lg text-xs"/>
+        <button type="submit" class="px-2.5 py-1.5 bg-gray-800 text-white text-xs font-semibold rounded-lg flex-shrink-0">+</button>
+      </form>
     </div>
   </div>
 </div>

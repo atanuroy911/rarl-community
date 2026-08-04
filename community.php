@@ -203,6 +203,20 @@ foreach ($sections as $s) {
     $regionGroups[$continent][$s['scope']][] = $s;
 }
 
+// ── Left sidebar profile card data ──
+$myFull = null; $mySection = null;
+if ($isMember) {
+    $myFullStmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+    $myFullStmt->execute([$myMemberId]);
+    $myFull = $myFullStmt->fetch();
+    if ($myFull && $myFull['section_id']) {
+        $ms = $pdo->prepare('SELECT name FROM regional_sections WHERE id = ?');
+        $ms->execute([$myFull['section_id']]);
+        $mySection = $ms->fetch();
+    }
+}
+$upcomingEvents = $pdo->query("SELECT id, title, event_date FROM events WHERE is_active = 1 AND (event_date IS NULL OR event_date >= CURDATE()) ORDER BY event_date ASC LIMIT 3")->fetchAll();
+
 echo htmlHead('Community Portal');
 ?>
 <?= publicNav('community') ?>
@@ -229,10 +243,60 @@ echo htmlHead('Community Portal');
   </div>
 </section>
 
-<div class="max-w-5xl mx-auto px-6 py-14">
-  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 
-    <div class="lg:col-span-2 space-y-10">
+    <!-- Left sidebar -->
+    <div class="hidden lg:block lg:col-span-3 space-y-5">
+      <?php if ($isMember && $myFull): ?>
+      <?php $myDisplayName = $myFull['type'] === 'lab' ? $myFull['lab_name'] : $myFull['full_name']; ?>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm sticky top-4">
+        <div class="h-14" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"></div>
+        <div class="px-5 pb-5 -mt-7">
+          <?= memberAvatarHtml($myFull['avatar_path'], $myDisplayName ?: '?', 'w-14 h-14 text-lg border-4 border-white dark:border-gray-900 shadow') ?>
+          <p class="font-heading font-bold text-sm text-gray-900 dark:text-white mt-2 truncate"><?= htmlspecialchars($myDisplayName ?: '(unnamed)') ?></p>
+          <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <?= $myFull['type'] === 'lab' ? htmlspecialchars($myFull['pi_name'] ?? '') : htmlspecialchars($myFull['position'] ?? '') ?>
+            <?= $myFull['institution'] ? ' · ' . htmlspecialchars(mb_strimwidth($myFull['institution'], 0, 24, '…')) : '' ?>
+          </p>
+          <?php if ($myFull['country']): ?><p class="text-[11px] text-gray-400 mt-0.5">📍 <?= htmlspecialchars($myFull['country']) ?></p><?php endif; ?>
+          <?php if ($mySection): ?>
+          <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
+            🌍 <?= htmlspecialchars($mySection['name']) ?>
+          </div>
+          <?php endif; ?>
+        </div>
+        <nav class="border-t border-gray-100 dark:border-gray-800 py-2">
+          <a href="profile.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">👤 My Profile</a>
+          <a href="dashboard.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📊 Dashboard</a>
+          <?php if (!empty($myFull['id_card_path'])): ?>
+          <a href="uploads/id-cards/<?= urlencode($myFull['id_card_path']) ?>" target="_blank" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🪪 My ID Card</a>
+          <?php endif; ?>
+          <a href="directory.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🔎 Member Directory</a>
+        </nav>
+      </div>
+      <?php else: ?>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm sticky top-4">
+        <p class="text-sm font-semibold text-gray-800 dark:text-white mb-1">Join the RARL Community</p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Create a free account to post, comment, and connect with researchers worldwide.</p>
+        <a href="register.php" class="block text-center px-4 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-bold rounded-xl transition-colors">Join Free →</a>
+      </div>
+      <?php endif; ?>
+
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white">Explore</h3>
+        </div>
+        <nav class="py-2">
+          <a href="events.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📅 Events</a>
+          <a href="resources.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">📚 Resources</a>
+          <a href="people.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🧑‍🤝‍🧑 Leadership</a>
+          <a href="partners.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors">🤝 Partnerships</a>
+        </nav>
+      </div>
+    </div>
+
+    <div class="lg:col-span-6 space-y-10">
 
       <?php if ($isMember): ?>
       <!-- Community Feed -->
@@ -367,8 +431,25 @@ echo htmlHead('Community Portal');
 
     </div>
 
-    <!-- Sidebar -->
-    <div class="space-y-5">
+    <!-- Right sidebar -->
+    <div class="lg:col-span-3 space-y-5">
+      <?php if ($upcomingEvents): ?>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
+        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
+          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white">📅 Upcoming Events</h3>
+          <a href="events.php" class="text-[10px] text-rarl-red hover:underline">See all</a>
+        </div>
+        <div class="divide-y divide-gray-100 dark:divide-gray-800">
+          <?php foreach ($upcomingEvents as $ev): ?>
+          <a href="events.php#event-<?= $ev['id'] ?>" class="block px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+            <p class="text-xs font-semibold text-gray-800 dark:text-white truncate"><?= htmlspecialchars($ev['title']) ?></p>
+            <p class="text-[11px] text-gray-400 mt-0.5"><?= $ev['event_date'] ? date('d M Y', strtotime($ev['event_date'])) : 'Date TBA' ?></p>
+          </a>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
       <!-- Community Stats -->
       <div class="rounded-2xl p-6 shadow-sm text-white" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%);">
         <h3 class="font-heading font-bold text-sm mb-4">🌐 RARL Community</h3>
@@ -471,6 +552,22 @@ echo htmlHead('Community Portal');
     return true;
   }
 
+  // ── "…more" toggle for long post text (mobile-style clamp) ──
+  function rarlExpandPost(postId) {
+    document.querySelectorAll('.post-clamp-' + postId).forEach(el => el.classList.remove('line-clamp-4'));
+    document.querySelectorAll('.post-more-' + postId).forEach(el => el.classList.add('hidden'));
+  }
+  function rarlInitClampButtons(root) {
+    root.querySelectorAll('[class*="post-clamp-"]').forEach(el => {
+      if (el.scrollHeight > el.clientHeight + 2) {
+        const idClass = [...el.classList].find(c => c.startsWith('post-clamp-'));
+        const id = idClass.replace('post-clamp-', '');
+        document.querySelectorAll('.post-more-' + id).forEach(btn => btn.classList.remove('hidden'));
+      }
+    });
+  }
+  rarlInitClampButtons(document);
+
   // ── Lazy-load more posts as the sentinel scrolls into view ──
   const sentinel = document.getElementById('feed-sentinel');
   if (sentinel) {
@@ -488,6 +585,7 @@ echo htmlHead('Community Portal');
           const hasMore = html.includes('<!-- has_more:1 -->');
           const cleanHtml = html.replace(/<!-- has_more:[01] -->/, '');
           document.getElementById('post-list').insertAdjacentHTML('beforeend', cleanHtml);
+          rarlInitClampButtons(document.getElementById('post-list'));
           sentinel.dataset.offset = offset + <?= COMMUNITY_PAGE_SIZE ?>;
           sentinel.dataset.hasMore = hasMore ? '1' : '0';
           sentinel.dataset.loading = '0';

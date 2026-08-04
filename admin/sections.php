@@ -5,6 +5,7 @@
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
 $pdo = db();
+seedRegionalSectionsIfEmpty();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $action = $_POST['action'] ?? '';
@@ -16,7 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $name      = clean($_POST['name'] ?? '');
         $chairName = clean($_POST['chair_name'] ?? '');
         $chairEmail= cleanEmail($_POST['chair_email'] ?? '');
-        $chairTitle= clean($_POST['chair_title'] ?? '') ?: 'Section Chair';
+        $chairTitle= clean($_POST['chair_title'] ?? '') ?: 'Chapter Chair';
         $order     = (int)($_POST['display_order'] ?? 0);
         $pub       = !empty($_POST['is_published']) ? 1 : 0;
 
@@ -33,6 +34,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
                         ->execute([$scope,$continent,$country,$name,$chairName,$chairEmail,$chairTitle,$order,$pub,$id]);
                     $_SESSION['flash'] = ['type'=>'success','msg'=>'Section updated.'];
                 }
+            }
+            // Every chair gets member-portal login access — no-op if this email already has an account.
+            if ($chairEmail && createChairAccountIfMissing($chairEmail, $chairName)) {
+                $_SESSION['flash'] = ['type'=>'success','msg'=>$_SESSION['flash']['msg'] . ' A chair account was created and the temporary password emailed to ' . $chairEmail . '.'];
             }
         }
         header('Location: sections.php'); exit;
@@ -94,7 +99,7 @@ adminWrap(function() use ($sections, $edit) {
           <input type="email" name="chair_email" value="<?= htmlspecialchars($edit['chair_email'] ?? '') ?>" placeholder="Chair Email"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         </div>
-        <input type="text" name="chair_title" value="<?= htmlspecialchars($edit['chair_title'] ?? 'Section Chair') ?>" placeholder="Chair Title"
+        <input type="text" name="chair_title" value="<?= htmlspecialchars($edit['chair_title'] ?? 'Chapter Chair') ?>" placeholder="Chair Title"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
 
         <input type="number" name="display_order" value="<?= htmlspecialchars($edit['display_order'] ?? 0) ?>" placeholder="Order"

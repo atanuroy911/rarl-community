@@ -93,11 +93,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } elseif ($new !== $confirm) {
                 $errors[] = 'New passwords do not match.';
             } else {
-                $pdo->prepare('UPDATE members SET password_hash=? WHERE id=?')
+                $pdo->prepare('UPDATE members SET password_hash=?, must_change_password=0 WHERE id=?')
                     ->execute([password_hash($new, PASSWORD_BCRYPT), $memberId]);
                 flash('success', 'Password changed.');
                 redirect('profile.php');
             }
+        } elseif ($action === 'add_email') {
+            $newEmail = cleanEmail($_POST['new_email'] ?? '');
+            if (!filter_var($newEmail, FILTER_VALIDATE_EMAIL)) {
+                $errors[] = 'Enter a valid email address.';
+            } else {
+                $dupe = $pdo->prepare('SELECT id FROM member_emails WHERE email = ?'); $dupe->execute([$newEmail]);
+                if ($dupe->fetch()) {
+                    $errors[] = 'That email is already linked to an account.';
+                } else {
+                    $pdo->prepare('INSERT INTO member_emails (member_id, email, label) VALUES (?,?,?)')
+                        ->execute([$memberId, $newEmail, clean($_POST['email_label'] ?? '') ?: null]);
+                    $code = generateOtp($newEmail, 'verify');
+                    $memberName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
+                    ob_start(); require __DIR__ . '/emails/otp-verify.php'; $body = ob_get_clean();
+                    sendEmail($newEmail, $memberName, 'Verify your linked email — RARL Community', $body);
+                    flash('success', 'Email added — check ' . $newEmail . ' for a verification code.');
+                    redirect('verify-linked-email.php?email=' . urlencode($newEmail));
+                }
+            }
+        } elseif ($action === 'remove_email') {
+            $emailId = (int)($_POST['email_id'] ?? 0);
+            $pdo->prepare('DELETE FROM member_emails WHERE id = ? AND member_id = ? AND is_primary = 0')->execute([$emailId, $memberId]);
+            flash('success', 'Email removed.');
+            redirect('profile.php');
         }
     }
     // Re-fetch in case of validation errors so the form re-renders with saved values
@@ -144,6 +168,12 @@ echo htmlHead('My Profile');
     <?php if ($errors): ?>
     <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm space-y-1">
       <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span>⚠️</span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+
+    <?php if (!empty($m['must_change_password']) || !empty($_GET['force_password'])): ?>
+    <div class="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl text-amber-800 dark:text-amber-300 text-sm">
+      🔐 Your password was reset by an admin. Please set a new one below before continuing.
     </div>
     <?php endif; ?>
 
@@ -355,8 +385,41 @@ echo htmlHead('My Profile');
       </button>
     </form>
 
+    <!-- Linked emails -->
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 shadow-sm space-y-4">
+      <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-1">Linked Emails</h2>
+      <p class="text-xs text-gray-500 -mt-2">Sign in with any verified email below — handy if you use a separate ORCID or work address.</p>
+      <div class="space-y-2">
+        <?php
+        $linkedEmails = $pdo->prepare('SELECT * FROM member_emails WHERE member_id = ? ORDER BY is_primary DESC, id');
+        $linkedEmails->execute([$memberId]);
+        foreach ($linkedEmails->fetchAll() as $le): ?>
+        <div class="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm">
+          <div>
+            <span class="text-gray-800 dark:text-gray-200"><?= htmlspecialchars($le['email']) ?></span>
+            <?php if ($le['is_primary']): ?><span class="ml-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">Primary</span>
+            <?php elseif ($le['verified_at']): ?><span class="ml-2 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">Verified</span>
+            <?php else: ?><span class="ml-2 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded">Pending verification</span><?php endif; ?>
+          </div>
+          <?php if (!$le['is_primary']): ?>
+          <form method="POST" onsubmit="return confirm('Remove this linked email?')">
+            <?= csrfField() ?><input type="hidden" name="action" value="remove_email"><input type="hidden" name="email_id" value="<?= $le['id'] ?>">
+            <button type="submit" class="text-[10px] font-semibold text-red-600 hover:underline">Remove</button>
+          </form>
+          <?php endif; ?>
+        </div>
+        <?php endforeach; ?>
+      </div>
+      <form method="POST" class="flex flex-col sm:flex-row gap-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+        <?= csrfField() ?><input type="hidden" name="action" value="add_email">
+        <input type="email" name="new_email" required placeholder="Add another email (e.g. university address)"
+          class="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm"/>
+        <button type="submit" class="px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-xl whitespace-nowrap">+ Link Email</button>
+      </form>
+    </div>
+
     <!-- Change password -->
-    <form method="POST" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 shadow-sm space-y-4">
+    <form method="POST" id="account" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 shadow-sm space-y-4 scroll-mt-20">
       <?= csrfField() ?>
       <input type="hidden" name="action" value="change_password"/>
       <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-1">Change Password</h2>

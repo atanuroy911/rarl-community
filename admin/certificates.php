@@ -81,7 +81,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $pdfFile = 'cert_' . str_replace('-', '', $uuid) . '.pdf';
             $pdfFull = $certDir . $pdfFile;
 
-            if (file_exists(dirname(__DIR__) . '/libs/fpdf/fpdf.php')) {
+            $template = $templateId ? (function() use ($pdo, $templateId) {
+                $t = $pdo->prepare("SELECT * FROM certificate_templates WHERE id = ? AND type = 'certificate'"); $t->execute([$templateId]); return $t->fetch();
+            })() : getDefaultTemplate('certificate');
+
+            if ($template) {
+                renderTemplatePdf($template, [
+                    'name' => $name, 'event' => $event['title'], 'cert_no' => $certNo,
+                    'date' => $event['event_date'] ? date('d F Y', strtotime($event['event_date'])) : date('d F Y'),
+                    'verify_url' => CERT_VERIFY_URL . '?id=' . $uuid,
+                ], $pdfFull);
+                $pdfPath = $pdfFile;
+            } elseif (file_exists(dirname(__DIR__) . '/libs/fpdf/fpdf.php')) {
                 require_once dirname(__DIR__) . '/libs/fpdf/fpdf.php';
                 generateCertPDF($pdfFull, $name, $event['title'], $certNo, $event['event_date'] ?? date('Y-m-d'), $uuid);
                 $pdfPath = $pdfFile;
@@ -108,6 +119,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         }
 
         $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$issued} certificates. Skipped {$skipped} (duplicates or invalid rows)."];
+        header('Location: certificates.php'); exit;
+    }
+
+    // ── Email a single previously-generated (unsent) certificate ──
+    if ($action === 'email_cert') {
+        $cid = (int)($_POST['cert_id'] ?? 0);
+        $row = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id=e.id WHERE c.id = ?");
+        $row->execute([$cid]);
+        $c = $row->fetch();
+        if ($c && $c['pdf_path']) {
+            $verifyUrl  = CERT_VERIFY_URL . '?id=' . $c['uuid'];
+            $eventTitle = $c['event_title']; $eventDate = $c['event_date'] ? date('d F Y', strtotime($c['event_date'])) : date('d F Y');
+            $certNumber = $c['certificate_no']; $memberName = $c['recipient_name'];
+            ob_start(); require dirname(__DIR__) . '/emails/certificate.php'; $body = ob_get_clean();
+            sendEmail($c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body);
+            $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$cid]);
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Certificate emailed to ' . $c['recipient_email'] . '.'];
+        }
         header('Location: certificates.php'); exit;
     }
 
@@ -173,12 +202,13 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
         <?php if ($templates): ?>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Template <span class="text-gray-400 font-normal">(optional)</span></label>
-          <select name="template_id" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
+          <select name="template_id" id="cert-template-select" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
             <option value="">Default template</option>
-            <?php foreach ($templates as $t): ?>
+            <?php foreach ($templates as $t): if ($t['type'] !== 'certificate') continue; ?>
             <option value="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option>
             <?php endforeach; ?>
           </select>
+          <a href="#" id="cert-preview-link" target="_blank" class="hidden mt-1.5 inline-block text-[11px] text-rarl-red hover:underline">👁️ Preview sample →</a>
         </div>
         <?php endif; ?>
 
@@ -204,6 +234,13 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
           🏆 Generate & Issue
         </button>
       </form>
+      <script>
+        document.getElementById('cert-template-select')?.addEventListener('change', function() {
+          const link = document.getElementById('cert-preview-link');
+          if (this.value) { link.href = 'preview-template.php?id=' + this.value; link.classList.remove('hidden'); }
+          else { link.classList.add('hidden'); }
+        });
+      </script>
 
       <div class="mt-4 pt-4 border-t border-gray-100">
         <p class="text-xs font-semibold text-gray-500 mb-2">CSV Template:</p>
@@ -285,6 +322,11 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $sea
                   <?php if ($c['pdf_path']): ?>
                   <a href="../uploads/certificates/<?= urlencode($c['pdf_path']) ?>" target="_blank"
                     class="px-2 py-1 text-[10px] font-semibold bg-green-50 text-green-600 hover:bg-green-100 rounded-lg transition-colors">PDF</a>
+                  <?php endif; ?>
+                  <?php if (!$c['emailed_at']): ?>
+                  <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>">
+                    <button type="submit" class="px-2 py-1 text-[10px] font-semibold bg-amber-50 text-amber-600 hover:bg-amber-100 rounded-lg transition-colors">✉ Send</button>
+                  </form>
                   <?php endif; ?>
                   <form method="POST" class="inline" onsubmit="return confirm('Delete this certificate?')">
                     <?= acsrfField() ?><input type="hidden" name="action" value="delete_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>">

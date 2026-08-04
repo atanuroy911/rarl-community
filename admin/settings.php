@@ -55,7 +55,7 @@ adminWrap(function() use ($set) {
 <div class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6 flex items-center justify-between gap-4">
   <div>
     <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">Reseed Defaults</h2>
-    <p class="text-xs text-gray-400">Re-creates any missing default membership plans / regional sections. Safe to run any time — won't duplicate or overwrite existing custom rows.</p>
+    <p class="text-xs text-gray-400">Re-creates any missing default membership plans. Safe to run any time — won't duplicate or overwrite existing custom rows. (Chapter leadership is managed on the <a href="sections.php" class="underline">Regional Sections</a> page and is never touched here.)</p>
   </div>
   <form method="POST">
     <?= acsrfField() ?><input type="hidden" name="action" value="reseed_defaults">

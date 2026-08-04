@@ -14,8 +14,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $email    = cleanEmail($_POST['email']    ?? '');
         $password = $_POST['password']            ?? '';
 
-        $stmt = db()->prepare('SELECT id, password_hash, status, full_name, lab_name, type, email_verified_at FROM members WHERE email = ?');
-        $stmt->execute([$email]);
+        // Look up by any linked email (primary or additional, e.g. an ORCID-affiliated address) —
+        // falls back to members.email directly in case member_emails hasn't been backfilled yet.
+        $stmt = db()->prepare(
+            'SELECT m.id, m.password_hash, m.status, m.full_name, m.lab_name, m.type, m.email_verified_at, m.must_change_password
+             FROM members m LEFT JOIN member_emails me ON me.member_id = m.id
+             WHERE m.email = ? OR (me.email = ? AND me.verified_at IS NOT NULL) LIMIT 1'
+        );
+        $stmt->execute([$email, $email]);
         $member = $stmt->fetch();
 
         if (!$member || !password_verify($password, $member['password_hash'])) {
@@ -32,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $_SESSION['member_type'] = $member['type'];
             $_SESSION['member_name'] = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
             db()->prepare('UPDATE members SET last_login_at = NOW() WHERE id = ?')->execute([$member['id']]);
-            redirect('community.php');
+            redirect(!empty($member['must_change_password']) ? 'profile.php?force_password=1' : 'community.php');
         }
     }
 }
