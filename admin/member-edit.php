@@ -83,9 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
         } else {
             $memberCode = $m['member_code'];
             if (!$memberCode) {
-                $planSlug = 'free';
-                if ($m['plan_id']) { $p = $pdo->prepare('SELECT slug FROM membership_plans WHERE id=?'); $p->execute([$m['plan_id']]); $planSlug = $p->fetchColumn() ?: 'free'; }
-                $memberCode = nextMemberCode($planSlug);
+                $memberCode = nextMemberCode();
             }
             $pdo->prepare('UPDATE members SET member_code=?, id_card_path=?, id_card_issued_at=CURDATE(), id_card_expires_at=DATE_ADD(CURDATE(), INTERVAL 3 YEAR) WHERE id=?')
                 ->execute([$memberCode, $filename, $id]);

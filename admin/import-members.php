@@ -136,7 +136,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && ($_POST['action'] 
             $taken = $pdo->prepare('SELECT id FROM members WHERE member_code = ?'); $taken->execute([$memberCode]);
             if ($taken->fetch()) $memberCode = ''; // already used — fall back to auto-generation rather than erroring the whole row out
         }
-        if ($memberCode === '') $memberCode = nextMemberCode('free');
+        if ($memberCode === '') $memberCode = nextMemberCode();
 
         $temp = bin2hex(random_bytes(5));
         $uuid = generateUuid();

@@ -608,12 +608,14 @@ function planIdFor(string $memberType): ?int {
 // Same fix as nextCertNumber(): SQL-side atomic increment instead of
 // read-through-cache-then-write, so repeated calls within one request (bulk
 // activate issuing cards for several members) don't hand out the same number twice.
-function nextMemberCode(string $planSlug): string {
+// Format matches the official RARL roster: <year><4-digit counter>, e.g. 20260885.
+// Stored without the leading "#" — display sites (directory.php, roster-pdf.php,
+// id-card-verify.php, etc.) already prepend it when rendering member_code.
+function nextMemberCode(): string {
     $pdo = db();
     $pdo->exec("UPDATE settings SET value = value + 1 WHERE `key` = 'id_card_counter'");
     $counter = (int) $pdo->query("SELECT value FROM settings WHERE `key` = 'id_card_counter'")->fetchColumn();
-    $prefix = strtoupper(substr($planSlug ?: 'MEM', 0, 3));
-    return $prefix . str_pad((string)$counter, 4, '0', STR_PAD_LEFT);
+    return date('Y') . str_pad((string)$counter, 4, '0', STR_PAD_LEFT);
 }
 
 // ── Simple bare-URL auto-linker (applied to already-escaped text) ──
@@ -1318,13 +1320,7 @@ function issueIdCard(int $memberId): bool {
     if (!$m || empty($m['avatar_path'])) return false;
 
     if (empty($m['member_code'])) {
-        $planSlug = 'free';
-        if ($m['plan_id']) {
-            $p = $pdo->prepare('SELECT slug FROM membership_plans WHERE id = ?');
-            $p->execute([$m['plan_id']]);
-            $planSlug = ($p->fetch()['slug'] ?? 'free');
-        }
-        $m['member_code'] = nextMemberCode($planSlug);
+        $m['member_code'] = nextMemberCode();
     }
 
     $sectionName = ''; $chairName = '';
