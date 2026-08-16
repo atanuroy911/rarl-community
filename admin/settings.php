@@ -63,28 +63,42 @@ $set = [];
 foreach ($pdo->query("SELECT `key`,`value` FROM settings")->fetchAll() as $r) $set[$r['key']] = $r['value'];
 
 adminWrap(function() use ($set) {
-    adminFlash(); ?>
-<h1 class="text-2xl font-black text-gray-900 mb-1">Global Settings</h1>
-<p class="text-gray-500 text-sm mb-7">Manage core platform configuration</p>
+    adminFlash();
 
-<!-- Reseed Defaults -->
-<div class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6 flex items-center justify-between gap-4">
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">Reseed Defaults</h2>
-    <p class="text-xs text-gray-400">Re-creates any missing default membership plans. Safe to run any time — won't duplicate or overwrite existing custom rows. (Chapter leadership is managed on the <a href="sections.php" class="underline">Regional Sections</a> page and is never touched here.)</p>
+    // Small helper to keep every card's header markup identical (icon + title + optional hint)
+    $cardHead = function(string $icon, string $title, ?string $hint = null) {
+        echo '<div class="flex items-start gap-3 mb-5">';
+        echo '<div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500"><i class="fa-solid '.$icon.'"></i></div>';
+        echo '<div><h2 class="font-heading font-bold text-sm text-gray-900">'.$title.'</h2>';
+        if ($hint) echo '<p class="text-[11px] text-gray-400 mt-0.5">'.$hint.'</p>';
+        echo '</div></div>';
+    };
+    ?>
+<div class="max-w-3xl">
+  <h1 class="text-2xl font-black text-gray-900 mb-1">Global Settings</h1>
+  <p class="text-gray-500 text-sm mb-7">Manage core platform configuration</p>
+
+  <!-- Reseed Defaults -->
+  <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-5 flex items-center justify-between gap-4">
+    <div class="flex items-start gap-3">
+      <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-gray-100 text-gray-500"><i class="fa-solid fa-rotate"></i></div>
+      <div>
+        <h2 class="font-heading font-bold text-sm text-gray-900 mb-0.5">Reseed Defaults</h2>
+        <p class="text-xs text-gray-400">Re-creates any missing default membership plans. Safe to run any time — won't duplicate or overwrite existing custom rows. (Chapter leadership is managed on the <a href="sections.php" class="underline">Regional Sections</a> page and is never touched here.)</p>
+      </div>
+    </div>
+    <form method="POST" class="flex-shrink-0">
+      <?= acsrfField() ?><input type="hidden" name="action" value="reseed_defaults">
+      <button type="submit" class="px-5 py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors whitespace-nowrap">Reseed Defaults</button>
+    </form>
   </div>
-  <form method="POST">
-    <?= acsrfField() ?><input type="hidden" name="action" value="reseed_defaults">
-    <button type="submit" class="px-5 py-2.5 bg-gray-900 hover:bg-black text-white font-semibold text-xs rounded-xl transition-colors whitespace-nowrap">Reseed Defaults</button>
-  </form>
-</div>
 
-<form method="POST" enctype="multipart/form-data" class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-7 shadow-sm space-y-6">
-  <?= acsrfField() ?>
+  <form method="POST" enctype="multipart/form-data" class="space-y-5">
+    <?= acsrfField() ?>
 
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Certificate Generation</h2>
-    <div class="space-y-4">
+    <!-- Certificate Generation -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-award', 'Certificate Generation'); ?>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Certificate ID Counter</label>
         <input type="number" name="settings[cert_id_counter]" value="<?= htmlspecialchars($set['cert_id_counter']??'0') ?>"
@@ -92,173 +106,181 @@ adminWrap(function() use ($set) {
         <p class="text-[10px] text-gray-400 mt-1">The numeric counter for the next certificate. e.g., 42 becomes RARL-2025-0043.</p>
       </div>
     </div>
-  </div>
 
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Membership Program</h2>
-    <div class="space-y-4">
-      <label class="flex items-center gap-2 p-3 <?= ($set['membership_enabled']??'1')==='1' ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-200' ?> border rounded-xl cursor-pointer">
-        <input type="checkbox" name="settings[membership_enabled]" value="1" <?= ($set['membership_enabled']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
-        <span class="text-sm text-gray-700 font-semibold">Membership program is active</span>
-      </label>
-      <p class="text-[10px] text-gray-400 -mt-2">Master switch for the whole membership system. When off, sign-in, registration, dashboard, profile, community feed, chapter portal, and the public roster all show a "Membership Paused" notice — the rest of the site (home, events, resources, people, partners, certificate/ID verification) stays up as normal. This is more drastic than "Accepting new registrations" below, which only pauses new signups.</p>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Paused Message</label>
-        <textarea name="settings[membership_paused_message]" rows="2"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['membership_paused_message']??'') ?></textarea>
-      </div>
-    </div>
-  </div>
-
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Membership Roster</h2>
-    <p class="text-[10px] text-gray-400 -mt-2 mb-3">The public <a href="../directory.php" target="_blank" class="underline">Membership Roster page</a> shows only this uploaded PDF — no member list is pulled from the database.</p>
-    <div class="space-y-3">
-      <?php if (!empty($set['custom_roster_pdf_path'])): ?>
-      <div class="flex items-center gap-3 p-3.5 bg-green-50 border border-green-200 rounded-xl">
-        <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-green-100 text-green-700"><i class="fa-solid fa-file-pdf"></i></div>
-        <div class="min-w-0 flex-1">
-          <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="block text-sm font-semibold text-green-700 hover:underline truncate"><?= htmlspecialchars($set['custom_roster_pdf_path']) ?></a>
-          <span class="text-[10px] text-green-600/80">Live on the public roster page</span>
-        </div>
-        <label class="flex-shrink-0 flex items-center gap-1.5 text-xs text-red-600 font-medium cursor-pointer hover:text-red-700">
-          <input type="checkbox" name="remove_roster_pdf" value="1" class="accent-red-600"/> Remove
+    <!-- Membership Program -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-toggle-on', 'Membership Program'); ?>
+      <div class="space-y-4">
+        <label class="flex items-center gap-2 p-3 <?= ($set['membership_enabled']??'1')==='1' ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-200' ?> border rounded-xl cursor-pointer">
+          <input type="checkbox" name="settings[membership_enabled]" value="1" <?= ($set['membership_enabled']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+          <span class="text-sm text-gray-700 font-semibold">Membership program is active</span>
         </label>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Replace with a new PDF <span class="text-gray-400 font-normal">(optional)</span></label>
-        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>
-        <p class="text-[10px] text-gray-400 mt-1">Uploading a new file replaces the current one immediately. PDF only, max 15MB.</p>
-      </div>
-      <?php else: ?>
-      <div class="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center">
-        <p class="text-2xl text-gray-300 mb-1"><i class="fa-solid fa-file-arrow-up"></i></p>
-        <p class="text-xs font-semibold text-gray-600 mb-2">No roster PDF uploaded yet</p>
-        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-rarl-red file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-rarl-dark"/>
-        <p class="text-[10px] text-gray-400 mt-1">PDF only, max 15MB. The public roster page will show "no roster uploaded yet" until one is added here.</p>
-      </div>
-      <?php endif; ?>
-    </div>
-  </div>
-
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Registration</h2>
-    <div class="space-y-4">
-      <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-        <input type="checkbox" name="settings[registrations_open]" value="1" <?= ($set['registrations_open']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
-        <span class="text-sm text-gray-700 font-semibold">Accepting new registrations</span>
-      </label>
-      <p class="text-[10px] text-gray-400 -mt-2">When off, register.php and both sub-forms redirect to a "Registrations Closed" notice — existing members can still log in and use the site as normal.</p>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Closed Message</label>
-        <textarea name="settings[registrations_closed_message]" rows="2"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['registrations_closed_message']??'') ?></textarea>
+        <p class="text-[10px] text-gray-400 -mt-2">Master switch for the whole membership system. When off, sign-in, registration, dashboard, profile, community feed, chapter portal, and the public roster all show a "Membership Paused" notice — the rest of the site (home, events, resources, people, partners, certificate/ID verification) stays up as normal. This is more drastic than "Accepting new registrations" below, which only pauses new signups.</p>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Paused Message</label>
+          <textarea name="settings[membership_paused_message]" rows="2"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['membership_paused_message']??'') ?></textarea>
+        </div>
       </div>
     </div>
-  </div>
 
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Free Membership Growth</h2>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Free Membership Deadline</label>
-        <input type="date" name="settings[free_membership_deadline]" value="<?= htmlspecialchars($set['free_membership_deadline']??'') ?>"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <p class="text-[10px] text-gray-400 mt-1">Shows a countdown banner site-wide until this date. Leave blank to hide the banner.</p>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Auto-Approve Email Domains</label>
-        <textarea name="settings[auto_approve_domains]" rows="2" placeholder="ulab.edu.bd, leicester.ac.uk"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['auto_approve_domains']??'') ?></textarea>
-        <p class="text-[10px] text-gray-400 mt-1">Comma-separated email domains (e.g. a partner university). New individual registrations from these domains skip manual review and are activated immediately — ID card and membership certificate issue right away. Leave blank to keep every signup manual.</p>
-      </div>
-    </div>
-  </div>
-
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Site Content</h2>
-    <div class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Badge</label>
-        <input type="text" name="settings[home_hero_badge]" value="<?= htmlspecialchars($set['home_hero_badge']??'') ?>" placeholder="Now Open for Membership"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Title</label>
-        <input type="text" name="settings[home_hero_title]" value="<?= htmlspecialchars($set['home_hero_title']??'') ?>" placeholder="Join the Global RARL Research Community"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Subtitle</label>
-        <textarea name="settings[home_hero_subtitle]" rows="3"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['home_hero_subtitle']??'') ?></textarea>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Community Feed Intro</label>
-        <textarea name="settings[community_feed_intro]" rows="2"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['community_feed_intro']??'') ?></textarea>
-      </div>
-    </div>
-  </div>
-
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Hero Stats Override</h2>
-    <p class="text-[10px] text-gray-400 mb-3">Leave Members/Labs/Certificates blank to use the live database count. Countries has no live source, so it always uses this value.</p>
-    <div class="grid grid-cols-2 gap-4">
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Members Override</label>
-        <input type="text" name="settings[stat_members_override]" value="<?= htmlspecialchars($set['stat_members_override']??'') ?>" placeholder="Blank = live count"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Labs Override</label>
-        <input type="text" name="settings[stat_labs_override]" value="<?= htmlspecialchars($set['stat_labs_override']??'') ?>" placeholder="Blank = live count"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Certificates Override</label>
-        <input type="text" name="settings[stat_certs_override]" value="<?= htmlspecialchars($set['stat_certs_override']??'') ?>" placeholder="Blank = live count"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Countries</label>
-        <input type="text" name="settings[stat_countries]" value="<?= htmlspecialchars($set['stat_countries']??'5') ?>"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-    </div>
-  </div>
-
-  <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Homepage Popup</h2>
-    <div class="space-y-4">
-      <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-rarl-red/30 transition-colors">
-        <input type="checkbox" name="settings[popup_enabled]" value="1" <?= ($set['popup_enabled']??'0')==='1'?'checked':'' ?> class="accent-rarl-red w-4 h-4"/>
-        <span class="text-xs font-semibold text-gray-700">Enable popup on homepage</span>
-      </label>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Image</label>
-        <?php if (!empty($set['popup_image_path'])): ?>
-        <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($set['popup_image_path']) ?>" class="h-20 rounded-lg border border-gray-200 mb-2"/>
+    <!-- Membership Roster -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-file-pdf', 'Membership Roster', 'The public <a href="../directory.php" target="_blank" class="underline">Membership Roster page</a> shows only this uploaded PDF — no member list is pulled from the database.'); ?>
+      <div class="space-y-3">
+        <?php if (!empty($set['custom_roster_pdf_path'])): ?>
+        <div class="flex items-center gap-3 p-3.5 bg-green-50 border border-green-200 rounded-xl">
+          <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-green-100 text-green-700"><i class="fa-solid fa-file-pdf"></i></div>
+          <div class="min-w-0 flex-1">
+            <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="block text-sm font-semibold text-green-700 hover:underline truncate"><?= htmlspecialchars($set['custom_roster_pdf_path']) ?></a>
+            <span class="text-[10px] text-green-600/80">Live on the public roster page</span>
+          </div>
+          <label class="flex-shrink-0 flex items-center gap-1.5 text-xs text-red-600 font-medium cursor-pointer hover:text-red-700">
+            <input type="checkbox" name="remove_roster_pdf" value="1" class="accent-red-600"/> Remove
+          </label>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Replace with a new PDF <span class="text-gray-400 font-normal">(optional)</span></label>
+          <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>
+          <p class="text-[10px] text-gray-400 mt-1">Uploading a new file replaces the current one immediately. PDF only, max 15MB.</p>
+        </div>
+        <?php else: ?>
+        <div class="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center">
+          <p class="text-2xl text-gray-300 mb-1"><i class="fa-solid fa-file-arrow-up"></i></p>
+          <p class="text-xs font-semibold text-gray-600 mb-2">No roster PDF uploaded yet</p>
+          <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-rarl-red file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-rarl-dark"/>
+          <p class="text-[10px] text-gray-400 mt-1">PDF only, max 15MB. The public roster page will show "no roster uploaded yet" until one is added here.</p>
+        </div>
         <?php endif; ?>
-        <input type="file" name="popup_image" accept=".jpg,.jpeg,.png,.webp"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <p class="text-[10px] text-gray-400 mt-1">JPG/PNG/WEBP, max 3MB. Leave blank to keep the current image.</p>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Link URL</label>
-        <input type="url" name="settings[popup_link_url]" value="<?= htmlspecialchars($set['popup_link_url']??'') ?>" placeholder="https://…"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Alt Text</label>
-        <input type="text" name="settings[popup_alt_text]" value="<?= htmlspecialchars($set['popup_alt_text']??'') ?>"
-          class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
       </div>
     </div>
-  </div>
 
-  <div class="pt-4">
-    <button type="submit" class="px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors shadow">Save Settings</button>
-  </div>
-</form>
+    <!-- Registration -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-user-plus', 'Registration'); ?>
+      <div class="space-y-4">
+        <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
+          <input type="checkbox" name="settings[registrations_open]" value="1" <?= ($set['registrations_open']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+          <span class="text-sm text-gray-700 font-semibold">Accepting new registrations</span>
+        </label>
+        <p class="text-[10px] text-gray-400 -mt-2">When off, register.php and both sub-forms redirect to a "Registrations Closed" notice — existing members can still log in and use the site as normal.</p>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Closed Message</label>
+          <textarea name="settings[registrations_closed_message]" rows="2"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['registrations_closed_message']??'') ?></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Free Membership Growth -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-chart-line', 'Free Membership Growth'); ?>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Free Membership Deadline</label>
+          <input type="date" name="settings[free_membership_deadline]" value="<?= htmlspecialchars($set['free_membership_deadline']??'') ?>"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+          <p class="text-[10px] text-gray-400 mt-1">Shows a countdown banner site-wide until this date. Leave blank to hide the banner.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Auto-Approve Email Domains</label>
+          <textarea name="settings[auto_approve_domains]" rows="2" placeholder="ulab.edu.bd, leicester.ac.uk"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['auto_approve_domains']??'') ?></textarea>
+          <p class="text-[10px] text-gray-400 mt-1">Comma-separated email domains (e.g. a partner university). New individual registrations from these domains skip manual review and are activated immediately — ID card and membership certificate issue right away. Leave blank to keep every signup manual.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Site Content -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-pen-to-square', 'Site Content'); ?>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Badge</label>
+          <input type="text" name="settings[home_hero_badge]" value="<?= htmlspecialchars($set['home_hero_badge']??'') ?>" placeholder="Now Open for Membership"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Title</label>
+          <input type="text" name="settings[home_hero_title]" value="<?= htmlspecialchars($set['home_hero_title']??'') ?>" placeholder="Join the Global RARL Research Community"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Subtitle</label>
+          <textarea name="settings[home_hero_subtitle]" rows="3"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['home_hero_subtitle']??'') ?></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Community Feed Intro</label>
+          <textarea name="settings[community_feed_intro]" rows="2"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['community_feed_intro']??'') ?></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Hero Stats Override -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-chart-simple', 'Hero Stats Override', 'Leave Members/Labs/Certificates blank to use the live database count. Countries has no live source, so it always uses this value.'); ?>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Members Override</label>
+          <input type="text" name="settings[stat_members_override]" value="<?= htmlspecialchars($set['stat_members_override']??'') ?>" placeholder="Blank = live count"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Labs Override</label>
+          <input type="text" name="settings[stat_labs_override]" value="<?= htmlspecialchars($set['stat_labs_override']??'') ?>" placeholder="Blank = live count"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Certificates Override</label>
+          <input type="text" name="settings[stat_certs_override]" value="<?= htmlspecialchars($set['stat_certs_override']??'') ?>" placeholder="Blank = live count"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Countries</label>
+          <input type="text" name="settings[stat_countries]" value="<?= htmlspecialchars($set['stat_countries']??'5') ?>"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Homepage Popup -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-window-restore', 'Homepage Popup'); ?>
+      <div class="space-y-4">
+        <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-rarl-red/30 transition-colors">
+          <input type="checkbox" name="settings[popup_enabled]" value="1" <?= ($set['popup_enabled']??'0')==='1'?'checked':'' ?> class="accent-rarl-red w-4 h-4"/>
+          <span class="text-xs font-semibold text-gray-700">Enable popup on homepage</span>
+        </label>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Image</label>
+          <?php if (!empty($set['popup_image_path'])): ?>
+          <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($set['popup_image_path']) ?>" class="h-20 rounded-lg border border-gray-200 mb-2"/>
+          <?php endif; ?>
+          <input type="file" name="popup_image" accept=".jpg,.jpeg,.png,.webp"
+            class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>
+          <p class="text-[10px] text-gray-400 mt-1">JPG/PNG/WEBP, max 3MB. Leave blank to keep the current image.</p>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Link URL</label>
+          <input type="url" name="settings[popup_link_url]" value="<?= htmlspecialchars($set['popup_link_url']??'') ?>" placeholder="https://…"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Alt Text</label>
+          <input type="text" name="settings[popup_alt_text]" value="<?= htmlspecialchars($set['popup_alt_text']??'') ?>"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sticky save bar -->
+    <div class="sticky bottom-4 flex justify-end pt-2">
+      <button type="submit" class="px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors shadow-lg">
+        <i class="fa-solid fa-check mr-1.5"></i>Save Settings
+      </button>
+    </div>
+  </form>
+</div>
 <?php }, 'settings', 'Settings');

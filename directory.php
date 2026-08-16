@@ -5,13 +5,14 @@
  * (stored in uploads/roster). No per-member list is queried from the database.
  */
 require_once __DIR__ . '/functions.php';
+if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 if (!membershipEnabled()) renderMembershipPausedPageAndExit('Membership Roster');
 
 $customRosterPdf = setting('custom_roster_pdf_path', '');
 
 echo htmlHead('Membership Roster');
 ?>
-<?= publicNav() ?>
+<?= publicNav('directory') ?>
 
 <!-- Hero -->
 <section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
