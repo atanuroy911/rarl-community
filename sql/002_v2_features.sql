@@ -1,5 +1,5 @@
 -- ============================================================
--- RARL Community Platform — v2 migration
+-- Robotics & Automation Research Lab (RARL) Platform — v2 migration
 -- Free plans, OTP auth, community feed, regional sections,
 -- people directory, member ID cards, expanded registration.
 -- Safe to re-run (idempotent CREATE/ALTER/UPSERT).

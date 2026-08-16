@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Community Platform — Brand Constants (single source of truth)
+ * Robotics & Automation Research Lab (RARL) Platform — Brand Constants (single source of truth)
  * Colors/fonts/logo paths match rarl-lab.com. Consumed by functions.php
  * (public site), admin/layout.php + admin/login.php (admin), and emails/*.php.
  */

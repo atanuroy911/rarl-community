@@ -1,5 +1,5 @@
 -- ============================================================
--- RARL Community Platform — Public events/RSVP, premium learning
+-- Robotics & Automation Research Lab (RARL) Platform — Public events/RSVP, premium learning
 -- content, and member directory. Run after 003 (same idempotent,
 -- safe-to-re-run style as every other migration here).
 -- ============================================================

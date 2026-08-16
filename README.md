@@ -1,4 +1,4 @@
-# RARL Community Platform
+# Robotics & Automation Research Lab (RARL) Platform
 
 Plain PHP + MySQL community platform for the Robotics & Automation Research Lab (RARL):
 member registration (individuals and labs), a built-in community feed, a learning

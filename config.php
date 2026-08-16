@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Community Platform — Central Configuration
+ * Robotics & Automation Research Lab (RARL) Platform — Central Configuration
  * Values come from environment variables (.env locally, or injected directly by
  * cPanel) with sensible defaults for local dev. This file holds no secrets itself
  * and is safe to commit — put real values in .env (gitignored).
@@ -16,7 +16,7 @@ define('DB_PASS',    env('DB_PASS', ''));
 define('DB_CHARSET', 'utf8mb4');
 
 // ── Site ───────────────────────────────────────────────────
-define('SITE_NAME',       env('SITE_NAME', 'RARL Community'));
+define('SITE_NAME',       env('SITE_NAME', 'Robotics & Automation Research Lab (RARL)'));
 define('SITE_TAGLINE',    env('SITE_TAGLINE', 'Robotics and Automation Research Laboratory'));
 define('SITE_URL',        env('SITE_URL', 'https://rarl-lab.com/membership'));
 define('MAIN_SITE_URL',   env('MAIN_SITE_URL', 'https://rarl-lab.com'));
@@ -24,7 +24,7 @@ define('UPLOADS_PATH',    __DIR__ . '/uploads');
 define('UPLOADS_URL',     SITE_URL . '/uploads');
 
 // ── Email ──────────────────────────────────────────────────
-define('MAIL_FROM_NAME',  env('MAIL_FROM_NAME', 'RARL Community'));
+define('MAIL_FROM_NAME',  env('MAIL_FROM_NAME', 'Robotics & Automation Research Lab (RARL)'));
 define('MAIL_FROM_EMAIL', env('MAIL_FROM_EMAIL', 'community@rarl-lab.com'));
 define('MAIL_REPLY_TO',   env('MAIL_REPLY_TO', 'info@rarl-lab.com'));
 define('ADMIN_EMAIL',     env('ADMIN_EMAIL', 'admin@rarl-lab.com'));

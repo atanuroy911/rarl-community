@@ -18,7 +18,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
     $me = $stmt->fetch();
 
     // Member post creation is paused for now — admins post via admin/community.php
-    // ("RARL Community Team"), members can still comment/like below. Deliberately
+    // ("Robotics & Automation Research Lab (RARL) Team"), members can still comment/like below. Deliberately
     // no create_post handler here anymore so a direct POST can't slip through
     // even if old composer markup somehow got submitted.
 
@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
                 ob_start();
                 require __DIR__ . '/emails/community-comment.php';
                 $emailBody = ob_get_clean();
-                sendEmail($authorEmail, $authorName, 'New comment on your RARL Community post', $emailBody);
+                sendEmail($authorEmail, $authorName, 'New comment on your Robotics & Automation Research Lab (RARL) post', $emailBody);
             }
         }
         header('Location: community.php#post-' . $postId); exit;
@@ -218,7 +218,7 @@ echo htmlHead('Community Portal');
   <div class="absolute inset-0" style="background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px;"></div>
   <?php if ($isMember): ?>
   <div class="relative z-10 max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-    <h1 class="font-heading font-black text-xl text-white"><i class="fa-solid fa-earth-americas"></i> RARL Community Feed</h1>
+    <h1 class="font-heading font-black text-xl text-white"><i class="fa-solid fa-earth-americas"></i> Robotics & Automation Research Lab (RARL) Feed</h1>
     <a href="#feed" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-rarl-red font-black rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-xs flex-shrink-0">
       Go to the Feed ↓
     </a>
@@ -226,7 +226,7 @@ echo htmlHead('Community Portal');
   <?php else: ?>
   <div class="relative z-10 max-w-5xl mx-auto px-6 py-14 text-center">
     <div class="text-4xl mb-4"><i class="fa-solid fa-earth-americas"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">RARL Community Feed</h1>
+    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">Robotics & Automation Research Lab (RARL) Feed</h1>
     <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
     <div class="inline-flex flex-col items-center gap-3">
       <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition-all text-sm">
@@ -272,7 +272,7 @@ echo htmlHead('Community Portal');
       </div>
       <?php else: ?>
       <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm sticky top-4">
-        <p class="text-sm font-semibold text-gray-800 dark:text-white mb-1">Join the RARL Community</p>
+        <p class="text-sm font-semibold text-gray-800 dark:text-white mb-1">Join the Robotics & Automation Research Lab (RARL)</p>
         <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Create a free account to post, comment, and connect with researchers worldwide.</p>
         <a href="register.php" class="block text-center px-4 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-bold rounded-xl transition-colors">Join Free →</a>
       </div>
@@ -409,7 +409,7 @@ echo htmlHead('Community Portal');
 
       <!-- Community Stats -->
       <div class="rounded-2xl p-6 shadow-sm text-white" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%);">
-        <h3 class="font-heading font-bold text-sm mb-4"><i class="fa-solid fa-earth-americas"></i> RARL Community</h3>
+        <h3 class="font-heading font-bold text-sm mb-4"><i class="fa-solid fa-earth-americas"></i> Robotics & Automation Research Lab (RARL)</h3>
         <div class="grid grid-cols-3 gap-2 text-center">
           <div>
             <div class="font-heading font-black text-xl"><?= $communityStats['members'] ?></div>

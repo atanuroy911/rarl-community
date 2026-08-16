@@ -53,7 +53,7 @@ echo htmlHead('Member Login');
     <div class="text-center mb-8">
       <div class="inline-flex items-center gap-2 mb-3">
         <img src="<?= BRAND_MARK_PATH ?>" alt="RARL" class="w-10 h-10 rounded-xl object-contain shadow-lg"/>
-        <span class="font-heading font-black text-gray-900 dark:text-white">RARL Community</span>
+        <span class="font-heading font-black text-gray-900 dark:text-white">Robotics & Automation Research Lab (RARL)</span>
       </div>
       <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1">Welcome back</h1>
       <p class="text-gray-500 text-sm">Sign in to your member account</p>

@@ -111,19 +111,33 @@ adminWrap(function() use ($set) {
   </div>
 
   <div>
-    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Member Directory / Roster</h2>
+    <h2 class="font-heading font-bold text-sm text-gray-800 mb-4 border-b border-gray-100 pb-2">Membership Roster</h2>
+    <p class="text-[10px] text-gray-400 -mt-2 mb-3">The public <a href="../directory.php" target="_blank" class="underline">Membership Roster page</a> shows only this uploaded PDF — no member list is pulled from the database.</p>
     <div class="space-y-3">
       <?php if (!empty($set['custom_roster_pdf_path'])): ?>
-      <div class="flex items-center justify-between gap-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm">
-        <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="text-green-700 font-semibold hover:underline"><i class="fa-solid fa-file-pdf"></i> Current roster PDF</a>
-        <label class="flex items-center gap-1.5 text-xs text-red-600 cursor-pointer"><input type="checkbox" name="remove_roster_pdf" value="1" class="accent-red-600"/> Remove</label>
+      <div class="flex items-center gap-3 p-3.5 bg-green-50 border border-green-200 rounded-xl">
+        <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-green-100 text-green-700"><i class="fa-solid fa-file-pdf"></i></div>
+        <div class="min-w-0 flex-1">
+          <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="block text-sm font-semibold text-green-700 hover:underline truncate"><?= htmlspecialchars($set['custom_roster_pdf_path']) ?></a>
+          <span class="text-[10px] text-green-600/80">Live on the public roster page</span>
+        </div>
+        <label class="flex-shrink-0 flex items-center gap-1.5 text-xs text-red-600 font-medium cursor-pointer hover:text-red-700">
+          <input type="checkbox" name="remove_roster_pdf" value="1" class="accent-red-600"/> Remove
+        </label>
+      </div>
+      <div>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Replace with a new PDF <span class="text-gray-400 font-normal">(optional)</span></label>
+        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>
+        <p class="text-[10px] text-gray-400 mt-1">Uploading a new file replaces the current one immediately. PDF only, max 15MB.</p>
+      </div>
+      <?php else: ?>
+      <div class="p-4 border-2 border-dashed border-gray-200 rounded-xl text-center">
+        <p class="text-2xl text-gray-300 mb-1"><i class="fa-solid fa-file-arrow-up"></i></p>
+        <p class="text-xs font-semibold text-gray-600 mb-2">No roster PDF uploaded yet</p>
+        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-rarl-red file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-rarl-dark"/>
+        <p class="text-[10px] text-gray-400 mt-1">PDF only, max 15MB. The public roster page will show "no roster uploaded yet" until one is added here.</p>
       </div>
       <?php endif; ?>
-      <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Upload Custom Roster PDF <span class="text-gray-400 font-normal">(optional)</span></label>
-        <input type="file" name="roster_pdf" accept=".pdf" class="w-full text-xs"/>
-        <p class="text-[10px] text-gray-400 mt-1">If set, this exact file is offered for download on the public Membership Roster page (directory.php) alongside the auto-generated one — useful for an officially formatted/signed version.</p>
-      </div>
     </div>
   </div>
 

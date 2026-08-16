@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Community Platform — Minimal .env Loader
+ * Robotics & Automation Research Lab (RARL) Platform — Minimal .env Loader
  * No Composer dependency — parses KEY=VALUE lines so this works unmodified on any
  * plain-PHP shared host. Real environment variables (e.g. cPanel's "Environment
  * Variables" feature) work too — there may be no .env file at all, that's fine,

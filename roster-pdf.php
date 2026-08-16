@@ -36,7 +36,7 @@ class RosterPDF extends FPDF {
     public string $subtitle = '';
     function Header(): void {
         $this->SetFont('Helvetica', 'B', 14);
-        $this->Cell(0, 8, fpdfEnc('RARL Community — Membership Roster'), 0, 1, 'L');
+        $this->Cell(0, 8, fpdfEnc('Robotics & Automation Research Lab (RARL) — Membership Roster'), 0, 1, 'L');
         if ($this->subtitle !== '') {
             $this->SetFont('Helvetica', '', 9);
             $this->SetTextColor(120, 120, 120);

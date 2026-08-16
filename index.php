@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Community Platform — Public Landing Page
+ * Robotics & Automation Research Lab (RARL) Platform — Public Landing Page
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); 
 if (!empty($_SESSION['member_id'])) redirect('community.php');
 $loggedInMember = null;
 
-echo htmlHead('Join the RARL Community');
+echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
 ?>
 <?= publicNav('home') ?>
 
@@ -246,7 +246,7 @@ echo htmlHead('Join the RARL Community');
       Go to the Community Feed →
     </a>
     <?php else: ?>
-    <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the RARL Community?</h2>
+    <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the Robotics & Automation Research Lab (RARL)?</h2>
     <p class="text-white/75 text-base mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
     <p class="text-white/60 text-sm mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
     <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">

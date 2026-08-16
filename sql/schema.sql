@@ -1,5 +1,5 @@
 -- ============================================================
--- RARL Community Platform — Database Schema
+-- Robotics & Automation Research Lab (RARL) Platform — Database Schema
 -- 10 tables covering all 5 modules
 -- Run in cPanel → phpMyAdmin on your target database
 -- ============================================================
@@ -163,8 +163,8 @@ CREATE TABLE IF NOT EXISTS `settings` (
 
 -- Default settings
 INSERT INTO `settings` (`key`, `value`) VALUES
-('community_guidelines','Welcome to the RARL Community. Please be respectful and collaborative.'),
-('site_name',           'RARL Community'),
+('community_guidelines','Welcome to the Robotics & Automation Research Lab (RARL). Please be respectful and collaborative.'),
+('site_name',           'Robotics & Automation Research Lab (RARL)'),
 ('site_tagline',        'Robotics and Automation Research Laboratory'),
 ('site_url',            'https://rarl-lab.com/membership'),
 ('require_approval',    '1'),

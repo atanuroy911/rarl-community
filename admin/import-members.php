@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && ($_POST['action'] 
 
         $memberName = $data['full_name']; $tempPassword = $temp;
         ob_start(); require dirname(__DIR__) . '/emails/admin-temp-password.php'; $body = ob_get_clean();
-        sendEmail($data['email'], $memberName, 'Your RARL Community account is ready', $body);
+        sendEmail($data['email'], $memberName, 'Your Robotics & Automation Research Lab (RARL) account is ready', $body);
         $created++;
     }
 

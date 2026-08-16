@@ -1,12 +1,12 @@
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
   <div style="text-align: center; padding: 20px 0;">
     <img src="<?= MAIN_SITE_URL . BRAND_MARK_PATH ?>" width="40" height="40" style="border-radius:8px;" alt="RARL"/>
-    <h1 style="color: <?= BRAND_INK ?>; margin: 10px 0 0 0; font-size: 24px;">RARL Community</h1>
+    <h1 style="color: <?= BRAND_INK ?>; margin: 10px 0 0 0; font-size: 24px;">Robotics & Automation Research Lab (RARL)</h1>
   </div>
 
   <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #eee;">
     <p>Hi <?= htmlspecialchars($memberName) ?>,</p>
-    <p>As a Chapter Chair, you've been given a RARL Community member account so you can sign in, manage your profile, and engage with your chapter.</p>
+    <p>As a Chapter Chair, you've been given a Robotics & Automation Research Lab (RARL) member account so you can sign in, manage your profile, and engage with your chapter.</p>
 
     <p style="margin: 20px 0 6px;">Your login email: <strong><?= htmlspecialchars($chairEmail) ?></strong></p>
     <div style="text-align: center; margin: 12px 0 30px;">
@@ -21,6 +21,6 @@
   </div>
 
   <div style="text-align: center; font-size: 12px; color: #999; margin-top: 20px;">
-    &copy; <?= date('Y') ?> RARL Community. All rights reserved.
+    &copy; <?= date('Y') ?> Robotics & Automation Research Lab (RARL). All rights reserved.
   </div>
 </div>

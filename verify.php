@@ -74,7 +74,7 @@ echo htmlHead('Verify Certificate');
           <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-3"><?= htmlspecialchars($cert['recipient_name']) ?></h2>
           <?php if ($isMembershipCert): ?>
           <p class="text-gray-500 text-sm mb-1">is a certified member of the</p>
-          <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">RARL Community</h3>
+          <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">Robotics & Automation Research Lab (RARL)</h3>
           <?php else: ?>
           <p class="text-gray-500 text-sm mb-1">has successfully participated in</p>
           <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100"><?= htmlspecialchars($cert['event_title'] ?? 'Event') ?></h3>

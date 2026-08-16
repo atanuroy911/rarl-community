@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     }
     if ($action === 'add_feed_post') {
         // Community posting is paused for members for now — only admins can
-        // post to the feed (attributed to the "RARL Community Team" system
+        // post to the feed (attributed to the "Robotics & Automation Research Lab (RARL) Team" system
         // account), members can still comment and like.
         $body = clean($_POST['post_body'] ?? '');
         $imagePath = null;
@@ -144,7 +144,7 @@ adminWrap(function() use ($settings, $announcements, $posts, $comments) {
 <!-- Post to Community Feed — member posting is paused for now, this is the only way new posts land in the feed -->
 <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm mb-6">
   <h2 class="font-heading font-bold text-base text-gray-800 mb-1"><i class="fa-solid fa-comment"></i> Post to Community Feed</h2>
-  <p class="text-[11px] text-gray-400 mb-4">Member posting is paused — this is the only way new posts appear in the feed right now. Members can still comment and like. Posted as "RARL Community Team." Markdown supported.</p>
+  <p class="text-[11px] text-gray-400 mb-4">Member posting is paused — this is the only way new posts appear in the feed right now. Members can still comment and like. Posted as "Robotics & Automation Research Lab (RARL) Team." Markdown supported.</p>
   <form method="POST" enctype="multipart/form-data" class="space-y-3">
     <?= acsrfField() ?><input type="hidden" name="action" value="add_feed_post">
     <textarea name="post_body" rows="3" placeholder="Share an update with the community…"

@@ -28,7 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
         $code = generateOtp($m['email'], 'verify');
         $memberName = $displayNameFor($m);
         ob_start(); require dirname(__DIR__) . '/emails/otp-verify.php'; $body = ob_get_clean();
-        sendEmail($m['email'], $memberName, 'Verify your RARL Community email', $body);
+        sendEmail($m['email'], $memberName, 'Verify your Robotics & Automation Research Lab (RARL) email', $body);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Verification code resent to ' . $m['email'] . '.'];
     } elseif ($assist === 'mark_verified') {
         $pdo->prepare('UPDATE members SET email_verified_at = NOW() WHERE id = ?')->execute([$id]);
@@ -44,12 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
             ->execute([password_hash($temp, PASSWORD_BCRYPT), $id]);
         $memberName = $displayNameFor($m); $tempPassword = $temp;
         ob_start(); require dirname(__DIR__) . '/emails/admin-temp-password.php'; $body = ob_get_clean();
-        sendEmail($m['email'], $memberName, 'Your RARL Community password has been reset', $body);
+        sendEmail($m['email'], $memberName, 'Your Robotics & Automation Research Lab (RARL) password has been reset', $body);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Temporary password generated and emailed to ' . $m['email'] . '.'];
     } elseif ($assist === 'resend_welcome') {
         $memberName = $displayNameFor($m); $isApproval = false;
         ob_start(); require dirname(__DIR__) . '/emails/welcome.php'; $body = ob_get_clean();
-        sendEmail($m['email'], $memberName, 'Welcome to RARL Community', $body);
+        sendEmail($m['email'], $memberName, 'Welcome to Robotics & Automation Research Lab (RARL)', $body);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Welcome email resent.'];
     } elseif ($assist === 'regenerate_id_card') {
         $ok = issueIdCard($id);

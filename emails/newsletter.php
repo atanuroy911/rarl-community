@@ -22,7 +22,7 @@
   <div class="wrapper">
     <div class="header">
       <div class="logo"><img src="<?= MAIN_SITE_URL . BRAND_MARK_PATH ?>" width="36" height="36" alt="RARL"/></div>
-      <h1 class="title">RARL Community</h1>
+      <h1 class="title">Robotics & Automation Research Lab (RARL)</h1>
     </div>
     
     <div class="content">
@@ -33,7 +33,7 @@
     </div>
     
     <div class="footer">
-      <p>You received this email because you are subscribed to the RARL Community newsletter.</p>
+      <p>You received this email because you are subscribed to the Robotics & Automation Research Lab (RARL) newsletter.</p>
       <p>
         <a href="<?= htmlspecialchars(SITE_URL) ?>">Visit Community Portal</a> | 
         <a href="<?= htmlspecialchars($unsubscribeUrl) ?>">Unsubscribe</a>

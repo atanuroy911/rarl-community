@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $code = generateOtp($newEmail, 'verify');
                     $memberName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
                     ob_start(); require __DIR__ . '/emails/otp-verify.php'; $body = ob_get_clean();
-                    sendEmail($newEmail, $memberName, 'Verify your linked email — RARL Community', $body);
+                    sendEmail($newEmail, $memberName, 'Verify your linked email — Robotics & Automation Research Lab (RARL)', $body);
                     flash('success', 'Email added — check ' . $newEmail . ' for a verification code.');
                     redirect('verify-linked-email.php?email=' . urlencode($newEmail));
                 }

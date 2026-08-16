@@ -1,6 +1,6 @@
 <?php
 /**
- * RARL Community Platform — Database + Shared Helpers
+ * Robotics & Automation Research Lab (RARL) Platform — Database + Shared Helpers
  */
 require_once __DIR__ . '/config.php';
 
@@ -482,7 +482,7 @@ const RARL_MIGRATIONS = [
     '006_multi_email_accounts.sql'      => 'Multiple emails per account + temp-password / chair-account support',
     '007_certificate_templates.sql'     => 'Uploadable ID card / certificate templates (HTML-based generation)',
     '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
-    '009_admin_only_posts.sql'          => 'Seeds the "RARL Community Team" system account admin posts are authored as',
+    '009_admin_only_posts.sql'          => 'Seeds the "Robotics & Automation Research Lab (RARL) Team" system account admin posts are authored as',
     '010_cv_url.sql'                    => 'Optional external CV/Resume link (e.g. Google Drive) alongside the local upload',
 ];
 
@@ -771,7 +771,7 @@ function memberNeedsAttention(array $member): bool {
     return !$hasProfileInfo;
 }
 
-// The "RARL Community Team" system account admin-authored feed posts are
+// The "Robotics & Automation Research Lab (RARL) Team" system account admin-authored feed posts are
 // attributed to (see sql/009_admin_only_posts.sql) — reuses community_posts'
 // existing member_id join instead of adding a parallel admin-post table.
 function systemPosterMemberId(): ?int {
@@ -1307,7 +1307,7 @@ function createChairAccountIfMissing(string $chairEmail, string $chairName): boo
 
     $memberName = $chairName ?: $chairEmail; $tempPassword = $temp;
     ob_start(); require __DIR__ . '/emails/chair-account-created.php'; $body = ob_get_clean();
-    sendEmail($chairEmail, $memberName, 'Your RARL Community chair account', $body);
+    sendEmail($chairEmail, $memberName, 'Your Robotics & Automation Research Lab (RARL) chair account', $body);
     return true;
 }
 
@@ -1456,7 +1456,7 @@ function generatePlainMembershipCertPDF(string $path, string $name, string $cert
     $pdf->SetFont('Helvetica', '', 9);
     $pdf->SetTextColor(120, 120, 120);
     $sectionLine = $sectionName ? " and is a recognized member of the {$sectionName} chapter" : '';
-    $pdf->SetY(115); $pdf->Cell(0, 0, fpdfEnc("is a certified member of the RARL Community{$sectionLine}."), 0, 1, 'C');
+    $pdf->SetY(115); $pdf->Cell(0, 0, fpdfEnc("is a certified member of the Robotics & Automation Research Lab (RARL){$sectionLine}."), 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 8);
     $pdf->SetTextColor(150, 150, 150);
     $pdf->SetY(140); $pdf->Cell(0, 0, 'Member since ' . date('d F Y', strtotime($memberSince)) . '   |   Certificate ID: ' . $certNo, 0, 1, 'C');

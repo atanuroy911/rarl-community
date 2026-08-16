@@ -1,5 +1,5 @@
 -- ============================================================
--- RARL Community Platform — Rich-text posts + single photo upload
+-- Robotics & Automation Research Lab (RARL) Platform — Rich-text posts + single photo upload
 -- Run after schema.sql and 002_v2_features.sql (same idempotent style).
 -- ============================================================
 

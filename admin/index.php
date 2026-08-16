@@ -20,7 +20,7 @@ $recentCerts   = $pdo->query("SELECT c.certificate_no, c.recipient_name, c.issue
 adminWrap(function() use ($s, $certCount, $nlCount, $eventCount, $recentMembers, $recentCerts) {
     adminFlash(); ?>
 <div class="flex items-center justify-between mb-7">
-  <div><h1 class="text-2xl font-black text-gray-900">Dashboard</h1><p class="text-gray-500 text-sm mt-0.5">RARL Community Platform overview</p></div>
+  <div><h1 class="text-2xl font-black text-gray-900">Dashboard</h1><p class="text-gray-500 text-sm mt-0.5">Robotics & Automation Research Lab (RARL) Platform overview</p></div>
   <a href="members.php?status=pending" class="inline-flex items-center gap-2 px-4 py-2 bg-rarl-red text-white text-sm font-semibold rounded-xl hover:bg-rarl-dark transition-colors shadow">
     <i class="fa-solid fa-hourglass-half"></i> <?= (int)$s['pending'] ?> Pending Approvals
   </a>
