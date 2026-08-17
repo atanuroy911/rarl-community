@@ -115,7 +115,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
   <div class="max-w-6xl mx-auto px-6">
     <div class="max-w-3xl reveal mb-14">
       <span class="text-sm font-bold uppercase tracking-widest text-rarl-red">About Us</span>
-      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-4">Robotics and Automation Research Lab</h2>
+      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-4">Robotics & Automation Research Lab</h2>
       <p class="text-gray-600 dark:text-gray-300 text-lg leading-relaxed mb-4">
         The Robotics & Automation Research Lab (RARL) was established to innovate,
         design, and develop robots, with a particular focus on service robots and automation
