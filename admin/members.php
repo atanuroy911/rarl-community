@@ -32,8 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $pdo->prepare("UPDATE members SET status='inactive' WHERE id=?")->execute([$mid]);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Member deactivated.'];
     } elseif ($action === 'delete' && $mid) {
-        $pdo->prepare("DELETE FROM members WHERE id=?")->execute([$mid]);
-        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member deleted.'];
+        deleteMemberCascade($mid);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member and all related data (posts, comments, certificates, event registrations, files) deleted.'];
     } elseif ($action === 'set_section' && $mid) {
         $sectionId = (int)($_POST['section_id'] ?? 0) ?: null;
         $pdo->prepare("UPDATE members SET section_id=? WHERE id=?")->execute([$sectionId, $mid]);
@@ -84,8 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
                 $pdo->exec("UPDATE members SET status='inactive' WHERE id IN ({$inClause})");
                 $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' member(s) deactivated.'];
             } elseif ($bulkOp === 'delete') {
-                $pdo->exec("DELETE FROM members WHERE id IN ({$inClause})");
-                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' member(s) deleted.'];
+                foreach ($ids as $delId) deleteMemberCascade((int)$delId);
+                $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' member(s) and all related data deleted.'];
             } elseif ($bulkOp === 'regenerate_card') {
                 $done = 0;
                 foreach ($ids as $bid) if (issueIdCard($bid)) $done++;

@@ -15,6 +15,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: settings.php'); exit;
     }
 
+    if ($action === 'purge_database') {
+        $phraseOk   = trim($_POST['purge_phrase'] ?? '') === 'DELETE';
+        $passwordOk = password_verify($_POST['purge_password'] ?? '', ADMIN_PASSWORD_HASH);
+        if (!$phraseOk || !$passwordOk) {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Purge cancelled — confirmation phrase or password was incorrect.'];
+            header('Location: settings.php'); exit;
+        }
+        purgeDatabase();
+        session_unset(); session_destroy();
+        header('Location: login.php?e=purged'); exit;
+    }
+
     // Checkboxes (e.g. popup_enabled) must be explicitly zeroed when unchecked
     if (isset($_POST['settings'])) {
         $checkboxKeys = ['popup_enabled', 'registrations_open', 'membership_enabled'];
@@ -282,5 +294,47 @@ adminWrap(function() use ($set) {
       </button>
     </div>
   </form>
+
+  <!-- Danger Zone -->
+  <div class="bg-red-50 border-2 border-red-200 rounded-2xl p-6 shadow-sm mt-8">
+    <div class="flex items-start gap-3 mb-4">
+      <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-red-100 text-red-600"><i class="fa-solid fa-skull-crossbones"></i></div>
+      <div>
+        <h2 class="font-heading font-bold text-sm text-red-700 mb-0.5">Danger Zone</h2>
+        <p class="text-xs text-red-500">Irreversible. There is no backup taken automatically — make sure you actually want this before typing the phrase below.</p>
+      </div>
+    </div>
+    <div class="bg-white border border-red-200 rounded-xl p-4 flex items-center justify-between gap-4">
+      <div>
+        <p class="text-sm font-semibold text-gray-800">Purge Database</p>
+        <p class="text-xs text-gray-500 mt-0.5">Permanently deletes every member, community post, certificate, event, resource, plan, template, section, person, and partnership tier — plus all their uploaded files. Settings are reset to blank. Admin login (the account you sign in with) is not touched. You'll be signed out immediately after.</p>
+      </div>
+      <button type="button" onclick="document.getElementById('purge-modal').classList.remove('hidden')" class="flex-shrink-0 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl transition-colors whitespace-nowrap">Purge Database…</button>
+    </div>
+  </div>
+
+  <!-- Purge confirmation modal -->
+  <div id="purge-modal" class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-6">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-xl bg-red-100 text-red-600 text-lg"><i class="fa-solid fa-skull-crossbones"></i></div>
+        <h3 class="font-heading font-bold text-base text-gray-900">Purge Database</h3>
+      </div>
+      <p class="text-xs text-gray-500 mb-5">This cannot be undone. All members, posts, certificates, events, resources, settings and every uploaded file will be permanently deleted.</p>
+      <form method="POST">
+        <?= acsrfField() ?><input type="hidden" name="action" value="purge_database">
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Type <span class="font-mono font-bold text-red-600">DELETE</span> to confirm</label>
+        <input type="text" name="purge_phrase" autocomplete="off" required
+          class="w-full mb-4 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-500"/>
+        <label class="block text-xs font-semibold text-gray-600 mb-1.5">Your admin password</label>
+        <input type="password" name="purge_password" autocomplete="current-password" required
+          class="w-full mb-5 px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-500"/>
+        <div class="flex gap-3">
+          <button type="button" onclick="document.getElementById('purge-modal').classList.add('hidden')" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-colors">Cancel</button>
+          <button type="submit" class="flex-1 px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-xl transition-colors">Permanently Purge</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 <?php }, 'settings', 'Settings');

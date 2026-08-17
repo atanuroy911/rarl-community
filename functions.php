@@ -1372,6 +1372,93 @@ function issueIdCard(int $memberId): bool {
     return true;
 }
 
+// ── Full database purge (admin "Danger Zone") ───────────────────────────────
+// Wipes every operational table back to empty — members, community, events,
+// certificates, resources, settings, plans, templates, sections, people,
+// partnerships — plus their uploaded files. `admin_users` is untouched so the
+// logged-in admin's own login always survives (auth.php actually authenticates
+// against the ADMIN_USERNAME/ADMIN_PASSWORD_HASH env constants, not this table,
+// but it's left alone regardless in case it's used for anything else).
+// Caller (admin/settings.php) is responsible for the confirmation phrase +
+// password re-check before ever calling this.
+function purgeDatabase(): void {
+    $pdo = db();
+    $tables = [
+        'community_likes', 'community_comments', 'community_posts',
+        'event_registrations', 'events',
+        'certificates', 'certificate_templates',
+        'member_emails', 'otp_codes', 'members',
+        'newsletters', 'resources', 'resource_categories',
+        'announcements', 'partnership_tiers', 'membership_plans',
+        'regional_sections', 'people', 'settings',
+    ];
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=0');
+    foreach ($tables as $t) {
+        try { $pdo->exec("TRUNCATE TABLE `{$t}`"); } catch (Throwable $e) { /* table may not exist on older installs */ }
+    }
+    $pdo->exec('SET FOREIGN_KEY_CHECKS=1');
+
+    // Clear uploaded files, keeping the directories and their .gitkeep/.htaccess placeholders
+    $dirs = ['avatars', 'certificates', 'cv', 'id-cards', 'popups', 'roster', 'templates', 'people'];
+    foreach ($dirs as $d) {
+        $path = UPLOADS_PATH . '/' . $d;
+        if (!is_dir($path)) continue;
+        foreach (scandir($path) as $f) {
+            if ($f === '.' || $f === '..' || $f === '.gitkeep' || $f === '.htaccess') continue;
+            $full = $path . '/' . $f;
+            if (is_file($full)) @unlink($full);
+        }
+    }
+}
+
+// ── Member deletion (cascades to every table/file that references the member) ──
+// No FK constraints exist in the schema (see sql/*.sql), so deleting a member
+// via a plain `DELETE FROM members` leaves orphaned rows in community_posts,
+// community_comments, community_likes, event_registrations, member_emails,
+// certificates, otp_codes — plus orphaned files in uploads/. This walks all of
+// them before removing the member row itself.
+function deleteMemberCascade(int $memberId): bool {
+    $pdo = db();
+    $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+    $stmt->execute([$memberId]);
+    $m = $stmt->fetch();
+    if (!$m) return false;
+
+    // Certificate PDFs + QR codes belonging to this member
+    $certs = $pdo->prepare('SELECT pdf_path FROM certificates WHERE member_id = ?');
+    $certs->execute([$memberId]);
+    foreach ($certs->fetchAll() as $c) {
+        if (!empty($c['pdf_path'])) @unlink(UPLOADS_PATH . '/certificates/' . $c['pdf_path']);
+    }
+    $pdo->prepare('DELETE FROM certificates WHERE member_id = ?')->execute([$memberId]);
+
+    // Community: comments/likes on the member's own posts, then the posts themselves,
+    // then the member's comments/likes on other members' posts.
+    $postIds = $pdo->prepare('SELECT id FROM community_posts WHERE member_id = ?');
+    $postIds->execute([$memberId]);
+    $ownPostIds = $postIds->fetchAll(PDO::FETCH_COLUMN);
+    if ($ownPostIds) {
+        $in = implode(',', array_fill(0, count($ownPostIds), '?'));
+        $pdo->prepare("DELETE FROM community_comments WHERE post_id IN ($in)")->execute($ownPostIds);
+        $pdo->prepare("DELETE FROM community_likes WHERE post_id IN ($in)")->execute($ownPostIds);
+    }
+    $pdo->prepare('DELETE FROM community_posts WHERE member_id = ?')->execute([$memberId]);
+    $pdo->prepare('DELETE FROM community_comments WHERE member_id = ?')->execute([$memberId]);
+    $pdo->prepare('DELETE FROM community_likes WHERE member_id = ?')->execute([$memberId]);
+
+    // Events, extra emails, password/verification codes
+    $pdo->prepare('DELETE FROM event_registrations WHERE member_id = ?')->execute([$memberId]);
+    $pdo->prepare('DELETE FROM member_emails WHERE member_id = ?')->execute([$memberId]);
+    $pdo->prepare('DELETE FROM otp_codes WHERE email = ?')->execute([$m['email']]);
+
+    // Uploaded files owned by the member
+    if (!empty($m['avatar_path']))  @unlink(UPLOADS_PATH . '/avatars/' . $m['avatar_path']);
+    if (!empty($m['id_card_path'])) @unlink(UPLOADS_PATH . '/id-cards/' . $m['id_card_path']);
+    if (!empty($m['cv_path']))      @unlink(UPLOADS_PATH . '/cv/' . $m['cv_path']);
+
+    return $pdo->prepare('DELETE FROM members WHERE id = ?')->execute([$memberId]);
+}
+
 // Issues (once) a "Certificate of Membership" for a member — unlike ID cards,
 // no photo is required, so this can fire the moment a member is activated.
 // Uses the admin's default 'membership' template if one is set; otherwise
@@ -1727,6 +1814,14 @@ HTML;
     </form>
     <nav class="hidden md:flex items-center ml-auto">{$nav}</nav>
     <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-auto md:ml-0">
+      <a href="{$mainUrl}" target="_blank" rel="noopener" title="Go to rarl-lab.com — Main RARL Site"
+        class="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-rarl-red border border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 rounded-xl transition-colors flex-shrink-0">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i> Main Site
+      </a>
+      <a href="{$mainUrl}" target="_blank" rel="noopener" title="Go to rarl-lab.com — Main RARL Site" aria-label="Go to Main RARL Site"
+        class="sm:hidden flex items-center justify-center w-9 h-9 text-gray-500 dark:text-gray-400 hover:text-rarl-red rounded-lg transition-colors flex-shrink-0">
+        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+      </a>
       {$accountMenu}
       <button type="button" onclick="document.getElementById('mobile-nav-panel').classList.toggle('hidden')" class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0" aria-label="Menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
