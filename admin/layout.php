@@ -22,28 +22,73 @@ function htmlAdminHead(string $title): void {
   ::-webkit-scrollbar-track{background:transparent;}
   ::-webkit-scrollbar-thumb{background:rgba(120,120,120,.35);border-radius:999px;}
   ::-webkit-scrollbar-thumb:hover{background:rgba(120,120,120,.55);}
+
+  @keyframes rarlFadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .rarl-admin-content{animation:rarlFadeUp .35s cubic-bezier(.16,1,.3,1)}
+  @keyframes rarlSpin{to{transform:rotate(360deg)}}
+  .rarl-spinner{display:inline-block;width:1em;height:1em;border:2px solid rgba(255,255,255,.35);border-top-color:currentColor;border-radius:50%;animation:rarlSpin .6s linear infinite;vertical-align:-0.15em;margin-right:.4em;}
+  button[disabled] .rarl-btn-label,a[aria-disabled="true"] .rarl-btn-label{opacity:.85}
+  .rarl-nav-group-label{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:.9rem .75rem .35rem;}
+  #admin-sidebar a.rarl-nav-active{position:relative}
+  #admin-sidebar a.rarl-nav-active::before{content:"";position:absolute;left:-0.75rem;top:0.4rem;bottom:0.4rem;width:3px;border-radius:0 3px 3px 0;background:' . BRAND_RED . ';}
+  #admin-sidebar a{position:relative}
+  .rarl-skeleton{background:linear-gradient(90deg,rgba(0,0,0,.06) 25%,rgba(0,0,0,.10) 37%,rgba(0,0,0,.06) 63%);background-size:400% 100%;animation:rarlSkeleton 1.4s ease infinite;border-radius:.5rem;}
+  @keyframes rarlSkeleton{0%{background-position:100% 50%}100%{background-position:0 50%}}
 </style>
-</head><body class="bg-gray-100 text-gray-900 min-h-screen">';
+</head><body class="bg-gray-100 text-gray-900 min-h-screen">
+<script>
+  // Global submit-loading feedback: any POST form shows a spinner on its submit
+  // button and briefly disables it, so slow admin actions (imports, bulk ops,
+  // emails) give visible feedback instead of looking frozen. Opt out per-form
+  // with data-no-loading, or per-button with data-no-loading on the button itself.
+  document.addEventListener("submit", function(e) {
+    if (e.defaultPrevented) return; // e.g. an onsubmit="return confirm(...)" on the form was cancelled
+    const form = e.target;
+    if (form.tagName !== "FORM" || (form.method || "get").toLowerCase() !== "post") return;
+    if (form.hasAttribute("data-no-loading")) return;
+    const btn = document.activeElement && document.activeElement.type === "submit" && form.contains(document.activeElement)
+      ? document.activeElement
+      : form.querySelector("button[type=submit]");
+    if (!btn || btn.hasAttribute("data-no-loading") || btn.disabled) return;
+    if (!btn.dataset.label) btn.dataset.label = btn.innerHTML;
+    btn.innerHTML = "<span class=\"rarl-spinner\"></span><span class=\"rarl-btn-label\">Working…</span>";
+    btn.disabled = true;
+    btn.classList.add("opacity-80", "cursor-wait");
+  });
+</script>';
 }
 
 function adminSidebar(string $active = ''): void {
-    $nav = [
-        'index'       => ['index.php',       '<i class="fa-solid fa-chart-simple"></i>', 'Dashboard'],
-        'members'     => ['members.php',      '<i class="fa-solid fa-users"></i>', 'Members'],
-        'events'      => ['events.php',       '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
-        'certificates'=> ['certificates.php', '<i class="fa-solid fa-trophy"></i>', 'Certificates'],
-        'templates'   => ['templates.php',    '<i class="fa-solid fa-image"></i>', 'Templates'],
-        'newsletter'  => ['newsletter.php',   '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
-        'compose'     => ['compose-email.php','<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email'],
-        'import'      => ['import-members.php','<i class="fa-solid fa-download"></i>', 'Import Members'],
-        'resources'   => ['resources.php',    '<i class="fa-solid fa-book"></i>', 'Resources'],
-        'community'   => ['community.php',    '<i class="fa-solid fa-comment"></i>', 'Community'],
-        'partnerships'=> ['partnerships.php',  '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
-        'plans'       => ['plans.php',        '<i class="fa-solid fa-graduation-cap"></i>', 'Plans'],
-        'sections'    => ['sections.php',     '<i class="fa-solid fa-earth-americas"></i>', 'Sections'],
-        'people'      => ['people.php',       '<i class="fa-solid fa-people-group"></i>', 'People'],
-        'migrate'     => ['migrate.php',      '<i class="fa-solid fa-database"></i>', 'Migrations'],
-        'settings'    => ['settings.php',     '<i class="fa-solid fa-gear"></i>', 'Settings'],
+    // Grouped so related tools sit together instead of one flat 16-item list —
+    // matches how admins actually think about the platform (people vs. content
+    // vs. outreach vs. configuration), and gives each group its own label.
+    $groups = [
+        'Overview' => [
+            'index' => ['index.php', '<i class="fa-solid fa-chart-simple"></i>', 'Dashboard'],
+        ],
+        'Members & Community' => [
+            'members'      => ['members.php',        '<i class="fa-solid fa-users"></i>', 'Members'],
+            'import'       => ['import-members.php',  '<i class="fa-solid fa-file-import"></i>', 'Import Members'],
+            'community'    => ['community.php',       '<i class="fa-solid fa-comment"></i>', 'Community'],
+            'people'       => ['people.php',           '<i class="fa-solid fa-people-group"></i>', 'People'],
+            'sections'     => ['sections.php',         '<i class="fa-solid fa-earth-americas"></i>', 'Sections'],
+        ],
+        'Content & Events' => [
+            'events'       => ['events.php',        '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
+            'certificates' => ['certificates.php',  '<i class="fa-solid fa-trophy"></i>', 'Certificates'],
+            'templates'    => ['templates.php',     '<i class="fa-solid fa-image"></i>', 'Templates'],
+            'resources'    => ['resources.php',     '<i class="fa-solid fa-book"></i>', 'Resources'],
+        ],
+        'Outreach' => [
+            'newsletter'   => ['newsletter.php',    '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
+            'compose'      => ['compose-email.php', '<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email'],
+            'partnerships' => ['partnerships.php',  '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
+        ],
+        'Configuration' => [
+            'plans'    => ['plans.php',    '<i class="fa-solid fa-graduation-cap"></i>', 'Plans'],
+            'migrate'  => ['migrate.php',  '<i class="fa-solid fa-database"></i>', 'Migrations'],
+            'settings' => ['settings.php', '<i class="fa-solid fa-gear"></i>', 'Settings'],
+        ],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
     <aside id="admin-sidebar" class="w-64 sm:w-56 flex-shrink-0 bg-rarl-navy text-white flex flex-col h-screen fixed top-0 left-0 z-40 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200">
@@ -54,12 +99,15 @@ function adminSidebar(string $active = ''): void {
       </div>
       <button type="button" onclick="toggleAdminSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white flex-shrink-0" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <nav class="flex-1 p-3 flex flex-col gap-0.5">';
-    foreach ($nav as $key => [$href, $icon, $label]) {
-        $cls = $key === $active
-            ? 'bg-white/15 text-white font-semibold'
-            : 'text-white/55 hover:bg-white/10 hover:text-white';
-        echo '<a href="' . $href . '" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-colors ' . $cls . '">' . $icon . ' ' . $label . '</a>';
+    <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto">';
+    foreach ($groups as $groupLabel => $items) {
+        echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
+        foreach ($items as $key => [$href, $icon, $label]) {
+            $cls = $key === $active
+                ? 'bg-white/15 text-white font-semibold rarl-nav-active'
+                : 'text-white/55 hover:bg-white/10 hover:text-white hover:translate-x-0.5';
+            echo '<a href="' . $href . '" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-all duration-150 ' . $cls . '">' . $icon . ' ' . $label . '</a>';
+        }
     }
     echo '</nav>
     <div class="p-3 border-t border-white/10 space-y-0.5">
@@ -86,7 +134,7 @@ function adminWrap(callable $content, string $page = '', string $title = ''): vo
       </button>
       <span class="font-heading font-bold text-sm text-gray-800">RARL Admin</span>
     </div>';
-    echo '<div class="p-4 sm:p-7 overflow-auto">';
+    echo '<div class="rarl-admin-content p-4 sm:p-7 overflow-auto">';
     $content();
     echo '</div></main></div></body></html>';
 }

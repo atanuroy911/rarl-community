@@ -324,14 +324,44 @@ adminWrap(function() use ($report, $errorMsg, $mapping, $pending, $FIELDS, $gues
 <div class="max-w-2xl bg-white border border-gray-200 rounded-2xl p-7 shadow-sm">
   <form method="POST" enctype="multipart/form-data" class="space-y-4">
     <?= acsrfField() ?><input type="hidden" name="action" value="upload">
-    <div class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-6 text-center relative">
-      <div class="text-2xl mb-1"><i class="fa-solid fa-download"></i></div>
-      <p class="text-sm text-gray-600 mb-1">Upload <strong>.csv</strong> or <strong>.xlsx</strong></p>
-      <p class="text-[11px] text-gray-400">Any column headers — you'll map them to system fields on the next screen</p>
-      <input type="file" name="import_file" accept=".csv,.xlsx" required class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
+    <div id="import-dropzone" class="border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-6 text-center relative transition-colors">
+      <div id="import-dropzone-empty">
+        <div class="text-2xl mb-1 text-gray-400"><i class="fa-solid fa-file-arrow-up"></i></div>
+        <p class="text-sm text-gray-600 mb-1">Upload <strong>.csv</strong> or <strong>.xlsx</strong></p>
+        <p class="text-[11px] text-gray-400">Any column headers — you'll map them to system fields on the next screen</p>
+      </div>
+      <div id="import-dropzone-selected" class="hidden">
+        <div class="text-2xl mb-1 text-green-600"><i class="fa-solid fa-circle-check"></i></div>
+        <p id="import-filename" class="text-sm font-semibold text-gray-800 mb-0.5 truncate"></p>
+        <p class="text-[11px] text-gray-400">Ready to upload — click below to continue, or choose a different file</p>
+      </div>
+      <input type="file" id="import-file-input" name="import_file" accept=".csv,.xlsx" required class="absolute inset-0 opacity-0 cursor-pointer w-full h-full"/>
     </div>
     <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl shadow hover:-translate-y-0.5"><i class="fa-solid fa-upload"></i> Upload & Map Columns</button>
   </form>
 </div>
+<script>
+  (function() {
+    const input = document.getElementById('import-file-input');
+    const zone  = document.getElementById('import-dropzone');
+    const empty = document.getElementById('import-dropzone-empty');
+    const selected = document.getElementById('import-dropzone-selected');
+    const filenameEl = document.getElementById('import-filename');
+    input?.addEventListener('change', function() {
+      if (input.files && input.files.length) {
+        filenameEl.textContent = input.files[0].name;
+        empty.classList.add('hidden');
+        selected.classList.remove('hidden');
+        zone.classList.remove('border-gray-300');
+        zone.classList.add('border-green-400', 'bg-green-50');
+      } else {
+        empty.classList.remove('hidden');
+        selected.classList.add('hidden');
+        zone.classList.add('border-gray-300');
+        zone.classList.remove('border-green-400', 'bg-green-50');
+      }
+    });
+  })();
+</script>
 <?php endif; ?>
 <?php }, 'import', 'Import Members');

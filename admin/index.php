@@ -26,6 +26,35 @@ adminWrap(function() use ($s, $certCount, $nlCount, $eventCount, $recentMembers,
   </a>
 </div>
 
+<!-- Quick Actions -->
+<div class="mb-8">
+  <h2 class="text-xs font-bold uppercase tracking-widest text-gray-400 mb-3">Quick Actions</h2>
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+    <?php $quickActions = [
+      ['import-members.php',  '<i class="fa-solid fa-file-import"></i>', 'Import Members', 'blue'],
+      ['compose-email.php',   '<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email', 'purple'],
+      ['newsletter.php',      '<i class="fa-solid fa-paper-plane"></i>', 'Send Newsletter', 'amber'],
+      ['events.php',          '<i class="fa-solid fa-calendar-plus"></i>', 'Add Event', 'green'],
+      ['certificates.php',    '<i class="fa-solid fa-award"></i>', 'Issue Certificate', 'red'],
+      ['settings.php',        '<i class="fa-solid fa-gear"></i>', 'Settings', 'gray'],
+    ];
+    $qaColors = [
+      'blue'   => ['bg-blue-50 hover:bg-blue-100 border-blue-200',    'text-blue-600'],
+      'green'  => ['bg-green-50 hover:bg-green-100 border-green-200',  'text-green-600'],
+      'amber'  => ['bg-amber-50 hover:bg-amber-100 border-amber-200',  'text-amber-600'],
+      'red'    => ['bg-red-50 hover:bg-red-100 border-red-200',      'text-red-600'],
+      'purple' => ['bg-purple-50 hover:bg-purple-100 border-purple-200','text-purple-600'],
+      'gray'   => ['bg-gray-50 hover:bg-gray-100 border-gray-200',    'text-gray-600'],
+    ];
+    foreach ($quickActions as [$href, $icon, $label, $color]): [$bg, $tc] = $qaColors[$color]; ?>
+    <a href="<?= $href ?>" class="flex flex-col items-center justify-center gap-2 p-4 rounded-2xl border <?= $bg ?> transition-all hover:-translate-y-0.5 hover:shadow-md text-center">
+      <span class="text-xl <?= $tc ?>"><?= $icon ?></span>
+      <span class="text-[11px] font-semibold text-gray-700 leading-tight"><?= $label ?></span>
+    </a>
+    <?php endforeach; ?>
+  </div>
+</div>
+
 <!-- Stats -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-7">
   <?php
