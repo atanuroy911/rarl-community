@@ -119,7 +119,7 @@ function generateCertPDF(string $path, string $name, string $event, string $cert
     $pdf->SetY(30); $pdf->Cell(0, 0, 'RARL COMMUNITY', 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 8);
     $pdf->SetTextColor(170, 170, 170);
-    $pdf->SetY(40); $pdf->Cell(0, 0, 'ROBOTICS AND AUTOMATION RESEARCH LABORATORY', 0, 1, 'C');
+    $pdf->SetY(40); $pdf->Cell(0, 0, 'Robotics & Automation Research Lab', 0, 1, 'C');
     $pdf->SetFont('Helvetica', 'B', 22);
     $pdf->SetTextColor(255, 255, 255);
     $pdf->SetY(55); $pdf->Cell(0, 0, 'Certificate of Participation', 0, 1, 'C');
@@ -1442,7 +1442,7 @@ function generatePlainMembershipCertPDF(string $path, string $name, string $cert
     $pdf->SetY(32); $pdf->Cell(0, 0, 'RARL COMMUNITY', 0, 1, 'C');
     $pdf->SetFont('Helvetica', '', 8);
     $pdf->SetTextColor(120, 120, 120);
-    $pdf->SetY(42); $pdf->Cell(0, 0, 'ROBOTICS AND AUTOMATION RESEARCH LABORATORY', 0, 1, 'C');
+    $pdf->SetY(42); $pdf->Cell(0, 0, 'Robotics & Automation Research Lab', 0, 1, 'C');
     $pdf->SetFont('Helvetica', 'B', 24);
     $pdf->SetTextColor($inkR, $inkG, $inkB);
     $pdf->SetY(60); $pdf->Cell(0, 0, 'Certificate of Membership', 0, 1, 'C');

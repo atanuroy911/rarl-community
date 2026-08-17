@@ -8,7 +8,7 @@
     <p>Hi <?= htmlspecialchars($memberName) ?>,</p>
     
     <?php if ($isApproval): ?>
-    <p>Thank you for registering with the <strong>Robotics and Automation Research Laboratory (RARL)</strong> community platform.</p>
+    <p>Thank you for registering with the <strong>Robotics & Automation Research Lab (RARL)</strong> community platform.</p>
     <p>Your application has been received and is currently under review by our team. We review all applications to ensure the quality and security of our research ecosystem.</p>
     <p>You will receive another email within 1–2 business days once your account is approved. Upon approval, you will gain access to:</p>
     <ul>
@@ -18,7 +18,7 @@
     </ul>
 
     <?php else: ?>
-    <p>Welcome to the <strong>Robotics and Automation Research Laboratory (RARL)</strong> community platform!</p>
+    <p>Welcome to the <strong>Robotics & Automation Research Lab (RARL)</strong> community platform!</p>
     <p>We are thrilled to have you join our global network of researchers, labs, and students.</p>
 
     <div style="text-align: center; margin: 30px 0;">

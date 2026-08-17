@@ -38,7 +38,7 @@
         <a href="<?= htmlspecialchars(SITE_URL) ?>">Visit Community Portal</a> | 
         <a href="<?= htmlspecialchars($unsubscribeUrl) ?>">Unsubscribe</a>
       </p>
-      <p>&copy; <?= date('Y') ?> Robotics and Automation Research Laboratory.</p>
+      <p>&copy; <?= date('Y') ?> Robotics & Automation Research Lab.</p>
     </div>
   </div>
 </body>
