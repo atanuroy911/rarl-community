@@ -80,7 +80,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
           $total = $membersOverride !== '' ? $membersOverride : (int)(db()->query('SELECT COUNT(*) FROM members WHERE status="active"')->fetchColumn());
           $labs  = $labsOverride !== ''    ? $labsOverride    : (int)(db()->query('SELECT COUNT(*) FROM members WHERE type="lab" AND status="active"')->fetchColumn());
           $certs = $certsOverride !== ''   ? $certsOverride   : (int)(db()->query('SELECT COUNT(*) FROM certificates')->fetchColumn());
-          $countries = setting('stat_countries', '5');
+          $countries = setting('stat_countries', '31');
         ?>
         <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= $total ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Members</div></div>
         <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= $labs ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Research Labs</div></div>
@@ -123,7 +123,8 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         seeking advanced automation solutions.
       </p>
       <p class="text-gray-600 dark:text-gray-300 text-lg leading-relaxed">
-        RARL hosts researchers from Italy, Iran, the UK, the USA, and Saudi Arabia.
+        RARL has grown into a global academic community of <strong>110 active members</strong> — students, researchers,
+        and academic professionals spanning <strong>31 countries across 5 continents</strong>.
       </p>
     </div>
 
@@ -241,12 +242,68 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
   <div class="max-w-5xl mx-auto px-6">
     <div class="text-center mb-12 reveal">
       <span class="text-xs font-bold uppercase tracking-widest text-rarl-red">Worldwide Community</span>
-      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-3">RARL Member Countries</h2>
-      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-base">Researchers and labs across 5 continents and 31 countries are part of the RARL community.</p>
+      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-3">110 Active Members, 31 Countries</h2>
+      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-base">Students, researchers, and academic professionals across 5 continents are part of the RARL community.</p>
     </div>
-    <img src="assets/Rarl Member Countries Map.jpg" alt="Map of RARL Member Countries" class="reveal w-full rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 mb-6"/>
+    <img src="assets/Rarl Member Countries Map.jpg" alt="Map of RARL Member Countries" class="reveal w-full rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 mb-10"/>
+    <?php $homeSections = [
+      ['Asia', ['Bangladesh','China','India','Iraq','Lebanon','Malaysia','Nepal','Pakistan','Saudi Arabia','South Korea','Sri Lanka','Turkey','United Arab Emirates','Vietnam']],
+      ['Europe', ['France','Germany','Portugal','United Kingdom']],
+      ['Africa', ['Algeria','Democratic Republic of Congo','Egypt','Ethiopia','Nigeria','South Africa','Tunisia']],
+      ['North America', ['Canada','United States']],
+      ['Oceania', ['Australia','New Zealand']],
+    ]; ?>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-10 reveal">
+      <?php foreach ($homeSections as [$name, $countries]): ?>
+      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white"><?= $name ?></h3>
+          <span class="text-[10px] font-bold text-rarl-red bg-rarl-red/10 px-2 py-0.5 rounded-full"><?= count($countries) ?></span>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= htmlspecialchars(implode(', ', $countries)) ?></p>
+      </div>
+      <?php endforeach; ?>
+    </div>
     <div class="text-center reveal">
-      <a href="directory.php" class="inline-flex items-center gap-2 text-rarl-red font-semibold text-sm hover:underline">See member countries by section →</a>
+      <a href="directory.php" class="inline-flex items-center gap-2 text-rarl-red font-semibold text-sm hover:underline">View the full membership roster →</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── UPCOMING WEBINAR ─────────────────────────────────── -->
+<section class="py-16" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
+  <div class="max-w-3xl mx-auto px-6 text-center reveal">
+    <span class="text-xs font-bold uppercase tracking-widest text-red-300"><i class="fa-solid fa-calendar-days"></i> Save the Date</span>
+    <h2 class="font-heading font-black text-2xl md:text-3xl text-white mt-2 mb-4">First RARL Webinar — September 2026</h2>
+    <p class="text-white/60 text-base leading-relaxed max-w-xl mx-auto">
+      Our first RARL Webinar will be organized in the second half of September 2026 — an opportunity for members to
+      present their research, exchange knowledge, discuss potential collaborations, and strengthen communication
+      among RARL members worldwide.
+    </p>
+  </div>
+</section>
+
+<!-- ── FOLLOW US ────────────────────────────────────────── -->
+<section class="py-20 bg-white dark:bg-gray-900">
+  <div class="max-w-4xl mx-auto px-6">
+    <div class="text-center mb-12 reveal">
+      <span class="text-xs font-bold uppercase tracking-widest text-rarl-red">Stay Connected</span>
+      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-3">Follow RARL</h2>
+      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-base">Get the latest webinars, research activity, member achievements, and announcements.</p>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl mx-auto">
+      <div class="reveal bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center">
+        <img src="assets/Youtube QR.jpeg" alt="Scan to subscribe on YouTube" width="120" height="120" class="mx-auto mb-4 rounded-lg" onerror="this.style.display='none'"/>
+        <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1">YouTube Channel</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">Webinars, recorded lectures &amp; academic content</p>
+        <a href="https://www.youtube.com/@roboticsandresearchautomat4675" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-xs transition-colors">Subscribe →</a>
+      </div>
+      <div class="reveal reveal-delay-1 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 text-center">
+        <img src="assets/linkedin QR.jpeg" alt="Scan to follow on LinkedIn" width="120" height="120" class="mx-auto mb-4 rounded-lg" onerror="this.style.display='none'"/>
+        <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1">LinkedIn Page</h3>
+        <p class="text-xs text-gray-500 dark:text-gray-400 mb-4">News, member achievements &amp; announcements</p>
+        <a href="https://www.linkedin.com/company/robotics-and-research-automaton-lab-rarl/?viewAsMember=true" target="_blank" rel="noopener" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-semibold text-white transition-colors" style="background:#0a66c2;">Follow →</a>
+      </div>
     </div>
   </div>
 </section>

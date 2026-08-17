@@ -1,0 +1,81 @@
+<!-- ============================================================
+     Robotics & Automation Research Lab (RARL) — Site Switcher Popup
+     For an Elementor Popup: add a Custom HTML widget inside the popup and
+     paste this whole block in. Sized to sit inside Elementor's own popup
+     frame (no full-viewport overlay of its own — Elementor provides that).
+
+     "Lab Site" does NOT navigate anywhere — it just closes the popup via
+     Elementor's popup API, since the visitor is assumed to already be on
+     rarl-lab.com and just wants to keep browsing it. "Community" is a real
+     link out to the membership platform.
+     ============================================================ -->
+<style>
+  #rarl-switch-popup .rarl-switch-card {
+    transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+    cursor: pointer;
+  }
+  #rarl-switch-popup .rarl-switch-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 16px 32px rgba(0,0,0,0.18);
+  }
+  #rarl-switch-popup .rarl-lab-card:hover { border-color: #1c3358 !important; }
+  #rarl-switch-popup .rarl-community-card:hover { border-color: #c8102e !important; }
+  @media (max-width: 560px) {
+    #rarl-switch-popup .rarl-switch-row { display: block !important; }
+    #rarl-switch-popup .rarl-switch-row > div { width: 100% !important; box-sizing: border-box !important; margin: 0 0 14px !important; }
+    #rarl-switch-popup .rarl-switch-title { font-size: 24px !important; }
+  }
+</style>
+
+<div id="rarl-switch-popup" style="position:relative; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; background:#0b1626; border-radius:0; padding:44px 32px; box-sizing:border-box; text-align:center; max-width:640px; margin:0 auto;">
+
+  <img src="https://rarl-lab.com/wp-content/uploads/2025/09/logo-e1777763650266-768x219.png" alt="RARL" style="height:44px; width:auto; margin:0 auto 22px; display:block;" onerror="this.style.display='none'"/>
+
+  <h2 class="rarl-switch-title" style="font-size:26px; font-weight:900; color:#ffffff; line-height:1.25; margin:0 0 10px;">
+    Where would you like to go?
+  </h2>
+  <p style="font-size:14px; color:rgba(255,255,255,0.55); line-height:1.6; margin:0 0 30px;">
+    Stay here on the Lab site, or head to the Community platform to sign in, register, and connect with members.
+  </p>
+
+  <table role="presentation" class="rarl-switch-row" width="100%" style="max-width:520px; margin:0 auto; border-collapse:separate; border-spacing:14px 0;">
+    <tr>
+      <!-- Lab Site — closes the popup, stays on the current site -->
+      <td width="50%" style="vertical-align:top;">
+        <a href="#" class="close-popup rarl-switch-card rarl-lab-card" style="display:block; text-decoration:none; background:#111f38; border:2px solid rgba(255,255,255,0.10); border-radius:0; padding:28px 18px; box-sizing:border-box;">
+          <div style="width:52px; height:52px; margin:0 auto 14px; background:rgba(28,51,88,0.6); border:1px solid rgba(255,255,255,0.15); border-radius:0; display:flex; align-items:center; justify-content:center; font-size:22px;">🔬</div>
+          <div style="font-weight:800; font-size:16px; color:#ffffff; margin-bottom:6px;">Stay on Lab Site</div>
+          <div style="font-size:12px; color:rgba(255,255,255,0.5); line-height:1.5; margin-bottom:18px;">
+            Keep browsing research &amp; publications
+          </div>
+          <span style="display:inline-block; background:#1c3358; color:#ffffff; font-weight:700; font-size:12px; padding:9px 18px; border-radius:0;">
+            Continue →
+          </span>
+        </a>
+      </td>
+      <!-- Community — real link out -->
+      <td width="50%" style="vertical-align:top;">
+        <a href="https://community.rarl-lab.com" target="_blank" rel="noopener" class="rarl-switch-card rarl-community-card" style="display:block; text-decoration:none; background:#111f38; border:2px solid rgba(255,255,255,0.10); border-radius:0; padding:28px 18px; box-sizing:border-box;">
+          <div style="width:52px; height:52px; margin:0 auto 14px; background:rgba(200,16,46,0.18); border:1px solid rgba(200,16,46,0.35); border-radius:0; display:flex; align-items:center; justify-content:center; font-size:22px;">💬</div>
+          <div style="font-weight:800; font-size:16px; color:#ffffff; margin-bottom:6px;">Community</div>
+          <div style="font-size:12px; color:rgba(255,255,255,0.5); line-height:1.5; margin-bottom:18px;">
+            Sign in, register &amp; connect with members
+          </div>
+          <span style="display:inline-block; background:#c8102e; color:#ffffff; font-weight:700; font-size:12px; padding:9px 18px; border-radius:0;">
+            Go to Community →
+          </span>
+        </a>
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+<script>
+jQuery( document ).ready( function( $ ) {
+    $( document ).on( 'click', '.close-popup', function( event ) {
+        event.preventDefault();
+        elementorProFrontend.modules.popup.closePopup( {}, event );
+    } );
+} );
+</script>

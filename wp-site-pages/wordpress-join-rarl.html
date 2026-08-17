@@ -1,0 +1,184 @@
+<!-- ============================================================
+     Robotics & Automation Research Lab (RARL) — "Welcome to RARL" Page
+     Recreates the content of assets/JOINRARL.pdf (the welcome letter members
+     receive) as a normal web page instead of a PDF download.
+     Paste into a WordPress Custom HTML block (or Classic Editor "Text" tab).
+     All styling is inline; the one small <style> block only handles mobile
+     stacking (inline style="" can't express media queries) — scoped to
+     #rarl-join so it won't leak into the rest of your theme.
+
+     Images referenced below (assets/Youtube QR.jpeg, assets/linkedin QR.jpeg,
+     assets/Rarl Member Countries Map.jpg) are the real files from this repo's
+     /assets folder, served from wherever it's deployed. If your deployed
+     domain isn't community.rarl-lab.com, find-and-replace that below.
+     ============================================================ -->
+<style>
+  @media (max-width: 640px) {
+    #rarl-join .rarl-stack { display: block !important; }
+    #rarl-join .rarl-stack > div, #rarl-join .rarl-stack > td { width: 100% !important; box-sizing: border-box !important; margin: 0 0 16px !important; display: block !important; }
+    #rarl-join .rarl-join-title { font-size: 26px !important; }
+    #rarl-join .rarl-pad { padding-left: 20px !important; padding-right: 20px !important; }
+  }
+</style>
+
+<div id="rarl-join" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif; color:#1f2937; max-width:100%; background:#ffffff;">
+
+  <!-- ── HEADER ───────────────────────────────────────────── -->
+  <div class="rarl-pad" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%); padding:48px 24px 40px;">
+    <div style="max-width:760px; margin:0 auto; text-align:center;">
+      <img src="https://rarl-lab.com/wp-content/uploads/2025/09/logo-e1777763650266-768x219.png" alt="RARL" style="height:48px; width:auto; margin:0 auto 22px; display:block;" onerror="this.style.display='none'"/>
+      <div style="display:inline-block; background:rgba(200,16,46,0.15); border:1px solid rgba(200,16,46,0.4); color:#ff8fa3; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; padding:6px 16px; border-radius:999px; margin-bottom:20px;">
+        A Message From the RARL Management Team
+      </div>
+      <h1 class="rarl-join-title" style="font-size:34px; font-weight:900; color:#ffffff; line-height:1.25; margin:0;">
+        Welcome to RARL
+      </h1>
+      <p style="font-size:15px; color:rgba(255,255,255,0.6); margin:10px 0 0;">
+        Updates on Activities, Membership, and Upcoming Events
+      </p>
+    </div>
+  </div>
+
+  <!-- ── LETTER ───────────────────────────────────────────── -->
+  <div class="rarl-pad" style="padding:48px 24px 8px;">
+    <div style="max-width:720px; margin:0 auto; font-size:15.5px; line-height:1.75; color:#374151;">
+      <p style="margin:0 0 18px;">Dear RARL Members,</p>
+      <p style="margin:0 0 18px;">
+        It is our great pleasure to warmly welcome you to the <strong>RARL (Research &amp; Academic Research Lab) community</strong>.
+        We sincerely appreciate your interest, support, and participation in developing an international academic
+        network that connects students, researchers, and academic professionals from different regions around the world.
+      </p>
+      <p style="margin:0 0 18px;">
+        We kindly request all members to check and update their information and remain connected with the latest RARL
+        activities, announcements, research opportunities, webinars, and academic initiatives.
+      </p>
+      <p style="margin:0 0 10px;">To receive the latest updates, please join and follow our official RARL platforms:</p>
+    </div>
+  </div>
+
+  <!-- ── FOLLOW US (QR CODES) ─────────────────────────────── -->
+  <div class="rarl-pad" style="padding:8px 24px 40px;">
+    <table role="presentation" class="rarl-stack" width="100%" style="max-width:720px; margin:0 auto; border-collapse:separate; border-spacing:14px 0;">
+      <tr>
+        <td class="rarl-stack" width="50%" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:16px; padding:24px; vertical-align:top; text-align:center;">
+          <img src="https://community.rarl-lab.com/assets/Youtube%20QR.jpeg" alt="Scan to subscribe on YouTube" width="120" height="120" style="display:block; margin:0 auto 14px; border-radius:8px;"/>
+          <div style="font-weight:700; font-size:14.5px; color:#111827; margin-bottom:6px;">RARL YouTube Channel</div>
+          <div style="font-size:13px; color:#6b7280; line-height:1.6; margin-bottom:14px;">
+            Scan the QR code and subscribe to access upcoming webinars, recorded lectures, and academic content.
+          </div>
+          <a href="https://www.youtube.com/@roboticsandresearchautomat4675" target="_blank" rel="noopener" style="display:inline-block; background:#c8102e; color:#ffffff; font-weight:700; font-size:12.5px; text-decoration:none; padding:10px 20px; border-radius:999px;">
+            Subscribe on YouTube →
+          </a>
+        </td>
+        <td class="rarl-stack" width="50%" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:16px; padding:24px; vertical-align:top; text-align:center;">
+          <img src="https://community.rarl-lab.com/assets/linkedin%20QR.jpeg" alt="Scan to follow on LinkedIn" width="120" height="120" style="display:block; margin:0 auto 14px; border-radius:8px;"/>
+          <div style="font-weight:700; font-size:14.5px; color:#111827; margin-bottom:6px;">RARL LinkedIn Channel</div>
+          <div style="font-size:13px; color:#6b7280; line-height:1.6; margin-bottom:14px;">
+            Scan the QR code and follow our LinkedIn page for the latest news, member achievements, and announcements.
+          </div>
+          <a href="https://www.linkedin.com/company/robotics-and-research-automaton-lab-rarl/?viewAsMember=true" target="_blank" rel="noopener" style="display:inline-block; background:#0a66c2; color:#ffffff; font-weight:700; font-size:12.5px; text-decoration:none; padding:10px 20px; border-radius:999px;">
+            Follow on LinkedIn →
+          </a>
+        </td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ── MEMBERSHIP STATUS ────────────────────────────────── -->
+  <div class="rarl-pad" style="background:#f9fafb; padding:44px 24px;">
+    <div style="max-width:720px; margin:0 auto;">
+      <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:16px; padding:20px 24px; margin-bottom:32px; font-size:14.5px; line-height:1.7; color:#78350f;">
+        <i>Currently, due to ongoing management and organizational updates, the registration of new RARL members has
+        been temporarily paused.</i>
+      </div>
+
+      <div style="text-align:center; margin-bottom:32px;">
+        <div style="font-size:44px; font-weight:900; color:#c8102e; line-height:1;">110</div>
+        <div style="font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:1px; color:#6b7280; margin-top:6px;">
+          Active Members Worldwide
+        </div>
+        <p style="font-size:14.5px; color:#4b5563; line-height:1.7; max-width:560px; margin:14px auto 0;">
+          Students, researchers, and academic professionals from different countries — representing every inhabited
+          continent, and demonstrating RARL's international and collaborative nature.
+        </p>
+      </div>
+
+      <!-- Region breakdown -->
+      <table role="presentation" class="rarl-stack" width="100%" style="border-collapse:separate; border-spacing:10px;">
+        <tr class="rarl-stack">
+          <td class="rarl-stack" width="20%" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:18px 14px; vertical-align:top; text-align:center;">
+            <div style="font-weight:800; font-size:20px; color:#c8102e;">16</div>
+            <div style="font-weight:700; font-size:12.5px; color:#111827; margin:4px 0 8px;">Asia Section</div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.6;">Bangladesh, China, India, Iraq, Lebanon, Malaysia, Nepal, Pakistan, Saudi Arabia, South Korea, Sri Lanka, Turkey, UAE, Vietnam</div>
+          </td>
+          <td class="rarl-stack" width="20%" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:18px 14px; vertical-align:top; text-align:center;">
+            <div style="font-weight:800; font-size:20px; color:#c8102e;">4</div>
+            <div style="font-weight:700; font-size:12.5px; color:#111827; margin:4px 0 8px;">Europe Section</div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.6;">France, Germany, Portugal, United Kingdom</div>
+          </td>
+          <td class="rarl-stack" width="20%" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:18px 14px; vertical-align:top; text-align:center;">
+            <div style="font-weight:800; font-size:20px; color:#c8102e;">7</div>
+            <div style="font-weight:700; font-size:12.5px; color:#111827; margin:4px 0 8px;">Africa Section</div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.6;">Algeria, DR Congo, Egypt, Ethiopia, Nigeria, South Africa, Tunisia</div>
+          </td>
+          <td class="rarl-stack" width="20%" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:18px 14px; vertical-align:top; text-align:center;">
+            <div style="font-weight:800; font-size:20px; color:#c8102e;">2</div>
+            <div style="font-weight:700; font-size:12.5px; color:#111827; margin:4px 0 8px;">North America</div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.6;">Canada, United States</div>
+          </td>
+          <td class="rarl-stack" width="20%" style="background:#ffffff; border:1px solid #e5e7eb; border-radius:14px; padding:18px 14px; vertical-align:top; text-align:center;">
+            <div style="font-weight:800; font-size:20px; color:#c8102e;">2</div>
+            <div style="font-weight:700; font-size:12.5px; color:#111827; margin:4px 0 8px;">Oceania Section</div>
+            <div style="font-size:11px; color:#6b7280; line-height:1.6;">Australia, New Zealand</div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- World map -->
+      <div style="margin-top:28px; text-align:center;">
+        <img src="https://community.rarl-lab.com/assets/Rarl%20Member%20Countries%20Map.jpg" alt="Map of RARL Member Countries" style="max-width:100%; height:auto; border-radius:16px; border:1px solid #e5e7eb;"/>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── UPCOMING WEBINAR ─────────────────────────────────── -->
+  <div class="rarl-pad" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%); padding:52px 24px;">
+    <div style="max-width:640px; margin:0 auto; text-align:center;">
+      <span style="font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:1.5px; color:#ff8fa3;">Save the Date</span>
+      <h2 style="font-size:26px; font-weight:900; color:#ffffff; margin:8px 0 16px;">First RARL Webinar — September 2026</h2>
+      <p style="font-size:15px; color:rgba(255,255,255,0.7); line-height:1.7; margin:0;">
+        The first RARL Webinar will be organized in the second half of September 2026. This event will provide an
+        excellent opportunity for members to present their research activities, exchange knowledge, discuss potential
+        collaborations, and strengthen communication among RARL members worldwide.
+      </p>
+    </div>
+  </div>
+
+  <!-- ── CLOSING ──────────────────────────────────────────── -->
+  <div class="rarl-pad" style="padding:48px 24px;">
+    <div style="max-width:720px; margin:0 auto; font-size:15.5px; line-height:1.75; color:#374151; text-align:center;">
+      <p style="margin:0 0 18px;">
+        We encourage all members to actively follow our LinkedIn and YouTube channels to receive updated information
+        regarding upcoming webinars, research activities, member achievements, collaboration opportunities, and
+        future RARL initiatives.
+      </p>
+      <p style="margin:0 0 18px;">
+        Thank you once again for becoming a part of RARL. Your participation and contributions are highly valuable in
+        building a strong, diverse, and international research community.
+      </p>
+      <p style="margin:0 0 28px;">We look forward to your active involvement in future RARL activities.</p>
+      <p style="margin:0; font-weight:700; color:#111827;">With best regards,<br/>RARL Management Team</p>
+      <p style="margin:6px 0 0; font-size:13.5px; color:#6b7280;">Research and Academic Research Lab (RARL)</p>
+    </div>
+  </div>
+
+  <!-- ── FOOTER LINKS ─────────────────────────────────────── -->
+  <div style="background:#c8102e; padding:32px 24px; text-align:center;">
+    <div class="rarl-pad" style="max-width:600px; margin:0 auto;">
+      <a href="https://www.linkedin.com/company/robotics-and-research-automaton-lab-rarl/?viewAsMember=true" target="_blank" rel="noopener" style="color:#ffffff; text-decoration:underline; font-size:13.5px; font-weight:600; margin:0 14px;">LinkedIn</a>
+      <a href="https://www.youtube.com/@roboticsandresearchautomat4675" target="_blank" rel="noopener" style="color:#ffffff; text-decoration:underline; font-size:13.5px; font-weight:600; margin:0 14px;">YouTube</a>
+      <a href="https://community.rarl-lab.com" target="_blank" rel="noopener" style="color:#ffffff; text-decoration:underline; font-size:13.5px; font-weight:600; margin:0 14px;">RARL Community</a>
+    </div>
+  </div>
+
+</div>
