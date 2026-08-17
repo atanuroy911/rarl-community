@@ -12,10 +12,12 @@ define('BRAND_INK',       '#101010');
 define('BRAND_INK_SOFT',  '#1a1a1a');
 define('BRAND_WHITE',     '#FFFFFF');
 
-// Inter — designed for on-screen UI legibility at small sizes (taller x-height,
-// more open letterforms than Poppins), used for both body copy and headings.
+// Inter for body copy (on-screen UI legibility at small sizes); Sora for headings
+// (geometric, slightly more distinctive — gives the academic/research brand a
+// stronger identity in H1-H3 without hurting small-size legibility elsewhere).
 define('BRAND_FONT_SANS',       'Inter');
-define('BRAND_FONT_GOOGLE_URL', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+define('BRAND_FONT_HEADING',    'Sora');
+define('BRAND_FONT_GOOGLE_URL', 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Sora:wght@500;600;700;800&display=swap');
 
 // FontAwesome — swapped in for emoji icons across the site (see rarlIconCss()/rarlFaCdn()).
 define('FONTAWESOME_CDN_URL', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');

@@ -140,9 +140,10 @@ echo htmlHead('My Dashboard');
           <?php $quickLinks = [
             ['community.php','<i class="fa-solid fa-comment"></i>','Community Feed','Join the discussion'],
             ['resources.php','<i class="fa-solid fa-book"></i>','Learning Hub','Curated resources'],
+            ['assets/JOINRARL.pdf','<i class="fa-solid fa-envelope-open-text"></i>','Welcome Letter','Official welcome PDF'],
             [MAIN_SITE_URL,'<i class="fa-solid fa-flask"></i>','RARL Lab','Main website'],
           ]; foreach ($quickLinks as [$url, $ic, $title, $sub]): ?>
-          <a href="<?= $url ?>" class="block p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all">
+          <a href="<?= $url ?>" target="<?= str_starts_with($url, 'assets/') ? '_blank' : '_self' ?>" class="block p-5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl hover:-translate-y-1 hover:shadow-md transition-all">
             <div class="text-2xl mb-2"><?= $ic ?></div>
             <div class="font-semibold text-sm text-gray-900 dark:text-white"><?= $title ?></div>
             <div class="text-xs text-gray-400 mt-0.5"><?= $sub ?></div>

@@ -236,6 +236,21 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
   </div>
 </section>
 
+<!-- ── GLOBAL PRESENCE ──────────────────────────────────── -->
+<section class="py-20 bg-gray-50 dark:bg-gray-950">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-12 reveal">
+      <span class="text-xs font-bold uppercase tracking-widest text-rarl-red">Worldwide Community</span>
+      <h2 class="text-3xl md:text-4xl font-black text-gray-900 dark:text-white mt-2 mb-3">RARL Member Countries</h2>
+      <p class="text-gray-500 dark:text-gray-400 max-w-lg mx-auto text-base">Researchers and labs across 5 continents and 31 countries are part of the RARL community.</p>
+    </div>
+    <img src="assets/Rarl Member Countries Map.jpg" alt="Map of RARL Member Countries" class="reveal w-full rounded-2xl shadow-lg border border-gray-200 dark:border-gray-800 mb-6"/>
+    <div class="text-center reveal">
+      <a href="directory.php" class="inline-flex items-center gap-2 text-rarl-red font-semibold text-sm hover:underline">See member countries by section →</a>
+    </div>
+  </div>
+</section>
+
 <!-- ── CTA ────────────────────────────────────────────────── -->
 <section class="py-16 bg-rarl-red">
   <div class="max-w-3xl mx-auto px-6 text-center">

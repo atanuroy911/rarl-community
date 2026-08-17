@@ -28,6 +28,36 @@ echo htmlHead('Membership Roster');
   </div>
 </section>
 
+
+<!-- Global Presence Map -->
+<section class="py-14 bg-white dark:bg-gray-900 border-b border-gray-100 dark:border-gray-800">
+  <div class="max-w-5xl mx-auto px-6">
+    <div class="text-center mb-10">
+      <span class="text-xs font-bold uppercase tracking-widest text-rarl-red">Global Presence</span>
+      <h2 class="text-2xl md:text-3xl font-black text-gray-900 dark:text-white mt-2">RARL Member Countries</h2>
+    </div>
+    <img src="assets/Rarl Member Countries Map.jpg" alt="Map of RARL Member Countries" class="w-full rounded-2xl shadow-lg border border-gray-200 dark:border-gray-700 mb-10"/>
+    <?php $sections = [
+      ['Asia', ['Bangladesh','China','India','Iraq','Lebanon','Malaysia','Nepal','Pakistan','Saudi Arabia','South Korea','Sri Lanka','Turkey','United Arab Emirates','Vietnam']],
+      ['Europe', ['France','Germany','Portugal','United Kingdom']],
+      ['Africa', ['Algeria','Democratic Republic of Congo','Egypt','Ethiopia','Nigeria','South Africa','Tunisia']],
+      ['North America', ['Canada','United States']],
+      ['Oceania', ['Australia','New Zealand']],
+    ]; ?>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <?php foreach ($sections as [$name, $countries]): ?>
+      <div class="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white"><?= $name ?></h3>
+          <span class="text-[10px] font-bold text-rarl-red bg-rarl-red/10 px-2 py-0.5 rounded-full"><?= count($countries) ?></span>
+        </div>
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= htmlspecialchars(implode(', ', $countries)) ?></p>
+      </div>
+      <?php endforeach; ?>
+    </div>
+  </div>
+</section>
+
 <div class="max-w-3xl mx-auto px-6 py-14 text-center">
   <?php if ($customRosterPdf): ?>
   <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-14 text-gray-500 dark:text-gray-400">

@@ -30,10 +30,10 @@ unset($_SESSION['flash']);
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Admin Login — RARL</title><meta name="robots" content="noindex,nofollow"/>
 <script src="https://cdn.tailwindcss.com"></script>
-<script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
+<script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>
 <link href="<?= FONTAWESOME_CDN_URL ?>" rel="stylesheet"/>
-<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}<?= rarlFontSizeCss() ?></style>
+<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>",sans-serif;letter-spacing:-0.01em;}<?= rarlFontSizeCss() ?></style>
 </head>
 <body class="min-h-screen flex items-center justify-center" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
 <div class="w-full max-w-sm mx-4">

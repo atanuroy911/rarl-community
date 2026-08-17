@@ -283,6 +283,7 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     $fontUrl    = BRAND_FONT_GOOGLE_URL;
     $faUrl      = FONTAWESOME_CDN_URL;
     $sizeCss    = rarlFontSizeCss();
+    $brandRedHex = BRAND_RED;
     return <<<HTML
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
@@ -298,7 +299,11 @@ function htmlHead(string $title, bool $isAdmin = false): string {
         colors: {$colorsJson},
         fontFamily: {
           sans:    ['Inter','system-ui','sans-serif'],
-          heading: ['Inter','system-ui','sans-serif'],
+          heading: ['Sora','Inter','system-ui','sans-serif'],
+        },
+        boxShadow: {
+          card:    '0 1px 2px rgba(16,16,16,.04), 0 1px 12px rgba(16,16,16,.05)',
+          'card-hover': '0 8px 24px rgba(16,16,16,.10)',
         }
       }}
     }
@@ -307,10 +312,19 @@ function htmlHead(string $title, bool $isAdmin = false): string {
   <link href="{$fontUrl}" rel="stylesheet"/>
   <link href="{$faUrl}" rel="stylesheet"/>
   <style>
-    body { font-family:'Inter',system-ui,sans-serif; }
-    h1,h2,h3,h4 { font-family:'Inter',system-ui,sans-serif; }
+    body { font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
+    h1,h2,h3,h4 { font-family:'Sora','Inter',system-ui,sans-serif; letter-spacing:-0.01em; }
     {$sizeCss}
-    .reveal { opacity:0; transform:translateY(20px); transition:opacity .5s ease,transform .5s ease; }
+    a, button, [role="button"] { transition:color .15s ease, background-color .15s ease, border-color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease; }
+    a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+      outline:2px solid {$brandRedHex}; outline-offset:2px; border-radius:4px;
+    }
+    ::selection { background:{$brandRedHex}; color:#fff; }
+    ::-webkit-scrollbar { width:10px; height:10px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(120,120,120,.35); border-radius:999px; }
+    ::-webkit-scrollbar-thumb:hover { background:rgba(120,120,120,.55); }
+    .reveal { opacity:0; transform:translateY(20px); transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1); }
     .reveal.visible { opacity:1; transform:none; }
     select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235a6478' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 1rem center; padding-right:2.5rem!important; -webkit-appearance:none; }
     /* Markdown-rendered content (community posts/comments) */
