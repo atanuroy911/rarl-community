@@ -52,14 +52,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         $_SESSION['flash'] = ['type' => 'error', 'msg' => 'Subject, body, and at least one recipient are required.'];
         header('Location: compose-email.php'); exit;
     } else {
-        $sent = 0;
+        $sent = 0; $batch = newEmailBatch();
         foreach ($recipients as $r) {
             $memberName = $r['name'] ?: $r['email'];
             ob_start(); require dirname(__DIR__) . '/emails/admin-message.php'; $emailBody = ob_get_clean();
-            if (sendEmail($r['email'], $memberName, $subject, $emailBody)) $sent++;
-            usleep(50000);
+            if (queueEmail($batch, 'Email — ' . $subject, $r['email'], $memberName, $subject, $emailBody)) $sent++;
         }
-        $_SESSION['flash'] = ['type' => 'success', 'msg' => "Sent to {$sent} of " . count($recipients) . " recipients."];
+        $_SESSION['flash'] = ['type' => 'success', 'msg' => "Queued {$sent} of " . count($recipients) . " email(s) — sending in the background."];
         header('Location: compose-email.php'); exit;
     }
 }

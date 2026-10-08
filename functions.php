@@ -162,7 +162,7 @@ function generateCertPDF(string $path, string $name, string $event, string $cert
 // Issues a certificate for one event registration (used by the "mark
 // attended" flow) — reuses the exact same PDF/uuid/cert-number logic as the
 // manual CSV path in admin/certificates.php so both produce identical output.
-function issueCertificateForAttendance(PDO $pdo, array $event, array $member): bool {
+function issueCertificateForAttendance(PDO $pdo, array $event, array $member, ?string $batch = null): bool {
     $email = $member['email'];
     $name  = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
 
@@ -176,24 +176,33 @@ function issueCertificateForAttendance(PDO $pdo, array $event, array $member): b
     if (!is_dir($certDir)) mkdir($certDir, 0755, true);
     $pdfFile = 'cert_' . str_replace('-', '', $uuid) . '.pdf';
     $pdfPath = null;
+    $eventDate = !empty($event['event_date']) ? date('d F Y', strtotime($event['event_date'])) : date('d F Y');
 
-    if (file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
+    // Use the designed default certificate template when one exists, so
+    // attendance certificates match the ones issued from admin/certificates.php.
+    $template = getDefaultTemplate('certificate');
+    if ($template && renderTemplatePdf($template, ['name' => $name, 'event' => $event['title'], 'cert_no' => $certNo, 'date' => $eventDate,
+            'verify_url' => CERT_VERIFY_URL . '?id=' . $uuid], $certDir . $pdfFile)) {
+        $pdfPath = $pdfFile;
+    } elseif (file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
         generateCertPDF($certDir . $pdfFile, $name, $event['title'], $certNo, $event['event_date'] ?? date('Y-m-d'), $uuid);
         $pdfPath = $pdfFile;
     }
 
-    $pdo->prepare("INSERT INTO certificates (uuid, certificate_no, member_id, recipient_name, recipient_email, event_id, pdf_path)
-        VALUES (?,?,?,?,?,?,?)")->execute([$uuid, $certNo, $member['id'], $name, $email, $event['id'], $pdfPath]);
+    $pdo->prepare("INSERT INTO certificates (uuid, certificate_no, member_id, recipient_name, recipient_email, event_id, template_id, pdf_path)
+        VALUES (?,?,?,?,?,?,?,?)")->execute([$uuid, $certNo, $member['id'], $name, $email, $event['id'], $template['id'] ?? null, $pdfPath]);
+    $certId = (int)$pdo->lastInsertId();
 
     $verifyUrl  = CERT_VERIFY_URL . '?id=' . $uuid;
     $eventTitle = $event['title'];
-    $eventDate  = $event['event_date'] ? date('d F Y', strtotime($event['event_date'])) : date('d F Y');
     $certNumber = $certNo;
     $memberName = $name;
     ob_start(); require __DIR__ . '/emails/certificate.php'; $body = ob_get_clean();
-    sendEmail($email, $name, 'Your RARL Certificate — ' . $event['title'], $body);
-    $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE uuid = ?")->execute([$uuid]);
-
+    if ($batch) {
+        queueEmail($batch, 'Certificates — ' . $event['title'], $email, $name, 'Your RARL Certificate — ' . $event['title'], $body, [], 'cert:' . $certId);
+    } elseif (sendEmail($email, $name, 'Your RARL Certificate — ' . $event['title'], $body)) {
+        $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$certId]);
+    }
     return true;
 }
 
@@ -213,6 +222,7 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
             return true;
         } catch (Throwable $e) {
             error_log('SMTP send failed: ' . $e->getMessage());
+            $GLOBALS['rarl_mail_error'] = $e->getMessage();
             return false;
         }
     }
@@ -223,6 +233,117 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
     $headers = array_values(array_filter($headers, fn($h) => !str_starts_with($h, 'Subject:') && !str_starts_with($h, 'To:')));
     $headers[] = 'Reply-To: ' . MAIL_REPLY_TO;
     return @mail($to, $subject, $body, implode("\r\n", $headers));
+}
+
+// ── Background email queue ─────────────────────────────────
+// Bulk sends go through queueEmail() and are delivered in small batches by
+// processEmailQueue() — driven by the admin UI's progress pill (any open
+// admin tab ticks admin/email-queue.php) and optionally by a cPanel cron
+// running cron-email-queue.php. Claiming rows with a random token means
+// several tabs/cron runs can work the queue at once without double-sending.
+// $onSent is a small hook run after delivery: "cert:<id>" stamps
+// certificates.emailed_at, "welcome:<id>" sets members.discord_invited,
+// "nl:<id>" bumps newsletters.recipient_count.
+function emailQueueReady(): bool {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        db()->exec("CREATE TABLE IF NOT EXISTS `email_queue` (
+          `id` INT(11) NOT NULL AUTO_INCREMENT, `batch` VARCHAR(32) NOT NULL, `batch_label` VARCHAR(255) NOT NULL DEFAULT '',
+          `to_email` VARCHAR(255) NOT NULL, `to_name` VARCHAR(255) NOT NULL DEFAULT '', `subject` VARCHAR(500) NOT NULL,
+          `body` MEDIUMTEXT NOT NULL, `attachments` TEXT DEFAULT NULL, `headers` TEXT DEFAULT NULL, `on_sent` VARCHAR(100) DEFAULT NULL,
+          `status` ENUM('queued','sending','sent','failed','cancelled') NOT NULL DEFAULT 'queued', `attempts` TINYINT(4) NOT NULL DEFAULT 0,
+          `last_error` VARCHAR(500) DEFAULT NULL, `claim` VARCHAR(32) DEFAULT NULL, `locked_at` DATETIME DEFAULT NULL,
+          `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, `sent_at` DATETIME DEFAULT NULL,
+          PRIMARY KEY (`id`), KEY `status` (`status`), KEY `batch` (`batch`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ready = true;
+    } catch (Throwable $e) {
+        error_log('email_queue unavailable: ' . $e->getMessage());
+        $ready = false;
+    }
+    return $ready;
+}
+
+function newEmailBatch(): string {
+    return bin2hex(random_bytes(8));
+}
+
+// Returns true when queued; if the queue table can't be used it sends right
+// away instead, so callers never lose an email.
+function queueEmail(string $batch, string $label, string $to, string $toName, string $subject, string $htmlBody,
+                    array $attachments = [], ?string $onSent = null, ?string $rawHeaders = null): bool {
+    if (!emailQueueReady()) {
+        $ok = $rawHeaders !== null ? @mail($to, $subject, $htmlBody, $rawHeaders) : sendEmail($to, $toName, $subject, $htmlBody, $attachments);
+        if ($ok && $onSent) emailQueueRunHook($onSent);
+        return $ok;
+    }
+    db()->prepare("INSERT INTO email_queue (batch, batch_label, to_email, to_name, subject, body, attachments, headers, on_sent) VALUES (?,?,?,?,?,?,?,?,?)")
+        ->execute([$batch, mb_substr($label, 0, 255), $to, mb_substr($toName, 0, 255), mb_substr($subject, 0, 500), $htmlBody,
+                   $attachments ? json_encode($attachments) : null, $rawHeaders, $onSent]);
+    return true;
+}
+
+function emailQueueRunHook(string $hook): void {
+    [$kind, $id] = array_pad(explode(':', $hook, 2), 2, '0');
+    $id = (int)$id;
+    $sql = match ($kind) {
+        'cert'    => "UPDATE certificates SET emailed_at = NOW() WHERE id = ?",
+        'welcome' => "UPDATE members SET discord_invited = 1 WHERE id = ?",
+        'nl'      => "UPDATE newsletters SET recipient_count = recipient_count + 1 WHERE id = ?",
+        default   => null,
+    };
+    if ($sql && $id) { try { db()->prepare($sql)->execute([$id]); } catch (Throwable $e) { error_log('queue hook failed: ' . $e->getMessage()); } }
+}
+
+// Sends up to $limit queued emails (stopping early after $maxSeconds).
+// Returns ['sent' => n, 'failed' => n].
+function processEmailQueue(int $limit = 8, int $maxSeconds = 15): array {
+    $done = ['sent' => 0, 'failed' => 0];
+    if (!emailQueueReady()) return $done;
+    $pdo = db();
+    $claim = bin2hex(random_bytes(8));
+    // Rows stuck in "sending" (a tab closed mid-batch) are retried after 5 minutes.
+    $pdo->prepare("UPDATE email_queue SET status = 'sending', claim = ?, locked_at = NOW()
+        WHERE status = 'queued' OR (status = 'sending' AND locked_at < NOW() - INTERVAL 5 MINUTE)
+        ORDER BY id LIMIT " . max(1, $limit))->execute([$claim]);
+    $rows = $pdo->prepare("SELECT * FROM email_queue WHERE claim = ? AND status = 'sending' ORDER BY id");
+    $rows->execute([$claim]);
+    $start = time();
+    foreach ($rows->fetchAll() as $r) {
+        if (time() - $start > $maxSeconds) {
+            $pdo->prepare("UPDATE email_queue SET status = 'queued', claim = NULL WHERE id = ?")->execute([$r['id']]);
+            continue;
+        }
+        $GLOBALS['rarl_mail_error'] = null;
+        $attachments = json_decode($r['attachments'] ?? '', true) ?: [];
+        $attachments = array_values(array_filter($attachments, fn($a) => !empty($a['path']) && file_exists($a['path'])));
+        $ok = $r['headers'] !== null
+            ? @mail($r['to_email'], $r['subject'], $r['body'], $r['headers'])
+            : sendEmail($r['to_email'], $r['to_name'], $r['subject'], $r['body'], $attachments);
+        if ($ok) {
+            $pdo->prepare("UPDATE email_queue SET status = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = ?")->execute([$r['id']]);
+            if ($r['on_sent']) emailQueueRunHook($r['on_sent']);
+            $done['sent']++;
+        } else {
+            $err = mb_substr((string)($GLOBALS['rarl_mail_error'] ?? 'Mail server rejected the message'), 0, 500);
+            $pdo->prepare("UPDATE email_queue SET status = IF(attempts + 1 >= 3, 'failed', 'queued'), attempts = attempts + 1, last_error = ?, claim = NULL WHERE id = ?")->execute([$err, $r['id']]);
+            $done['failed']++;
+        }
+        usleep(50000);
+    }
+    return $done;
+}
+
+// Progress of all batches that still have work (or finished in the last hour).
+function emailQueueSummary(): array {
+    if (!emailQueueReady()) return ['pending' => 0, 'batches' => []];
+    $pdo = db();
+    $pending = (int)$pdo->query("SELECT COUNT(*) FROM email_queue WHERE status IN ('queued','sending')")->fetchColumn();
+    $batches = $pdo->query("SELECT batch, MAX(batch_label) label, COUNT(*) total, SUM(status='sent') sent, SUM(status='failed') failed,
+        SUM(status IN ('queued','sending')) pending, SUM(status='cancelled') cancelled, MIN(created_at) created_at, MAX(sent_at) last_sent
+        FROM email_queue GROUP BY batch HAVING pending > 0 OR MAX(created_at) > NOW() - INTERVAL 1 HOUR ORDER BY MIN(id) DESC LIMIT 10")->fetchAll();
+    return ['pending' => $pending, 'batches' => $batches];
 }
 
 // ── Flash messages ─────────────────────────────────────────
@@ -498,6 +619,7 @@ const RARL_MIGRATIONS = [
     '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
     '009_admin_only_posts.sql'          => 'Seeds the "Robotics & Automation Research Lab (RARL) Team" system account admin posts are authored as',
     '010_cv_url.sql'                    => 'Optional external CV/Resume link (e.g. Google Drive) alongside the local upload',
+    '012_email_queue.sql'               => 'Background email queue for bulk sends (certificates, newsletters, approvals)',
 ];
 
 function dbTablesExist(): bool {

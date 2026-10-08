@@ -53,19 +53,25 @@ function certWritePdf(?array $template, string $uuid, string $name, array $event
     return null;
 }
 
-function certSendEmail(PDO $pdo, array $c): void {
+// With $batch set, the email is queued (sent in the background) instead of sent inline.
+function certSendEmail(PDO $pdo, array $c, ?string $batch = null): void {
     $verifyUrl  = CERT_VERIFY_URL . '?id=' . $c['uuid'];
     $eventTitle = $c['event_title'] ?? 'RARL';
     $eventDate  = !empty($c['event_date']) ? date('d F Y', strtotime($c['event_date'])) : date('d F Y');
     $certNumber = $c['certificate_no'];
     $memberName = $c['recipient_name'];
     ob_start(); require dirname(__DIR__) . '/emails/certificate.php'; $body = ob_get_clean();
-    sendEmail($c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body);
-    $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$c['id']]);
+    if ($batch) {
+        queueEmail($batch, 'Certificates — ' . $eventTitle, $c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body, [], 'cert:' . (int)$c['id']);
+        return;
+    }
+    if (sendEmail($c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body)) {
+        $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$c['id']]);
+    }
 }
 
 // Issues one event certificate. Returns 'issued', 'duplicate' or 'invalid'.
-function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $templateId, bool $send): string {
+function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $templateId, bool $send, ?string $batch = null): string {
     if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL)) return 'invalid';
     $dup = $pdo->prepare("SELECT id FROM certificates WHERE event_id = ? AND recipient_email = ?");
     $dup->execute([$event['id'], $email]);
@@ -85,7 +91,7 @@ function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $te
 
     if ($send) {
         certSendEmail($pdo, ['id' => $pdo->lastInsertId(), 'uuid' => $uuid, 'certificate_no' => $certNo, 'recipient_name' => $name,
-            'recipient_email' => $email, 'event_title' => $event['title'], 'event_date' => $event['event_date']]);
+            'recipient_email' => $email, 'event_title' => $event['title'], 'event_date' => $event['event_date']], $batch);
     }
     return 'issued';
 }
@@ -196,11 +202,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         }
         @set_time_limit(0);
         $counts = ['issued' => 0, 'duplicate' => 0, 'invalid' => 0];
+        $batch = $sendEmail ? newEmailBatch() : null;
         foreach (array_slice($csv, 0, 500) as $row) {
-            $counts[certIssue($pdo, $event, clean($row[$nameCol] ?? ''), cleanEmail($row[$emailCol] ?? ''), $templateId, $sendEmail)]++;
+            $counts[certIssue($pdo, $event, clean($row[$nameCol] ?? ''), cleanEmail($row[$emailCol] ?? ''), $templateId, $sendEmail, $batch)]++;
         }
         $extra = count($csv) > 500 ? ' Only the first 500 rows were processed.' : '';
-        $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s)" . ($sendEmail ? ' and emailed them' : '') . ". Skipped {$counts['duplicate']} already issued and {$counts['invalid']} invalid row(s).{$extra}"];
+        $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s)" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued and {$counts['invalid']} invalid row(s).{$extra}"];
         header('Location: certificates.php?event=' . $eventId); exit;
     }
 
@@ -243,12 +250,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             }
             $_SESSION['flash'] = ['type'=>'success','msg'=>count($rows) . ' certificate(s) deleted.'];
         } elseif ($bulkOp === 'send' || $bulkOp === 'resend') {
-            $sent = 0;
+            $sent = 0; $batch = newEmailBatch();
             foreach ($rows as $c) {
                 if (!$c['pdf_path'] || ($bulkOp === 'send' && $c['emailed_at'])) continue;
-                certSendEmail($pdo, $c); $sent++;
+                certSendEmail($pdo, $c, $batch); $sent++;
             }
-            $_SESSION['flash'] = ['type'=>'success','msg'=>"Emailed {$sent} certificate(s)." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '')];
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} certificate email(s) — sending in the background." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '')];
         } elseif ($bulkOp === 'regen') {
             $done = 0;
             foreach ($rows as $c) if (certRegenerate($pdo, $c)) $done++;

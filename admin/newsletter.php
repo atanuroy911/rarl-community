@@ -46,7 +46,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         };
         $recipients = $pdo->query("SELECT full_name, lab_name, type, email, unsubscribe_token FROM members WHERE status = 'active' AND newsletter_opt_in = 1 {$segWhere}")->fetchAll();
 
-        $sent = 0; $failed = 0;
+        $sent = 0; $failed = 0; $batch = newEmailBatch();
+        $pdo->prepare("UPDATE newsletters SET recipient_count = 0 WHERE id = ?")->execute([$newsletter['id']]);
         foreach ($recipients as $r) {
             $recipientName  = $r['type'] === 'lab' ? $r['lab_name'] : $r['full_name'];
             $unsubscribeUrl = SITE_URL . '/unsubscribe.php?token=' . urlencode($r['unsubscribe_token']);
@@ -57,12 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $headers .= "From: " . MAIL_FROM_NAME . " <" . MAIL_FROM_EMAIL . ">\r\n";
             $headers .= "Reply-To: " . MAIL_REPLY_TO . "\r\n";
             $headers .= "List-Unsubscribe: <" . SITE_URL . "/unsubscribe.php?token=" . urlencode($r['unsubscribe_token']) . ">";
-            if (@mail($r['email'], $newsletter['subject'], $emailBody, $headers)) $sent++; else $failed++;
-            usleep(50000);
+            if (queueEmail($batch, 'Newsletter — ' . $newsletter['subject'], $r['email'], $recipientName, $newsletter['subject'], $emailBody, [], 'nl:' . (int)$newsletter['id'], $headers)) $sent++; else $failed++;
         }
 
-        $pdo->prepare("UPDATE newsletters SET status='sent', sent_at=NOW(), recipient_count=? WHERE id=?")->execute([$sent, $newsletter['id']]);
-        $_SESSION['flash'] = ['type'=>'success','msg'=>"Sent to {$sent} subscribers. {$failed} failed."];
+        // recipient_count climbs as the queue delivers (see the "nl:" queue hook).
+        $pdo->prepare("UPDATE newsletters SET status='sent', sent_at=NOW() WHERE id=?")->execute([$newsletter['id']]);
+        $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued for {$sent} subscribers — sending in the background." . ($failed ? " {$failed} failed." : '')];
         header('Location: newsletter.php'); exit;
     }
 

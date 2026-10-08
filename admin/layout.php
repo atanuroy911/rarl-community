@@ -54,6 +54,54 @@ function htmlAdminHead(string $title): void {
   th.rarl-sortable::after{content:"\2195";opacity:.25;margin-left:.3em;font-size:.95em}
   th.rarl-sortable[data-dir=asc]::after{content:"\2191";opacity:.8}
   th.rarl-sortable[data-dir=desc]::after{content:"\2193";opacity:.8}
+  /* ── Admin design system (rarl-*) — shared by rebuilt pages ── */
+  body{background:#f6f7f9}
+  .rarl-page-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:1rem;margin-bottom:1.5rem}
+  .rarl-page-head h1{font-size:1.65rem;font-weight:900;color:#0f172a;letter-spacing:-.025em;line-height:1.15}
+  .rarl-page-head p{color:#64748b;font-size:.875rem;margin-top:.25rem;max-width:46rem}
+  .rarl-card{background:#fff;border:1px solid #e8eaee;border-radius:1.1rem;box-shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px -8px rgba(15,23,42,.08)}
+  .rarl-card-title{font-family:"' . BRAND_FONT_HEADING . '",sans-serif;font-weight:700;font-size:.9rem;color:#0f172a}
+  .rarl-btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;height:2.4rem;padding:0 1rem;border-radius:.75rem;font-size:.8rem;font-weight:600;color:#1e293b;background:#fff;border:1px solid #e2e8f0;white-space:nowrap;box-shadow:0 1px 2px rgba(15,23,42,.05)}
+  .rarl-btn:hover{border-color:#cbd5e1;background:#f8fafc}
+  .rarl-btn-primary{background:' . BRAND_RED . ';border-color:' . BRAND_RED . ';color:#fff}
+  .rarl-btn-primary:hover{background:' . BRAND_RED_DARK . ';border-color:' . BRAND_RED_DARK . '}
+  .rarl-btn-dark{background:#0f172a;border-color:#0f172a;color:#fff}
+  .rarl-btn-dark:hover{background:#1e293b;border-color:#1e293b}
+  .rarl-btn-sm{height:1.9rem;padding:0 .7rem;font-size:.72rem;border-radius:.6rem}
+  .rarl-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.6rem;color:#64748b}
+  .rarl-icon-btn:hover{background:#f1f5f9;color:#0f172a}
+  .rarl-icon-btn.danger:hover{background:#fef2f2;color:#dc2626}
+  .rarl-input{width:100%;height:2.4rem;padding:0 .8rem;border:1px solid #e2e8f0;border-radius:.75rem;font-size:.85rem;background:#fff;color:#0f172a}
+  textarea.rarl-input{height:auto;padding:.6rem .8rem}
+  .rarl-input:focus{outline:none;border-color:' . BRAND_RED . ';box-shadow:0 0 0 3px rgba(204,7,3,.12)}
+  .rarl-label{display:block;font-size:.72rem;font-weight:600;color:#475569;margin-bottom:.35rem}
+  .rarl-stat{display:block;background:#fff;border:1px solid #e8eaee;border-radius:1.1rem;padding:1rem 1.1rem;transition:box-shadow .15s,border-color .15s,transform .15s}
+  a.rarl-stat:hover{box-shadow:0 8px 24px -12px rgba(15,23,42,.25);transform:translateY(-1px)}
+  .rarl-stat.is-active{border-color:' . BRAND_RED . ';box-shadow:0 0 0 3px rgba(204,7,3,.12)}
+  .rarl-stat-label{display:flex;align-items:center;gap:.4rem;font-size:.72rem;font-weight:600;color:#64748b}
+  .rarl-stat-value{display:block;font-family:"' . BRAND_FONT_HEADING . '",sans-serif;font-weight:900;font-size:1.6rem;line-height:1.1;margin-top:.35rem;color:#0f172a}
+  .rarl-table{width:100%;font-size:.8rem}
+  .rarl-table thead th{text-align:left;padding:.7rem 1rem;font-size:.66rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#64748b;background:#f8fafc;border-bottom:1px solid #eef0f3}
+  .rarl-table tbody td{padding:.75rem 1rem;border-bottom:1px solid #f1f3f6;vertical-align:middle}
+  .rarl-table tbody tr:last-child td{border-bottom:0}
+  .rarl-table tbody tr:hover td{background:#fafbfc}
+  .rarl-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap;line-height:1.4}
+  .rarl-badge-green{background:#ecfdf5;color:#047857}.rarl-badge-amber{background:#fffbeb;color:#b45309}.rarl-badge-red{background:#fef2f2;color:#b91c1c}
+  .rarl-badge-blue{background:#eff6ff;color:#1d4ed8}.rarl-badge-indigo{background:#eef2ff;color:#4338ca}.rarl-badge-purple{background:#faf5ff;color:#7e22ce}.rarl-badge-gray{background:#f1f5f9;color:#475569}
+  .rarl-tabs{display:flex;gap:.25rem;padding:.25rem;background:#eef0f3;border-radius:.85rem;overflow-x:auto}
+  .rarl-tabs a,.rarl-tabs button{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem .85rem;border-radius:.65rem;font-size:.78rem;font-weight:600;color:#475569;white-space:nowrap}
+  .rarl-tabs a:hover,.rarl-tabs button:hover{color:#0f172a}
+  .rarl-tabs .on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.1)}
+  .rarl-tabs .count{font-size:.66rem;padding:0 .4rem;border-radius:999px;background:rgba(15,23,42,.07)}
+  .rarl-tabs .count.hot{background:' . BRAND_RED . ';color:#fff}
+  .rarl-drawer{position:fixed;inset:0 0 0 auto;width:min(560px,100vw);background:#fff;z-index:70;box-shadow:-24px 0 64px rgba(15,23,42,.18);transform:translateX(100%);transition:transform .28s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column}
+  .rarl-drawer.open{transform:none}
+  .rarl-drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:69;opacity:0;pointer-events:none;transition:opacity .2s}
+  .rarl-drawer-backdrop.open{opacity:1;pointer-events:auto}
+  .rarl-empty{padding:3.5rem 1rem;text-align:center;color:#94a3b8;font-size:.85rem}
+  #rarl-queue-pill{position:fixed;bottom:1rem;right:1rem;z-index:90;display:none;align-items:center;gap:.7rem;padding:.6rem .9rem .6rem .7rem;border-radius:999px;background:#0f172a;color:#fff;font-size:12px;box-shadow:0 12px 32px rgba(15,23,42,.3)}
+  #rarl-queue-pill .bar{width:90px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}
+  #rarl-queue-pill .bar>i{display:block;height:100%;background:#4ade80;transition:width .4s}
   .rarl-kbd{font-family:ui-monospace,monospace;font-size:10px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">
@@ -305,6 +353,7 @@ function adminSidebar(string $active = ''): void {
         'Outreach' => [
             'newsletter'   => ['newsletter.php',    '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
             'compose'      => ['compose-email.php', '<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email'],
+            'email-queue'  => ['email-queue.php',   '<i class="fa-solid fa-paper-plane"></i>', 'Email Queue'],
             'partnerships' => ['partnerships.php',  '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
         ],
         'Configuration' => [
@@ -360,7 +409,9 @@ function adminWrap(callable $content, string $page = '', string $title = ''): vo
     </div>';
     echo '<div class="rarl-admin-content p-4 sm:p-7 overflow-auto">';
     $content();
-    echo '</div></main></div></body></html>';
+    echo '</div></main></div>';
+    adminQueuePill();
+    echo '</body></html>';
 }
 
 function statCard(string $label, int|string $val, string $icon, string $color, string $href = ''): void {
@@ -461,4 +512,20 @@ function adminFlash(): void {
     echo '<script>document.addEventListener("DOMContentLoaded",function(){rarlToast(' . json_encode((string)$f["msg"], JSON_HEX_TAG | JSON_HEX_AMP) . ',"' . $type . '");});</script>';
     $cls = $type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700';
     echo '<noscript><div class="p-4 rounded-xl border mb-5 text-sm ' . $cls . '">' . htmlspecialchars($f['msg']) . '</div></noscript>';
+}
+
+
+// Floating "Sending emails 12/500" pill. While the queue has work, any open
+// admin page drives it by ticking admin/email-queue.php — no cron required.
+function adminQueuePill(): void {
+    try { $sum = emailQueueSummary(); } catch (Throwable $e) { return; }
+    $total = 0; $sent = 0;
+    foreach ($sum['batches'] as $b) if ($b['pending'] > 0) { $total += $b['total']; $sent += $b['sent'] + $b['failed'] + $b['cancelled']; }
+    echo '<a id="rarl-queue-pill" href="email-queue.php" title="Open email queue"><span class="rarl-spinner" style="margin:0"></span><span class="lbl">Sending emails…</span><span class="bar"><i style="width:0"></i></span></a>';
+    echo '<script>(function(){var pending=' . (int)$sum['pending'] . ',total=' . (int)$total . ',sent=' . (int)$sent . ',busy=false;var pill=document.getElementById("rarl-queue-pill");
+function draw(){if(pending<=0){pill.style.display="none";return;}pill.style.display="flex";pill.querySelector(".lbl").textContent="Sending emails "+sent+"/"+total;pill.querySelector(".bar>i").style.width=(total?Math.round(sent/total*100):0)+"%";}
+function tick(){if(busy||pending<=0)return;busy=true;var fd=new FormData();fd.append("action","tick");fd.append("acsrf",' . json_encode($GLOBALS['acsrf'] ?? '') . ');
+fetch("email-queue.php",{method:"POST",body:fd,headers:{"X-Requested-With":"fetch"}}).then(function(r){return r.json();}).then(function(d){busy=false;if(!d.ok)return;var t=0,s=0;(d.batches||[]).forEach(function(b){if(+b.pending>0){t+=+b.total;s+=(+b.sent)+(+b.failed)+(+b.cancelled);}});
+var was=pending;pending=d.pending;if(t){total=t;sent=s;}else{sent=total;}draw();if(pending>0)setTimeout(tick,800);else if(was>0&&window.rarlToast)rarlToast("All queued emails have been processed","success");}).catch(function(){busy=false;setTimeout(tick,5000);});}
+window.rarlQueueKick=function(){pending=Math.max(pending,1);tick();};draw();if(pending>0)setTimeout(tick,600);})();</script>';
 }
