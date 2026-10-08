@@ -102,6 +102,14 @@ function htmlAdminHead(string $title): void {
   #rarl-queue-pill{position:fixed;bottom:1rem;right:1rem;z-index:90;display:none;align-items:center;gap:.7rem;padding:.6rem .9rem .6rem .7rem;border-radius:999px;background:#0f172a;color:#fff;font-size:12px;box-shadow:0 12px 32px rgba(15,23,42,.3)}
   #rarl-queue-pill .bar{width:90px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}
   #rarl-queue-pill .bar>i{display:block;height:100%;background:#4ade80;transition:width .4s}
+  /* ── Legacy page polish: applies the design system to older markup ── */
+  .rarl-admin-content .group .opacity-0.group-hover\:opacity-100{opacity:1 !important}
+  .rarl-admin-content .bg-white.border.border-gray-200.rounded-2xl{border-color:#e8eaee;border-radius:1.1rem;box-shadow:0 1px 2px rgba(15,23,42,.04),0 4px 16px -8px rgba(15,23,42,.08)}
+  .rarl-admin-content > h1.text-2xl,.rarl-admin-content > div > div > h1.text-2xl{font-size:1.65rem;letter-spacing:-.025em;color:#0f172a}
+  .rarl-admin-content input.border-gray-300:not([type=checkbox]):not([type=radio]):not([type=file]),.rarl-admin-content select.border-gray-300,.rarl-admin-content textarea.border-gray-300{border-color:#e2e8f0;background-color:#fff}
+  .rarl-admin-content input.border-gray-300:focus,.rarl-admin-content select.border-gray-300:focus,.rarl-admin-content textarea.border-gray-300:focus{border-color:' . BRAND_RED . ';box-shadow:0 0 0 3px rgba(204,7,3,.12);outline:none}
+  .rarl-admin-content table thead.bg-gray-50{background:#f8fafc}
+  .rarl-admin-content table tbody tr:hover{background:#fafbfc}
   .rarl-kbd{font-family:ui-monospace,monospace;font-size:10px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">

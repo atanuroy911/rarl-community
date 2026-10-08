@@ -216,19 +216,29 @@ echo htmlHead('My Profile');
       <input type="hidden" name="action" value="update_profile"/>
       <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-1">Profile Details</h2>
 
-      <div class="flex items-center gap-4">
-        <div class="w-14 h-14 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0">
-          <?php if (!empty($m['avatar_path'])): ?>
-          <img src="uploads/avatars/<?= urlencode($m['avatar_path']) ?>" alt="" class="w-full h-full object-cover"/>
-          <?php else: ?>
-          <span class="font-heading font-black text-lg text-gray-400"><?= strtoupper(substr($displayName, 0, 1)) ?></span>
-          <?php endif; ?>
+      <label id="photo" class="flex items-center gap-4 p-3 -m-3 rounded-2xl cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/60 scroll-mt-24">
+        <div class="relative w-20 h-20 rounded-2xl bg-gray-100 dark:bg-gray-800 flex items-center justify-center overflow-hidden flex-shrink-0 ring-2 ring-offset-2 ring-transparent dark:ring-offset-gray-900" id="avatar-ring">
+          <img id="avatar-preview" src="<?= !empty($m['avatar_path']) ? 'uploads/avatars/' . urlencode($m['avatar_path']) : '' ?>" alt="" class="w-full h-full object-cover <?= empty($m['avatar_path']) ? 'hidden' : '' ?>"/>
+          <span id="avatar-initial" class="font-heading font-black text-2xl text-gray-400 <?= !empty($m['avatar_path']) ? 'hidden' : '' ?>"><?= strtoupper(substr($displayName, 0, 1)) ?></span>
+          <span class="absolute bottom-1 right-1 w-6 h-6 rounded-full bg-white shadow text-rarl-red text-[11px] flex items-center justify-center"><i class="fa-solid fa-camera"></i></span>
         </div>
-        <div class="flex-1">
-          <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Profile Photo <span class="text-gray-400 font-normal">(used on your ID card)</span></label>
-          <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="w-full text-xs"/>
+        <div class="flex-1 min-w-0">
+          <span class="block text-sm font-semibold text-gray-900 dark:text-white"><?= empty($m['avatar_path']) ? 'Add a profile photo' : 'Change profile photo' ?></span>
+          <span class="block text-xs text-gray-500 mt-0.5" id="avatar-hint">A clear, front-facing headshot. It appears on your ID card, which is regenerated when you save. JPG/PNG/WebP, max 3 MB.</span>
+          <input type="file" name="avatar" id="avatar-input" accept=".jpg,.jpeg,.png,.webp" class="sr-only"/>
         </div>
-      </div>
+      </label>
+      <script>
+        document.getElementById('avatar-input').addEventListener('change', function () {
+          const f = this.files[0]; if (!f) return;
+          const hint = document.getElementById('avatar-hint'), ring = document.getElementById('avatar-ring');
+          if (f.size > 3 * 1024 * 1024) { hint.textContent = 'That file is over 3 MB — please choose a smaller photo.'; hint.className = 'block text-xs text-red-600 mt-0.5'; this.value = ''; return; }
+          const img = document.getElementById('avatar-preview'); img.src = URL.createObjectURL(f); img.classList.remove('hidden');
+          document.getElementById('avatar-initial').classList.add('hidden');
+          ring.classList.replace('ring-transparent', 'ring-rarl-red');
+          hint.textContent = 'Looks good — press Save to update your photo and ID card.'; hint.className = 'block text-xs text-green-600 font-semibold mt-0.5';
+        });
+      </script>
 
       <?php if ($m['type'] === 'lab'): ?>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">

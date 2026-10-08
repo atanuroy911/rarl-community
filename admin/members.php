@@ -269,6 +269,8 @@ if (isset($_GET['panel'])) {
 }
 
 // ── Filters ────────────────────────────────────────────────
+// Old links used ?status=pending etc. — map them onto the tab.
+if (!isset($_GET['tab']) && in_array($_GET['status'] ?? '', ['pending','active','inactive'], true)) $_GET['tab'] = $_GET['status'];
 $tab  = in_array($_GET['tab'] ?? '', ['pending','active','inactive','attention','chairs'], true) ? $_GET['tab'] : 'all';
 $ft   = in_array($_GET['type'] ?? '', ['individual','lab'], true) ? $_GET['type'] : '';
 $fsec = $_GET['chapter'] ?? '';

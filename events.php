@@ -42,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && $isActiveMember) {
                 flash('error', 'Sorry, this event is fully booked.');
             }
         }
-        redirect('events.php#event-' . $eventId);
+        redirect(($_POST['return'] ?? '') === 'dashboard' ? 'dashboard.php' : 'events.php#event-' . $eventId);
     }
 
     if ($action === 'cancel_rsvp' && $eventId) {
