@@ -35,9 +35,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['ass
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Email manually marked as verified.'];
     } elseif ($assist === 'approve_now') {
         $pdo->prepare("UPDATE members SET status = 'active' WHERE id = ?")->execute([$id]);
-        $cardMsg = issueIdCard($id) ? ' ID card generated.' : '';
-        issueMembershipCertificate($id);
-        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member approved and activated.' . $cardMsg . ' Membership certificate issued.'];
+        completeApproval($id); // welcome email (once) + ID card + membership certificate, same as Members
+        $_SESSION['flash'] = ['type'=>'success','msg'=>'Member approved, welcomed and issued their documents.'];
     } elseif ($assist === 'send_temp_password') {
         $temp = bin2hex(random_bytes(5));
         $pdo->prepare('UPDATE members SET password_hash = ?, must_change_password = 1 WHERE id = ?')
@@ -194,7 +193,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $sql .= ' WHERE id=?'; $params[] = $id;
 
             $pdo->prepare($sql)->execute($params);
-            $_SESSION['flash'] = ['type'=>'success','msg'=>'Member updated.'];
+            $extra = '';
+            if ($status === 'active' && $m['status'] !== 'active') {
+                // Activating from this form runs the same onboarding as an approval.
+                completeApproval($id);
+                $extra = ' Activated — welcome email, ID card and membership certificate handled.';
+            } elseif ($status === 'active' && ($avatarFile || (int)$sectionId !== (int)$m['section_id'] || ($memberCode ?: null) !== ($m['member_code'] ?: null) || ($m['type'] === 'lab' ? clean($_POST['lab_name'] ?? '') !== $m['lab_name'] : clean($_POST['full_name'] ?? '') !== $m['full_name']))) {
+                // Photo, name, chapter or ID changed — refresh the card so it never shows stale details.
+                if (issueIdCard($id)) $extra = ' ID card refreshed with the new details.';
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>'Member updated.' . $extra];
             header('Location: member-edit.php?id=' . $id); exit;
         }
     }
@@ -210,9 +218,11 @@ $linkedEmails = $pdo->prepare('SELECT * FROM member_emails WHERE member_id = ? O
 $linkedEmails->execute([$id]);
 $linkedEmails = $linkedEmails->fetchAll();
 
-adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedEmails) { ?>
-<a href="members.php" class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-rarl-red transition-colors mb-4">← Back to Members</a>
-<div class="flex items-center gap-3 mb-6">
+adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedEmails) {
+    adminFlash();
+    $statusBadge = ['active' => 'rarl-badge-green', 'pending' => 'rarl-badge-amber', 'inactive' => 'rarl-badge-gray'][$m['status']] ?? 'rarl-badge-gray'; ?>
+<a href="members.php" class="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-rarl-red transition-colors mb-4"><i class="fa-solid fa-arrow-left"></i> Members</a>
+<div class="flex flex-wrap items-center gap-3 mb-6">
   <div class="w-12 h-12 rounded-2xl bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
     <?php if (!empty($m['avatar_path'])): ?>
     <img src="../uploads/avatars/<?= urlencode($m['avatar_path']) ?>" alt="" class="w-full h-full object-cover"/>
@@ -222,7 +232,12 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
   </div>
   <div>
     <h1 class="text-2xl font-black text-gray-900"><?= htmlspecialchars($displayName ?: '(unnamed)') ?></h1>
-    <p class="text-gray-500 text-sm"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?></p>
+    <p class="text-gray-500 text-sm flex flex-wrap items-center gap-2"><span class="rarl-badge <?= $statusBadge ?>"><?= ucfirst($m['status']) ?></span><?= $m['email_verified_at'] ? '' : '<span class="rarl-badge rarl-badge-red">Email not verified</span>' ?> <?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?><?= !empty($m['member_code']) ? ' · <span class="font-mono">#' . htmlspecialchars($m['member_code']) . '</span>' : '' ?></p>
+  </div>
+  <div class="ml-auto flex gap-2">
+    <a href="mailto:<?= htmlspecialchars($m['email']) ?>" class="rarl-btn"><i class="fa-regular fa-envelope"></i> Email</a>
+    <?php if (!empty($m['id_card_path'])): ?><a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="rarl-btn"><i class="fa-solid fa-id-card"></i> ID card</a><?php endif; ?>
+    <a href="certificates.php?q=<?= urlencode($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-trophy"></i> Certificates</a>
   </div>
 </div>
 
@@ -234,7 +249,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
 <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
   <div class="lg:col-span-2">
-    <form method="POST" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm space-y-5">
+    <form method="POST" enctype="multipart/form-data" class="bg-white border border-gray-200 rounded-2xl p-7 shadow-sm space-y-5" id="edit-form">
       <?= acsrfField() ?>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -250,6 +265,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
             <option value="<?= $s ?>" <?= $m['status']===$s?'selected':'' ?>><?= ucfirst($s) ?></option>
             <?php endforeach; ?>
           </select>
+          <?php if ($m['status'] !== 'active'): ?><p class="text-[11px] text-gray-500 mt-1">Setting this to Active sends the welcome email and issues their ID card and membership certificate.</p><?php endif; ?>
         </div>
       </div>
 
@@ -372,7 +388,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
           </select>
         </div>
         <div>
-          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Regional Section</label>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Chapter</label>
           <select name="section_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm">
             <option value="">— None —</option>
             <?php foreach ($sections as $s): ?>
@@ -416,8 +432,26 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['notes'] ?? '') ?></textarea>
       </div>
 
-      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg">Save Changes</button>
+      <div id="save-bar" class="sticky bottom-3 z-10 flex items-center gap-3 p-3 -mx-3 rounded-2xl bg-white/90 backdrop-blur border border-gray-200 shadow-lg">
+        <span id="dirty-note" class="text-xs text-gray-400 flex-1 pl-2"><i class="fa-solid fa-check"></i> No unsaved changes</span>
+        <a href="members.php" class="rarl-btn">Cancel</a>
+        <button type="submit" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save changes</button>
+      </div>
     </form>
+    <script>
+      (function() {
+        const f = document.getElementById('edit-form'), note = document.getElementById('dirty-note');
+        const snap = () => JSON.stringify([...new FormData(f)].filter(([k, v]) => typeof v === 'string'));
+        const start = snap(); let dirty = false;
+        const sync = () => { dirty = snap() !== start || [...f.querySelectorAll('input[type=file]')].some(i => i.files.length);
+          note.innerHTML = dirty ? '<i class="fa-solid fa-circle text-[7px] align-middle"></i> Unsaved changes' : '<i class="fa-solid fa-check"></i> No unsaved changes';
+          note.className = 'text-xs flex-1 pl-2 ' + (dirty ? 'text-amber-600 font-semibold' : 'text-gray-400'); };
+        f.addEventListener('input', sync); f.addEventListener('change', sync);
+        f.addEventListener('submit', () => { dirty = false; });
+        window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+        document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); f.requestSubmit(); } });
+      })();
+    </script>
   </div>
 
   <!-- Sidebar: files + read-only info -->

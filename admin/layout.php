@@ -350,7 +350,7 @@ function adminSidebar(string $active = ''): void {
             'import'       => ['import-members.php',  '<i class="fa-solid fa-file-import"></i>', 'Import Members'],
             'community'    => ['community.php',       '<i class="fa-solid fa-comment"></i>', 'Community'],
             'people'       => ['people.php',           '<i class="fa-solid fa-people-group"></i>', 'People'],
-            'sections'     => ['sections.php',         '<i class="fa-solid fa-earth-americas"></i>', 'Sections'],
+            'sections'     => ['sections.php',         '<i class="fa-solid fa-sitemap"></i>', 'Chapters'],
         ],
         'Content & Events' => [
             'events'       => ['events.php',        '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
