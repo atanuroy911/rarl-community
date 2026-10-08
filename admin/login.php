@@ -45,6 +45,7 @@ unset($_SESSION['flash']);
   </div>
   <?php if ($flash): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($flash['msg']) ?></div><?php endif; ?>
   <?php if (($_GET['e'] ?? '') === 'purged'): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Database purged. Please sign in again.</div>
+  <?php elseif (($_GET['e'] ?? '') === 'logged_out'): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><i class="fa-solid fa-circle-check"></i> You have been signed out.</div>
   <?php elseif ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-regular fa-clock"></i> Session expired. Please sign in again.</div><?php endif; ?>
   <?php if ($error): ?><div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?></div><?php endif; ?>
   <div class="bg-white rounded-2xl shadow-2xl p-8">
