@@ -29,7 +29,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $error = 'Invalid or expired code.';
         } else {
             $hash = password_hash($pw, PASSWORD_BCRYPT);
-            db()->prepare('UPDATE members SET password_hash = ? WHERE email = ?')->execute([$hash, $email]);
+            // The emailed code proves they own the address, so it also counts as
+            // email verification — otherwise an unverified member could reset
+            // their password and still be locked out of signing in.
+            db()->prepare('UPDATE members SET password_hash = ?, must_change_password = 0, email_verified_at = COALESCE(email_verified_at, NOW()) WHERE email = ?')->execute([$hash, $email]);
+            $st = db()->prepare('SELECT * FROM members WHERE email = ?'); $st->execute([$email]);
+            $mem = $st->fetch();
+            if ($mem && $mem['status'] === 'active') {
+                memberSignIn($mem);
+                flash('success', 'Password updated — you are signed in.');
+                redirect('dashboard.php');
+            }
             $done = true;
         }
     }
@@ -47,7 +57,7 @@ echo htmlHead('Reset Password');
         <span class="font-heading font-black text-gray-900 dark:text-white">Robotics & Automation Research Lab (RARL)</span>
       </div>
       <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1">Reset your password</h1>
-      <p class="text-gray-500 text-sm">Enter the code we emailed you and choose a new password</p>
+      <p class="text-gray-500 text-sm">Enter the 6-digit code we emailed<?= $email ? ' to <strong>' . htmlspecialchars($email) . '</strong>' : '' ?> and choose a new password.</p>
     </div>
 
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
@@ -64,7 +74,7 @@ echo htmlHead('Reset Password');
         <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
       </div>
       <?php endif; ?>
-      <form method="POST" class="space-y-4">
+      <form method="POST" class="space-y-4" id="reset-form">
         <?= csrfField() ?>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
@@ -87,8 +97,9 @@ echo htmlHead('Reset Password');
           <input type="password" name="password_confirm" required minlength="8"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
         </div>
+        <p class="text-[11px] text-gray-400 -mt-2">At least 8 characters. Didn't get a code? <a href="forgot-password.php" class="text-rarl-red font-semibold hover:underline">Send a new one</a></p>
         <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg hover:-translate-y-0.5">
-          Update Password →
+          Update password &amp; sign in
         </button>
       </form>
       <p class="text-center text-xs text-gray-400 mt-4">
@@ -98,5 +109,6 @@ echo htmlHead('Reset Password');
     </div>
   </div>
 </div>
+<?= registrationFormEnhancerJs('reset-form', '', 'Updating…') ?>
 <?= publicFooter() ?>
 </body></html>

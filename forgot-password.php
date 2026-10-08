@@ -45,7 +45,7 @@ echo htmlHead('Forgot Password');
         <span class="font-heading font-black text-gray-900 dark:text-white">Robotics & Automation Research Lab (RARL)</span>
       </div>
       <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1">Forgot password?</h1>
-      <p class="text-gray-500 text-sm">We'll email you a link to reset it</p>
+      <p class="text-gray-500 text-sm">Enter your account email and we'll send you a 6-digit code to set a new password.</p>
     </div>
 
     <?php if ($error): ?>
@@ -59,7 +59,7 @@ echo htmlHead('Forgot Password');
       <div class="text-center">
         <div class="text-4xl mb-3"><i class="fa-solid fa-envelope-open-text"></i></div>
         <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2">Check your inbox</h2>
-        <p class="text-gray-500 text-sm">If an account exists for that email, a password reset link is on its way. The link expires in 1 hour.</p>
+        <p class="text-gray-500 text-sm">If an account exists for that email, a reset code is on its way.</p>
       </div>
       <?php else: ?>
       <form method="POST" class="space-y-4">
@@ -70,7 +70,7 @@ echo htmlHead('Forgot Password');
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
         </div>
         <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg hover:-translate-y-0.5">
-          Send Reset Link →
+          Send reset code
         </button>
       </form>
       <?php endif; ?>

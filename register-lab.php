@@ -10,6 +10,11 @@ if (!registrationsOpen()) redirect('register.php');
 
 $errors = []; $vals = [];
 
+// A CV uploaded on a submit that failed validation is kept for the retry, so
+// applicants never have to find and re-upload the file.
+$keptCv = $_SESSION['reg_cv'] ?? null;
+if ($keptCv && !file_exists(UPLOADS_PATH . '/cv/' . basename($keptCv))) { $keptCv = null; unset($_SESSION['reg_cv']); }
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfCheck()) { $errors[] = 'Invalid request.'; }
     if (!empty($_POST['website_trap'])) { redirect('register-lab.php'); }
@@ -44,19 +49,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($vals['google_scholar_url'] !== '' && !filter_var($vals['google_scholar_url'], FILTER_VALIDATE_URL)) $errors[] = 'Google Scholar URL must be a valid URL.';
 
     $cvFilename = null;
-    if (empty($_FILES['cv_file']['name'])) {
-        $errors[] = 'Please upload a valid CV — PDF/DOC/DOCX, max 10MB.';
-    } else {
+    if (!empty($_FILES['cv_file']['name'])) {
         $cvFilename = validateUpload($_FILES['cv_file'], ['pdf','doc','docx'], 10 * 1024 * 1024, UPLOADS_PATH . '/cv');
         if (!$cvFilename) $errors[] = 'Please upload a valid CV — PDF/DOC/DOCX, max 10MB.';
+        else { $_SESSION['reg_cv'] = $cvFilename; $_SESSION['reg_cv_name'] = $_FILES['cv_file']['name']; $keptCv = $cvFilename; }
+    } elseif ($keptCv && !empty($_POST['keep_cv'])) {
+        $cvFilename = $keptCv;
+    } else {
+        $errors[] = 'Please upload the PI\'s CV — PDF/DOC/DOCX, max 10MB.';
     }
 
     if (empty($errors)) {
         $pdo = db();
-        $dup = $pdo->prepare('SELECT id FROM members WHERE email = ?');
+        $dup = $pdo->prepare('SELECT id, email_verified_at FROM members WHERE email = ?');
         $dup->execute([$vals['email']]);
-        if ($dup->fetch()) {
-            $errors[] = 'This email is already registered. <a href="login.php" class="underline">Sign in?</a>';
+        if ($dupRow = $dup->fetch()) {
+            $errors[] = ($dupRow['email_verified_at'] ?? null) ? 'This email already has an account. <a href="login.php" class="underline font-semibold">Sign in</a> or <a href="forgot-password.php" class="underline">reset your password</a>.' : 'You started signing up with this email but never verified it. <a href="verify-email.php?email=' . urlencode($vals['email']) . '" class="underline font-semibold">Verify it now</a>.';
         } else {
             $uuid      = generateUuid();
             $token     = bin2hex(random_bytes(32));
@@ -93,6 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 '<p>New research lab registration:<br><strong>' . $vals['lab_name'] . '</strong><br>PI: ' . $vals['pi_name'] . '<br>Email: ' . $vals['email'] . '<br>' . $vals['institution'] . ', ' . $vals['country'] . '</p>'
             );
 
+            unset($_SESSION['reg_cv'], $_SESSION['reg_cv_name']);
             redirect('verify-email.php?email=' . urlencode($vals['email']));
         }
     }
@@ -105,6 +114,7 @@ echo htmlHead('Research Lab Registration');
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950 py-12 px-4">
   <div class="max-w-xl mx-auto">
 
+    <?= memberFlowSteps(1, REQUIRE_APPROVAL) ?>
     <div class="flex items-center gap-2 text-xs text-gray-400 mb-8">
       <a href="register.php" class="hover:text-rarl-red transition-colors">← Back</a>
       <span>/</span><span>Research Lab Registration</span>
@@ -119,12 +129,12 @@ echo htmlHead('Research Lab Registration');
     </div>
 
     <?php if ($errors): ?>
-    <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-1">
+    <div id="form-errors" role="alert" class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-1">
       <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= $e ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 
-    <form method="POST" enctype="multipart/form-data" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 shadow-sm space-y-4">
+    <form method="POST" enctype="multipart/form-data" id="reg-form" <?= $_SERVER['REQUEST_METHOD'] === 'POST' ? 'data-posted="1"' : '' ?> class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 shadow-sm space-y-4">
       <?= csrfField() ?>
       <input type="text" name="website_trap" class="hidden" tabindex="-1" autocomplete="off">
 
@@ -189,7 +199,12 @@ echo htmlHead('Research Lab Registration');
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">CV / Resume (PI) <span class="text-rarl-red">*</span></label>
-          <input type="file" name="cv_file" required accept=".pdf,.doc,.docx"
+          <?php if ($keptCv): ?>
+          <label class="flex items-center gap-2 mb-2 p-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-xs text-green-800 dark:text-green-200">
+            <input type="checkbox" name="keep_cv" value="1" checked class="accent-rarl-red"/> <i class="fa-solid fa-paperclip"></i> Keep <strong><?= htmlspecialchars($_SESSION['reg_cv_name'] ?? 'the uploaded CV') ?></strong>
+          </label>
+          <?php endif; ?>
+          <input type="file" name="cv_file" <?= $keptCv ? '' : 'required' ?> accept=".pdf,.doc,.docx"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
         </div>
       </div>
@@ -235,5 +250,6 @@ echo htmlHead('Research Lab Registration');
     </form>
   </div>
 </div>
+<?= registrationFormEnhancerJs('reg-form', 'lab') ?>
 <?= publicFooter() ?>
 </body></html>

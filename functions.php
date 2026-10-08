@@ -2056,6 +2056,96 @@ HTML;
 }
 
 // ── Shared footer ──────────────────────────────────────────
+// ── Member onboarding flow UI (register → verify → review → welcome) ──────
+// One stepper shared by every page of the journey so applicants always see
+// where they are and what happens next.
+function memberFlowSteps(int $current, bool $needsReview = true): string {
+    $steps = [1 => ['fa-user-plus', 'Create account'], 2 => ['fa-envelope-circle-check', 'Verify email']];
+    if ($needsReview) $steps[3] = ['fa-user-shield', 'Team review'];
+    $steps[$needsReview ? 4 : 3] = ['fa-id-card', 'Welcome'];
+    $html = '<ol class="flex items-center justify-center gap-1 sm:gap-2 mb-8 text-[11px] sm:text-xs" aria-label="Progress">';
+    $n = count($steps); $i = 0;
+    foreach ($steps as $k => [$icon, $label]) {
+        $i++;
+        $state = $k < $current ? 'done' : ($k === $current ? 'now' : 'todo');
+        $dot = ['done' => 'bg-green-500 text-white', 'now' => 'bg-rarl-red text-white ring-4 ring-rarl-red/15', 'todo' => 'bg-gray-200 dark:bg-gray-800 text-gray-500'][$state];
+        $txt = ['done' => 'text-gray-500', 'now' => 'text-gray-900 dark:text-white font-semibold', 'todo' => 'text-gray-400'][$state];
+        $html .= '<li class="flex items-center gap-1.5 sm:gap-2"' . ($state === 'now' ? ' aria-current="step"' : '') . '>'
+              . '<span class="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ' . $dot . '"><i class="fa-solid ' . ($state === 'done' ? 'fa-check' : $icon) . ' text-[11px]"></i></span>'
+              . '<span class="hidden sm:inline ' . $txt . '">' . $label . '</span></li>';
+        if ($i < $n) $html .= '<li class="w-5 sm:w-10 h-px ' . ($k < $current ? 'bg-green-400' : 'bg-gray-300 dark:bg-gray-700') . '" aria-hidden="true"></li>';
+    }
+    return $html . '</ol>';
+}
+
+// Signs a member in (shared by login, verify-email and reset-password).
+function memberSignIn(array $member): void {
+    session_regenerate_id(true);
+    $_SESSION['member_id']   = $member['id'];
+    $_SESSION['member_type'] = $member['type'];
+    $_SESSION['member_name'] = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
+    db()->prepare('UPDATE members SET last_login_at = NOW() WHERE id = ?')->execute([$member['id']]);
+}
+
+// Progressive enhancement for the long registration forms: draft autosave
+// (never passwords/files), show-password + strength meter, inline invalid
+// styling and jump-to-first-problem, and a busy state on submit.
+function registrationFormEnhancerJs(string $formId, string $draftKey, string $busyLabel = 'Creating your account…'): string {
+    $formId = json_encode($formId); $busy = json_encode($busyLabel); $draftKey = json_encode($draftKey === '' ? '' : 'rarl-draft-' . $draftKey);
+    return <<<HTML
+<script>
+(function() {
+  const form = document.getElementById({$formId}); if (!form) return;
+  const KEY = {$draftKey}, BUSY = {$busy};
+  const skip = el => !el.name || el.type === 'password' || el.type === 'file' || el.type === 'hidden' || el.name === 'website' || el.name === 'website_trap';
+  // Restore a saved draft into empty fields (server-echoed values win).
+  if (KEY) try {
+    const d = JSON.parse(localStorage.getItem(KEY) || '{}');
+    [...form.elements].forEach(el => { if (skip(el) || !(el.name in d)) return;
+      if (el.type === 'checkbox') { if (!form.dataset.posted) el.checked = !!d[el.name]; }
+      else if (!el.value) { el.value = d[el.name]; el.dispatchEvent(new Event('change')); } });
+  } catch (e) {}
+  let t; if (KEY) form.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => {
+    const d = {}; [...form.elements].forEach(el => { if (!skip(el)) d[el.name] = el.type === 'checkbox' ? el.checked : el.value; });
+    try { localStorage.setItem(KEY, JSON.stringify(d)); } catch (e) {}
+  }, 400); });
+
+  // Password: show toggle + strength
+  form.querySelectorAll('input[type=password]').forEach(pw => {
+    const wrap = document.createElement('div'); wrap.className = 'relative'; pw.parentNode.insertBefore(wrap, pw); wrap.appendChild(pw); pw.classList.add('pr-11');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700'; b.innerHTML = '<i class="fa-regular fa-eye"></i>'; b.setAttribute('aria-label', 'Show password');
+    b.onclick = () => { const s = pw.type === 'password'; pw.type = s ? 'text' : 'password'; b.innerHTML = '<i class="fa-regular ' + (s ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; };
+    wrap.appendChild(b);
+    if (pw.name !== 'password') return;
+    const meter = document.createElement('div'); meter.className = 'mt-2 flex items-center gap-2';
+    meter.innerHTML = '<div class="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"><div class="h-full w-0 transition-all"></div></div><span class="text-[11px] text-gray-400 w-20 text-right"></span>';
+    wrap.after(meter);
+    pw.addEventListener('input', () => {
+      const v = pw.value; let s = 0;
+      if (v.length >= 8) s++; if (v.length >= 12) s++; if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++; if (/\d/.test(v)) s++; if (/[^\w\s]/.test(v)) s++;
+      const lv = !v ? 0 : v.length < 8 ? 1 : Math.min(4, Math.max(2, s));
+      const bar = meter.querySelector('.h-full'); bar.style.width = lv * 25 + '%';
+      bar.className = 'h-full transition-all ' + ['', 'bg-red-500', 'bg-amber-500', 'bg-lime-500', 'bg-green-600'][lv];
+      meter.querySelector('span').textContent = ['', 'Too short', 'Okay', 'Good', 'Strong'][lv];
+    });
+  });
+
+  // Inline validation styling + jump to the first problem.
+  const mark = el => { const bad = !el.validity.valid; el.classList.toggle('!border-red-400', bad); el.classList.toggle('!ring-red-100', bad); el.classList.toggle('ring-4', bad); };
+  form.querySelectorAll('input,select,textarea').forEach(el => { el.addEventListener('blur', () => { if (el.value) mark(el); }); el.addEventListener('input', () => { if (el.classList.contains('!border-red-400')) mark(el); }); });
+  form.addEventListener('invalid', e => { mark(e.target); }, true);
+  form.addEventListener('submit', e => {
+    const first = [...form.elements].find(el => el.willValidate && !el.validity.valid);
+    if (first) { e.preventDefault(); first.scrollIntoView({behavior: 'smooth', block: 'center'}); first.focus({preventScroll: true}); return; }
+    const btn = form.querySelector('button[type=submit]'); if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> ' + BUSY; }
+  });
+  form.addEventListener('rarl-registered', () => { try { localStorage.removeItem(KEY); } catch (e) {} });
+  const err = document.getElementById('form-errors'); if (err) err.scrollIntoView({block: 'center'});
+})();
+</script>
+HTML;
+}
+
 function publicFooter(): string {
     $year    = date('Y');
     $siteName = SITE_NAME;
