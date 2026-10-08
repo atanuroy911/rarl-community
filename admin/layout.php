@@ -34,27 +34,250 @@ function htmlAdminHead(string $title): void {
   #admin-sidebar a{position:relative}
   .rarl-skeleton{background:linear-gradient(90deg,rgba(0,0,0,.06) 25%,rgba(0,0,0,.10) 37%,rgba(0,0,0,.06) 63%);background-size:400% 100%;animation:rarlSkeleton 1.4s ease infinite;border-radius:.5rem;}
   @keyframes rarlSkeleton{0%{background-position:100% 50%}100%{background-position:0 50%}}
+  .rarl-dialog{border:0;padding:0;border-radius:1.25rem;box-shadow:0 24px 64px rgba(15,23,42,.28);margin:auto;max-height:90vh;overflow:auto;}
+  .rarl-dialog::backdrop{background:rgba(15,23,42,.45);backdrop-filter:blur(2px);}
+  .rarl-dialog[open]{animation:rarlPop .18s cubic-bezier(.16,1,.3,1)}
+  @keyframes rarlPop{from{opacity:0;transform:translateY(6px) scale(.98)}to{opacity:1;transform:none}}
+  #rarl-toasts{position:fixed;top:1rem;right:1rem;z-index:100;display:flex;flex-direction:column;gap:.5rem;max-width:min(380px,calc(100vw - 2rem));}
+  .rarl-toast{display:flex;align-items:flex-start;gap:.65rem;padding:.75rem .9rem;border-radius:.9rem;font-size:13px;line-height:1.4;background:#111827;color:#fff;box-shadow:0 10px 30px rgba(0,0,0,.2);animation:rarlFadeUp .25s cubic-bezier(.16,1,.3,1);}
+  .rarl-toast>i{margin-top:2px}
+  .rarl-toast span{flex:1}
+  .rarl-toast button{opacity:.55;font-size:18px;line-height:1;margin-left:.25rem}
+  .rarl-toast button:hover{opacity:1}
+  .rarl-toast-success>i{color:#4ade80}.rarl-toast-error{background:#7f1d1d}.rarl-toast-error>i{color:#fca5a5}.rarl-toast-info>i{color:#93c5fd}
+  .rarl-toast.out{opacity:0;transform:translateX(12px);transition:all .2s}
+  .rarl-file-chip{margin-top:.5rem;display:inline-flex;align-items:center;gap:.4rem;max-width:100%;padding:.3rem .65rem;border-radius:999px;background:#ecfdf5;color:#047857;font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .rarl-has-file{border-color:#10b981 !important;background:#f0fdf4}
+  .rarl-drop-active{border-color:' . BRAND_RED . ' !important;background:rgba(225,29,42,.05)}
+  th.rarl-sortable{cursor:pointer;user-select:none;white-space:nowrap}
+  th.rarl-sortable:hover{color:#111827}
+  th.rarl-sortable::after{content:"\2195";opacity:.25;margin-left:.3em;font-size:.95em}
+  th.rarl-sortable[data-dir=asc]::after{content:"\2191";opacity:.8}
+  th.rarl-sortable[data-dir=desc]::after{content:"\2193";opacity:.8}
+  .rarl-kbd{font-family:ui-monospace,monospace;font-size:10px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">
 <script>
+  // ── Toasts: rarlToast(msg, "success" | "error" | "info") ──
+  window.rarlToast = function(msg, type) {
+    type = type || "info";
+    var wrap = document.getElementById("rarl-toasts");
+    if (!wrap) { wrap = document.createElement("div"); wrap.id = "rarl-toasts"; wrap.setAttribute("aria-live", "polite"); document.body.appendChild(wrap); }
+    var icon = {success: "fa-circle-check", error: "fa-triangle-exclamation", info: "fa-circle-info"}[type] || "fa-circle-info";
+    var t = document.createElement("div");
+    t.className = "rarl-toast rarl-toast-" + type;
+    t.innerHTML = "<i class=\"fa-solid " + icon + "\"></i><span></span><button type=\"button\" aria-label=\"Dismiss\">&times;</button>";
+    t.querySelector("span").textContent = msg;
+    var close = function() { t.classList.add("out"); setTimeout(function() { t.remove(); }, 200); };
+    t.querySelector("button").onclick = close;
+    wrap.appendChild(t);
+    if (type !== "error") setTimeout(close, Math.max(type === "info" ? 2600 : 4200, String(msg).length * 55));
+  };
+
+  // ── Styled confirm dialog: rarlConfirm(msg, {ok, danger, title}) → Promise<boolean> ──
+  window.rarlConfirm = function(msg, opts) {
+    opts = opts || {};
+    var danger = opts.danger !== undefined ? opts.danger : /delete|remove|destroy|unlink|cannot be undone|permanent/i.test(msg);
+    return new Promise(function(resolve) {
+      var d = document.createElement("dialog");
+      d.className = "rarl-dialog w-full max-w-sm";
+      d.innerHTML = "<div class=\"p-6\"><div class=\"flex gap-4\"><div class=\"w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center " + (danger ? "bg-red-100 text-red-600" : "bg-blue-100 text-blue-600") + "\"><i class=\"fa-solid " + (danger ? "fa-triangle-exclamation" : "fa-circle-question") + "\"></i></div><div><h3 class=\"font-heading font-bold text-gray-900\"></h3><p class=\"text-sm text-gray-600 mt-1 whitespace-pre-line\"></p></div></div><div class=\"flex justify-end gap-2 mt-6\"><button type=\"button\" data-v=\"0\" class=\"px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-xl\">Cancel</button><button type=\"button\" data-v=\"1\" class=\"px-4 py-2 text-sm font-semibold text-white rounded-xl " + (danger ? "bg-red-600 hover:bg-red-700" : "bg-gray-900 hover:bg-gray-700") + "\"></button></div></div>";
+      d.querySelector("h3").textContent = opts.title || (danger ? "Are you sure?" : "Please confirm");
+      d.querySelector("p").textContent = msg;
+      d.querySelector("[data-v=\"1\"]").textContent = opts.ok || (danger ? "Delete" : "Confirm");
+      var done = function(v) { d.close(); d.remove(); resolve(v); };
+      d.querySelectorAll("[data-v]").forEach(function(b) { b.onclick = function() { done(b.dataset.v === "1"); }; });
+      d.addEventListener("cancel", function(e) { e.preventDefault(); done(false); });
+      d.addEventListener("click", function(e) { if (e.target === d) done(false); });
+      document.body.appendChild(d); d.showModal();
+      d.querySelector("[data-v=\"1\"]").focus();
+    });
+  };
+
+  // Turn legacy inline `return confirm(...)` handlers into data-confirm so they
+  // get the styled dialog instead of the browser native popup.
+  function rarlUpgradeConfirms(root) {
+    var re = /return\s+confirm\(\s*(["\x27])([\s\S]*?)\1\s*\)\s*;?/;
+    root.querySelectorAll("[onsubmit*=\"confirm(\"],[onclick*=\"confirm(\"]").forEach(function(el) {
+      ["onsubmit", "onclick"].forEach(function(attr) {
+        var code = el.getAttribute(attr); if (!code) return;
+        var m = code.match(re); if (!m) return;
+        var msg = m[2]; try { msg = Function("return " + m[1] + m[2] + m[1])(); } catch (e) {}
+        el.setAttribute("data-confirm", msg);
+        var rest = code.replace(re, "").trim();
+        if (rest) el.setAttribute(attr, rest); else el.removeAttribute(attr);
+      });
+    });
+  }
+  document.addEventListener("DOMContentLoaded", function() { rarlUpgradeConfirms(document); });
+
+  document.addEventListener("click", function(e) {
+    var btn = e.target.closest && e.target.closest("button[data-confirm],a[data-confirm],input[type=submit][data-confirm]");
+    if (!btn || btn.dataset.confirmed) return;
+    e.preventDefault(); e.stopPropagation();
+    rarlConfirm(btn.dataset.confirm, {ok: btn.dataset.confirmOk}).then(function(ok) {
+      if (!ok) return;
+      btn.dataset.confirmed = "1";
+      if (btn.tagName === "A") location.href = btn.href; else btn.click();
+      setTimeout(function() { delete btn.dataset.confirmed; }, 0);
+    });
+  }, true);
+  document.addEventListener("submit", function(e) {
+    var form = e.target;
+    if (!form.dataset || !form.dataset.confirm || form.dataset.confirmed) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var submitter = e.submitter;
+    rarlConfirm(form.dataset.confirm, {ok: form.dataset.confirmOk}).then(function(ok) {
+      if (!ok) return;
+      form.dataset.confirmed = "1";
+      if (form.requestSubmit) form.requestSubmit(submitter && submitter.form === form ? submitter : undefined); else form.submit();
+      delete form.dataset.confirmed;
+    });
+  }, true);
+
   // Global submit-loading feedback: any POST form shows a spinner on its submit
   // button and briefly disables it, so slow admin actions (imports, bulk ops,
   // emails) give visible feedback instead of looking frozen. Opt out per-form
   // with data-no-loading, or per-button with data-no-loading on the button itself.
   document.addEventListener("submit", function(e) {
-    if (e.defaultPrevented) return; // e.g. an onsubmit="return confirm(...)" on the form was cancelled
+    if (e.defaultPrevented) return;
     const form = e.target;
     if (form.tagName !== "FORM" || (form.method || "get").toLowerCase() !== "post") return;
     if (form.hasAttribute("data-no-loading")) return;
-    const btn = document.activeElement && document.activeElement.type === "submit" && form.contains(document.activeElement)
+    const btn = e.submitter && form.contains(e.submitter) ? e.submitter
+      : document.activeElement && document.activeElement.type === "submit" && form.contains(document.activeElement)
       ? document.activeElement
       : form.querySelector("button[type=submit]");
     if (!btn || btn.hasAttribute("data-no-loading") || btn.disabled) return;
     if (!btn.dataset.label) btn.dataset.label = btn.innerHTML;
-    btn.innerHTML = "<span class=\"rarl-spinner\"></span><span class=\"rarl-btn-label\">Working…</span>";
-    btn.disabled = true;
-    btn.classList.add("opacity-80", "cursor-wait");
+    // Deferred so the clicked button own name/value is still sent with the form.
+    setTimeout(function() {
+      btn.innerHTML = "<span class=\"rarl-spinner\"></span><span class=\"rarl-btn-label\">Working…</span>";
+      btn.disabled = true;
+      btn.classList.add("opacity-80", "cursor-wait");
+    }, 0);
   });
+  // Restore buttons when the page comes back from the back/forward cache.
+  window.addEventListener("pageshow", function(e) {
+    if (!e.persisted) return;
+    document.querySelectorAll("button[data-label]").forEach(function(b) { b.innerHTML = b.dataset.label; b.disabled = false; b.classList.remove("opacity-80", "cursor-wait"); });
+  });
+
+  document.addEventListener("DOMContentLoaded", function() {
+    // ── File pickers: show the chosen file name + size, highlight on drag ──
+    document.querySelectorAll("input[type=file]:not([data-no-chip])").forEach(function(input) {
+      var zone = input.parentElement;
+      var overlay = getComputedStyle(input).position === "absolute";
+      if (overlay) {
+        ["dragenter", "dragover"].forEach(function(ev) { input.addEventListener(ev, function() { zone.classList.add("rarl-drop-active"); }); });
+        ["dragleave", "drop"].forEach(function(ev) { input.addEventListener(ev, function() { zone.classList.remove("rarl-drop-active"); }); });
+      }
+      input.addEventListener("change", function() {
+        var chip = overlay ? zone.querySelector(":scope > .rarl-file-chip") : (input.nextElementSibling && input.nextElementSibling.classList.contains("rarl-file-chip") ? input.nextElementSibling : null);
+        if (!input.files.length) { if (chip) chip.remove(); zone.classList.remove("rarl-has-file"); return; }
+        if (!chip) { chip = document.createElement("div"); chip.className = "rarl-file-chip"; (overlay ? zone : input).insertAdjacentElement(overlay ? "beforeend" : "afterend", chip); }
+        var files = Array.from(input.files);
+        var total = files.reduce(function(s, f) { return s + f.size; }, 0);
+        var size = total > 1048576 ? (total / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(total / 1024)) + " KB";
+        chip.innerHTML = "<i class=\"fa-solid fa-paperclip\"></i> <span></span>";
+        chip.querySelector("span").textContent = (files.length > 1 ? files.length + " files" : files[0].name) + " · " + size;
+        if (overlay) zone.classList.add("rarl-has-file");
+      });
+    });
+
+    // ── Sortable tables: click any text column header to sort ──
+    document.querySelectorAll(".rarl-admin-content table").forEach(function(table) {
+      var tbody = table.tBodies[0];
+      if (!table.tHead || !tbody || table.hasAttribute("data-no-sort")) return;
+      var rows = function() { return Array.from(tbody.rows).filter(function(r) { return r.cells.length > 1; }); };
+      if (rows().length < 3) return;
+      Array.from(table.tHead.rows[0].cells).forEach(function(th, col) {
+        if (!th.textContent.trim() || th.querySelector("input,select,button") || /^\s*actions?\s*$/i.test(th.textContent)) return;
+        th.classList.add("rarl-sortable"); th.tabIndex = 0; th.title = "Sort";
+        var go = function() {
+          var dir = th.dataset.dir === "asc" ? "desc" : "asc";
+          table.tHead.querySelectorAll("th").forEach(function(o) { delete o.dataset.dir; });
+          th.dataset.dir = dir;
+          var val = function(r) { var c = r.cells[col]; return c ? (c.dataset.sort || c.innerText).trim() : ""; };
+          var sorted = rows().sort(function(a, b) {
+            var x = val(a), y = val(b), dx = Date.parse(x), dy = Date.parse(y);
+            var nx = parseFloat(x.replace(/[^\d.\-]/g, "")), ny = parseFloat(y.replace(/[^\d.\-]/g, ""));
+            var r = /^\d{1,2} [A-Z][a-z]{2} \d{4}/.test(x) && !isNaN(dx) && !isNaN(dy) ? dx - dy
+              : /^[\d.,\s%\-]+$/.test(x) && !isNaN(nx) && !isNaN(ny) ? nx - ny
+              : x.localeCompare(y, undefined, {numeric: true, sensitivity: "base"});
+            return dir === "asc" ? r : -r;
+          });
+          sorted.forEach(function(r) { tbody.appendChild(r); });
+        };
+        th.addEventListener("click", go);
+        th.addEventListener("keydown", function(e) { if (e.key === "Enter") go(); });
+      });
+    });
+  });
+
+  // ── Command palette (Ctrl/Cmd K): jump to any admin page or action ──
+  (function() {
+    var dlg, input, list, items = [], active = 0;
+    function build() {
+      var links = Array.from(document.querySelectorAll("#admin-sidebar nav a")).map(function(a) {
+        return {label: a.textContent.trim(), href: a.getAttribute("href"), icon: (a.querySelector("i") || {}).className || "fa-solid fa-arrow-right", group: "Go to"};
+      });
+      return links.concat([
+        {label: "New certificate / ID card template", href: "templates.php#new", icon: "fa-solid fa-pen-ruler", group: "Actions"},
+        {label: "Issue certificates", href: "certificates.php", icon: "fa-solid fa-trophy", group: "Actions"},
+        {label: "Compose email", href: "compose-email.php", icon: "fa-solid fa-envelope-open-text", group: "Actions"},
+        {label: "Open public site", href: "../index.php", icon: "fa-solid fa-earth-americas", group: "Actions"}
+      ]);
+    }
+    function draw() {
+      var q = input.value.trim().toLowerCase();
+      items = build().filter(function(it) {
+        if (!q) return true;
+        var s = it.label.toLowerCase(), i = 0;
+        for (var n = 0; n < q.length; n++) { i = s.indexOf(q[n], i); if (i < 0) return false; i++; }
+        return true;
+      });
+      if (q) items.sort(function(a, b) { return (b.label.toLowerCase().indexOf(q) === 0) - (a.label.toLowerCase().indexOf(q) === 0); });
+      active = Math.min(active, Math.max(0, items.length - 1));
+      list.innerHTML = items.length ? "" : "<p class=\"px-4 py-6 text-sm text-gray-400 text-center\">No matches</p>";
+      var lastGroup = "";
+      items.forEach(function(it, i) {
+        if (it.group !== lastGroup) { lastGroup = it.group; var h = document.createElement("p"); h.className = "px-3 pt-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400"; h.textContent = it.group; list.appendChild(h); }
+        var a = document.createElement("a");
+        a.href = it.href; a.className = "flex items-center gap-3 px-3 py-2 rounded-lg text-sm " + (i === active ? "bg-rarl-red text-white" : "text-gray-700 hover:bg-gray-100");
+        a.innerHTML = "<i class=\"" + it.icon + " w-4 text-center opacity-70\"></i><span></span>";
+        a.querySelector("span").textContent = it.label;
+        a.onmousemove = function() { if (active !== i) { active = i; draw(); } };
+        list.appendChild(a);
+      });
+      var cur = list.querySelectorAll("a")[active]; if (cur) cur.scrollIntoView({block: "nearest"});
+    }
+    window.rarlPalette = function() {
+      if (!dlg) {
+        dlg = document.createElement("dialog");
+        dlg.className = "rarl-dialog w-full max-w-lg";
+        dlg.style.marginTop = "12vh";
+        dlg.innerHTML = "<div class=\"flex items-center gap-3 px-4 border-b border-gray-100\"><i class=\"fa-solid fa-magnifying-glass text-gray-400\"></i><input class=\"flex-1 py-4 text-sm bg-transparent focus:outline-none\" placeholder=\"Jump to a page or action…\" aria-label=\"Search\"/><span class=\"rarl-kbd text-gray-400\">Esc</span></div><div class=\"max-h-[50vh] overflow-y-auto p-2\"></div>";
+        input = dlg.querySelector("input"); list = dlg.querySelector("div.overflow-y-auto");
+        input.addEventListener("input", function() { active = 0; draw(); });
+        input.addEventListener("keydown", function(e) {
+          if (e.key === "ArrowDown") { e.preventDefault(); active = Math.min(items.length - 1, active + 1); draw(); }
+          if (e.key === "ArrowUp") { e.preventDefault(); active = Math.max(0, active - 1); draw(); }
+          if (e.key === "Enter" && items[active]) { e.preventDefault(); location.href = items[active].href; }
+        });
+        dlg.addEventListener("click", function(e) { if (e.target === dlg) dlg.close(); });
+        document.body.appendChild(dlg);
+      }
+      input.value = ""; active = 0; draw(); dlg.showModal(); input.focus();
+    };
+    document.addEventListener("keydown", function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); window.rarlPalette(); }
+      if (e.key === "/" && !/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName) && !document.activeElement.isContentEditable && !document.querySelector("dialog[open]")) {
+        var search = document.querySelector(".rarl-admin-content input[type=search], .rarl-admin-content input[name=q], .rarl-admin-content input[name=search]");
+        if (search) { e.preventDefault(); search.focus(); search.select(); }
+      }
+    });
+  })();
 </script>';
 }
 
@@ -99,6 +322,7 @@ function adminSidebar(string $active = ''): void {
       </div>
       <button type="button" onclick="toggleAdminSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white flex-shrink-0" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
+    <div class="px-3 pt-3"><button type="button" onclick="rarlPalette()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10"><i class="fa-solid fa-magnifying-glass"></i><span class="flex-1 text-left">Jump to…</span><span class="rarl-kbd text-white/40">Ctrl K</span></button></div>
     <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto">';
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
@@ -232,7 +456,9 @@ function adminFlash(): void {
     $f = $_SESSION['flash'] ?? null;
     unset($_SESSION['flash']);
     if (!$f) return;
-    $cls = $f['type'] === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700';
-    $ic  = $f['type'] === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-triangle-exclamation"></i>';
-    echo "<div class=\"flex items-center gap-3 p-4 rounded-xl border mb-5 text-sm {$cls}\">{$ic} " . htmlspecialchars($f['msg']) . "</div>";
+    // Shown as a toast (errors stay until dismissed); the noscript banner is a fallback.
+    $type = $f['type'] === 'success' ? 'success' : 'error';
+    echo '<script>document.addEventListener("DOMContentLoaded",function(){rarlToast(' . json_encode((string)$f["msg"], JSON_HEX_TAG | JSON_HEX_AMP) . ',"' . $type . '");});</script>';
+    $cls = $type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700';
+    echo '<noscript><div class="p-4 rounded-xl border mb-5 text-sm ' . $cls . '">' . htmlspecialchars($f['msg']) . '</div></noscript>';
 }

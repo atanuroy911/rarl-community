@@ -1107,11 +1107,17 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
 // JSON `config` array of positioned fields, e.g.
 //   [{"key":"name","x":50,"y":40,"font_size":22,"color":"#1a1a1a","align":"center","bold":true},
 //    {"key":"qr","x":85,"y":85,"w":15,"h":15}]
-// x/y/w/h are percentages of the template's page_width_mm/page_height_mm, so the
-// exact same config drives both the HTML preview (renderTemplateHtml) and the
-// FPDF output (renderTemplatePdf) — what the admin previews is what gets emailed.
+// x/y are percentages of the page; font_size is in pt; image w/h are in mm.
+// The same config drives the designer (admin/templates.php), the HTML preview
+// (renderTemplateHtml) and the FPDF output (renderTemplatePdf).
 // Recognized field keys: name, event, date, cert_no, member_code, section,
-// signer1, signer2, since_date, qr (image), avatar (image, member photo).
+// signer1, signer2, since_date, custom_text, qr / avatar / signature (images).
+// Optional text props: font (helvetica|times|courier), italic, uppercase,
+// max_width (mm — text shrinks to fit, so long names never overflow).
+// custom_text may contain {tokens} (e.g. "Awarded to {name}") merged from $data.
+const TEMPLATE_FONTS = ['helvetica' => 'Helvetica', 'times' => 'Times', 'courier' => 'Courier'];
+const TEMPLATE_IMAGE_KEYS = ['qr', 'avatar', 'signature'];
+
 function templateFieldValue(string $key, array $data): string {
     return (string)($data[$key] ?? '');
 }
@@ -1129,18 +1135,35 @@ function fpdfEnc(string $s): string {
     return $out !== false ? $out : $s;
 }
 
+// Resolves the final text of a text field: data value or merged custom text,
+// with the optional uppercase transform applied.
+function templateFieldText(array $f, array $data): string {
+    $key = $f['key'] ?? '';
+    $text = $key === 'custom_text'
+        ? preg_replace_callback('/\{([a-z0-9_]+)\}/', fn($m) => array_key_exists($m[1], $data) && is_scalar($data[$m[1]]) ? (string)$data[$m[1]] : $m[0], (string)($f['text'] ?? ''))
+        : templateFieldValue($key, $data);
+    return !empty($f['uppercase']) ? mb_strtoupper($text) : $text;
+}
+
+function templateFontFamily(array $f): string {
+    return TEMPLATE_FONTS[$f['font'] ?? 'helvetica'] ?? 'Helvetica';
+}
+
 function renderTemplateHtml(array $template, array $data): string {
     $bgUrl = SITE_URL . '/uploads/templates/' . rawurlencode($template['background_path']);
     $w = (float)$template['page_width_mm']; $h = (float)$template['page_height_mm'];
     $config = json_decode($template['config'] ?? '[]', true) ?: [];
+    $cssFonts = ['Helvetica' => 'Helvetica,Arial,sans-serif', 'Times' => '"Times New Roman",Times,serif', 'Courier' => '"Courier New",Courier,monospace'];
+    // 1mm expressed in container-width units, so sizes match the PDF at any width.
+    $mm = 100 / $w;
 
-    $html = '<div style="position:relative;width:100%;max-width:900px;aspect-ratio:' . $w . '/' . $h . ';background:#fff;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);">';
-    $html .= '<img src="' . htmlspecialchars($bgUrl) . '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />';
+    $html = '<div style="position:relative;width:100%;max-width:900px;aspect-ratio:' . $w . '/' . $h . ';container-type:inline-size;background:#fff;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);">';
+    $html .= '<img src="' . htmlspecialchars($bgUrl) . '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;" />';
 
     foreach ($config as $f) {
         $key = $f['key'] ?? '';
         $x = (float)($f['x'] ?? 0); $y = (float)($f['y'] ?? 0);
-        if ($key === 'qr' || $key === 'avatar' || $key === 'signature') {
+        if (in_array($key, TEMPLATE_IMAGE_KEYS, true)) {
             $imgW = (float)($f['w'] ?? 15); $imgH = (float)($f['h'] ?? 15);
             $placeholder = 'data:image/svg+xml;base64,' . base64_encode('<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60"><rect width="60" height="60" fill="#eee"/></svg>');
             $src = match (true) {
@@ -1149,27 +1172,54 @@ function renderTemplateHtml(array $template, array $data): string {
                 default => !empty($data['avatar_url']) ? $data['avatar_url'] : $placeholder,
             };
             $html .= sprintf(
-                '<img src="%s" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:contain;" />',
-                htmlspecialchars($src), $x, $y, ($imgW / $w * 100), ($imgH / $h * 100)
+                '<img src="%s" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:%s;" />',
+                htmlspecialchars($src), $x, $y, ($imgW / $w * 100), ($imgH / $h * 100), $key === 'avatar' ? 'cover' : 'fill'
             );
             continue;
         }
         $fontSize = (float)($f['font_size'] ?? 12);
+        $sizeMm   = $fontSize * 25.4 / 72;
         $color    = $f['color'] ?? '#111111';
         $align    = $f['align'] ?? 'left';
-        $bold     = !empty($f['bold']) ? 'font-weight:bold;' : '';
+        $style    = (!empty($f['bold']) ? 'font-weight:bold;' : '') . (!empty($f['italic']) ? 'font-style:italic;' : '');
         $transform = $align === 'center' ? 'translateX(-50%)' : ($align === 'right' ? 'translateX(-100%)' : 'none');
-        $text = $key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data);
+        $maxW = (float)($f['max_width'] ?? 0);
         $html .= sprintf(
-            '<div style="position:absolute;left:%s%%;top:%s%%;transform:%s;font-family:Helvetica,Arial,sans-serif;font-size:%spx;color:%s;%swhite-space:nowrap;">%s</div>',
-            $x, $y, $transform, $fontSize * 1.5, htmlspecialchars($color), $bold, htmlspecialchars($text)
+            '<div style="position:absolute;left:calc(%s%% + %scqw);top:%s%%;transform:%s;font-family:%s;font-size:%scqw;line-height:1.134;color:%s;%swhite-space:nowrap;%s">%s</div>',
+            $x, $mm, $y, $transform, $cssFonts[templateFontFamily($f)], $sizeMm * $mm, htmlspecialchars($color), $style,
+            $maxW > 0 ? 'max-width:' . ($maxW * $mm) . 'cqw;overflow:hidden;text-overflow:clip;' : '',
+            htmlspecialchars(templateFieldText($f, $data))
         );
     }
     $html .= '</div>';
     return $html;
 }
 
-function renderTemplatePdf(array $template, array $data, string $outPath): bool {
+// Crops an image to the target aspect ratio (centre "cover" crop) so member
+// photos are never stretched on the card. Falls back to the original path if
+// GD is unavailable or the image can't be read.
+function templateCoverCrop(string $path, float $targetW, float $targetH, array &$tmpFiles): string {
+    if (!function_exists('imagecreatefromstring') || $targetW <= 0 || $targetH <= 0) return $path;
+    $raw = @file_get_contents($path);
+    $src = $raw !== false ? @imagecreatefromstring($raw) : false;
+    if (!$src) return $path;
+    $sw = imagesx($src); $sh = imagesy($src);
+    $targetRatio = $targetW / $targetH;
+    if (abs($sw / $sh - $targetRatio) < 0.01) { imagedestroy($src); return $path; }
+    if ($sw / $sh > $targetRatio) { $cw = (int)round($sh * $targetRatio); $ch = $sh; $cx = (int)(($sw - $cw) / 2); $cy = 0; }
+    else { $cw = $sw; $ch = (int)round($sw / $targetRatio); $cx = 0; $cy = (int)(($sh - $ch) / 2); }
+    $dst = imagecreatetruecolor($cw, $ch);
+    imagecopy($dst, $src, 0, 0, $cx, $cy, $cw, $ch);
+    $out = sys_get_temp_dir() . '/rarl_crop_' . bin2hex(random_bytes(6)) . '.jpg';
+    imagejpeg($dst, $out, 92);
+    imagedestroy($src); imagedestroy($dst);
+    $tmpFiles[] = $out;
+    return $out;
+}
+
+// Builds the PDF for a template. With $outPath = null the PDF is returned as a
+// string instead of written to disk (used by the designer's live "Test PDF").
+function renderTemplatePdf(array $template, array $data, ?string $outPath): bool|string {
     if (!class_exists('FPDF') && file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
         require_once __DIR__ . '/libs/fpdf/fpdf.php';
     }
@@ -1196,7 +1246,7 @@ function renderTemplatePdf(array $template, array $data, string $outPath): bool 
         if ($key === 'qr') {
             $imgW = (float)($f['w'] ?? 15); $imgH = (float)($f['h'] ?? 15);
             if (class_exists('QRcode') && !empty($data['verify_url'])) {
-                $qrPath = sys_get_temp_dir() . '/rarl_tplqr_' . substr(md5($data['verify_url']), 0, 12) . '.png';
+                $qrPath = sys_get_temp_dir() . '/rarl_tplqr_' . substr(md5($data['verify_url'] . microtime()), 0, 12) . '.png';
                 QRcode::png($data['verify_url'], $qrPath, QR_ECLEVEL_L, 4, 1);
                 $tmpFiles[] = $qrPath;
                 if (file_exists($qrPath)) $pdf->Image($qrPath, $x, $y, $imgW, $imgH, 'PNG');
@@ -1206,13 +1256,13 @@ function renderTemplatePdf(array $template, array $data, string $outPath): bool 
         if ($key === 'avatar') {
             $imgW = (float)($f['w'] ?? 15); $imgH = (float)($f['h'] ?? 15);
             if (!empty($data['avatar_path']) && file_exists($data['avatar_path'])) {
-                try { $pdf->Image($data['avatar_path'], $x, $y, $imgW, $imgH); } catch (Throwable $e) {}
+                try { $pdf->Image(templateCoverCrop($data['avatar_path'], $imgW, $imgH, $tmpFiles), $x, $y, $imgW, $imgH); } catch (Throwable $e) {}
             }
             continue;
         }
         if ($key === 'signature') {
             $imgW = (float)($f['w'] ?? 20); $imgH = (float)($f['h'] ?? 12);
-            $sigPath = !empty($f['image']) ? UPLOADS_PATH . '/templates/' . $f['image'] : null;
+            $sigPath = !empty($f['image']) ? UPLOADS_PATH . '/templates/' . basename($f['image']) : null;
             if ($sigPath && file_exists($sigPath)) {
                 try { $pdf->Image($sigPath, $x, $y, $imgW, $imgH); } catch (Throwable $e) {}
             }
@@ -1222,20 +1272,63 @@ function renderTemplatePdf(array $template, array $data, string $outPath): bool 
         $color = $f['color'] ?? '#111111';
         [$r, $g, $b] = sscanf(ltrim($color, '#'), '%02x%02x%02x') ?: [17, 17, 17];
         $align = $f['align'] ?? 'left';
-        $pdf->SetFont('Helvetica', !empty($f['bold']) ? 'B' : '', $fontSize);
-        $pdf->SetTextColor($r, $g, $b);
-        $text = fpdfEnc($key === 'custom_text' ? ($f['text'] ?? '') : templateFieldValue($key, $data));
+        $style = (!empty($f['bold']) ? 'B' : '') . (!empty($f['italic']) ? 'I' : '');
+        $family = templateFontFamily($f);
+        $pdf->SetFont($family, $style, $fontSize);
+        $pdf->SetTextColor((int)$r, (int)$g, (int)$b);
+        $text = fpdfEnc(templateFieldText($f, $data));
+        // Shrink-to-fit: long names step the font down until they fit max_width.
+        $maxW = (float)($f['max_width'] ?? 0);
+        if ($maxW > 0) {
+            while ($fontSize > 4 && $pdf->GetStringWidth($text) > $maxW) {
+                $fontSize -= 0.5;
+                $pdf->SetFont($family, $style, $fontSize);
+            }
+        }
         $textW = $pdf->GetStringWidth($text);
         $px = $align === 'center' ? $x - $textW / 2 : ($align === 'right' ? $x - $textW : $x);
-        $pdf->SetXY($px, $y);
+        // Keep the text vertically anchored at the designed size even if it shrank.
+        $origSize = (float)($f['font_size'] ?? 12);
+        $py = $y + ($origSize - $fontSize) * 0.2;
+        $pdf->SetXY($px, $py);
         $pdf->Cell($textW + 1, $fontSize * 0.4, $text, 0, 0);
     }
 
+    if ($outPath === null) {
+        $out = $pdf->Output('S');
+        foreach ($tmpFiles as $t) @unlink($t);
+        return $out;
+    }
     $dir = dirname($outPath);
     if (!is_dir($dir)) mkdir($dir, 0755, true);
     $pdf->Output('F', $outPath);
     foreach ($tmpFiles as $t) @unlink($t);
     return true;
+}
+
+// Placeholder values used by the template designer and sample previews, so a
+// layout can be checked with realistic text before anything is issued for real.
+function templateSampleData(string $type): array {
+    $data = match ($type) {
+        'id_card' => [
+            'name' => 'Dr. Jane Sample', 'member_code' => 'RARL-000000', 'since_date' => date('Y/m/d'),
+            'section' => 'Sample Chapter', 'signer1' => 'RARL President', 'signer2' => 'Chapter Chair',
+            'verify_url' => SITE_URL . '/id-card-verify.php?code=SAMPLE',
+        ],
+        'membership' => [
+            'name' => 'Dr. Jane Sample', 'member_code' => 'RARL-000000', 'since_date' => date('d F Y'),
+            'section' => 'Sample Chapter', 'cert_no' => 'RARL-2026-SAMPLE', 'signer1' => 'RARL President',
+            'verify_url' => CERT_VERIFY_URL . '?id=sample',
+        ],
+        default => [
+            'name' => 'Dr. Jane Sample', 'event' => 'Sample Workshop 2026', 'date' => date('d F Y'),
+            'cert_no' => 'RARL-2026-SAMPLE', 'verify_url' => CERT_VERIFY_URL . '?id=sample',
+        ],
+    };
+    $photo = __DIR__ . '/assets/mark.png';
+    $data['avatar_url']  = BRAND_MARK_PATH;
+    $data['avatar_path'] = file_exists($photo) ? $photo : null;
+    return $data;
 }
 
 function getDefaultTemplate(string $type): ?array {
