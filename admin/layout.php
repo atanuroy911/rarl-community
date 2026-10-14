@@ -429,7 +429,7 @@ function adminSidebar(string $active = ''): void {
       <button type="button" onclick="toggleAdminSidebar()" class="md:hidden rarl-icon-btn" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="px-3 pb-2"><button type="button" onclick="rarlPalette()" class="app-nav-search"><i class="fa-solid fa-magnifying-glass"></i><span class="flex-1 text-left">Jump to…</span><span class="rarl-kbd">Ctrl K</span></button></div>
-    <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto" aria-label="Admin">
+    <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto" aria-label="Admin">';
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
         foreach ($items as $key => [$href, $icon, $label]) {
