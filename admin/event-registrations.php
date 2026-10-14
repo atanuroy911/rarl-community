@@ -214,7 +214,7 @@ adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId,
 
 <dialog id="add-dlg" class="rarl-dialog w-full max-w-md">
   <form method="POST" class="p-6 space-y-4"><?= acsrfField() ?><input type="hidden" name="action" value="add_attendee"><input type="hidden" name="event_id" value="<?= $eventId ?>">
-    <div class="flex items-center justify-between"><h2 class="font-heading font-bold text-lg">Add attendee</h2><button type="button" onclick="this.closest('dialog').close()" class="rarl-icon-btn"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="flex items-center justify-between"><h2 class="font-heading font-bold text-lg">Add attendee</h2><button type="button" onclick="this.closest('dialog').close()" class="rarl-icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <p class="text-sm text-gray-500">For walk-ins or people who registered elsewhere. They need a member account.</p>
     <div><label class="rarl-label">Member email</label><input type="email" name="email" required class="rarl-input" placeholder="name@example.com"/></div>
     <div class="flex justify-end gap-2"><button type="button" class="rarl-btn" onclick="this.closest('dialog').close()">Cancel</button><button class="rarl-btn rarl-btn-primary">Add</button></div>

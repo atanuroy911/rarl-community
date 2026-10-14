@@ -184,7 +184,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
     </div>
     <div class="p-4 flex-1 flex flex-col gap-3">
       <div class="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500">
-        <?php if ($isToday): ?><span class="text-rarl-red font-bold"><i class="fa-solid fa-circle text-[7px] align-middle animate-pulse"></i> Today</span>
+        <?php if ($isToday): ?><span class="text-rarl-red font-bold"><i class="fa-solid fa-circle text-[7px] align-middle animate-pulse [animation-iteration-count:3]"></i> Today</span>
         <?php elseif ($days !== null && $days > 0): ?><span class="font-semibold text-gray-700">in <?= $days ?> day<?= $days === 1 ? '' : 's' ?></span>
         <?php elseif (!$e['event_date']): ?><span class="text-amber-600 font-semibold">No date set</span><?php endif; ?>
         <?php if ($e['speaker_name']): ?><span><i class="fa-solid fa-microphone"></i> <?= htmlspecialchars($e['speaker_name']) ?></span><?php endif; ?>
@@ -223,7 +223,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
     <?= acsrfField() ?><input type="hidden" name="action" value="save_event"><input type="hidden" name="ev_id" value=""><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>">
     <div class="p-5 border-b border-gray-100 flex items-center justify-between">
       <h2 class="font-heading font-black text-lg" id="ev-form-title">New event</h2>
-      <button type="button" class="rarl-icon-btn" data-ev-close><i class="fa-solid fa-xmark"></i></button>
+      <button type="button" class="rarl-icon-btn" data-ev-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
     </div>
     <div class="flex-1 overflow-y-auto p-5 space-y-4">
       <label id="ev-cover-drop" class="relative block h-40 rounded-xl border-2 border-dashed border-gray-300 hover:border-rarl-red/60 bg-gray-50 overflow-hidden cursor-pointer">

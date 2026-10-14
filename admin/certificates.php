@@ -31,6 +31,22 @@ if (($_GET['action'] ?? '') === 'member_count_preview') {
     exit;
 }
 
+// ── JSON endpoint: eligible members for the "Choose people" picker ──
+if (($_GET['action'] ?? '') === 'member_list') {
+    $eventId = (int)($_GET['event_id'] ?? 0);
+    $s = $pdo->prepare("SELECT m.id, m.email, m.type,
+            CASE WHEN m.type='individual' THEN COALESCE(NULLIF(TRIM(m.full_name),''), m.email)
+                 ELSE COALESCE(NULLIF(TRIM(m.lab_name),''), NULLIF(TRIM(m.pi_name),''), m.email) END AS name,
+            EXISTS(SELECT 1 FROM certificates c WHERE c.event_id = ? AND c.recipient_email = m.email) AS has_cert
+        FROM members m
+        WHERE m.status = 'active' AND m.email_verified_at IS NOT NULL AND m.email NOT LIKE '%@rarl.internal'
+        ORDER BY name ASC");
+    $s->execute([$eventId]);
+    header('Content-Type: application/json');
+    echo json_encode(array_map(fn($m) => ['id' => (int)$m['id'], 'name' => $m['name'], 'email' => $m['email'], 'type' => $m['type'], 'has' => (bool)$m['has_cert']], $s->fetchAll()));
+    exit;
+}
+
 // Accepted header spellings, so spreadsheets exported from Google Forms /
 // Excel / registration tools work without renaming columns first.
 const CERT_NAME_HEADERS  = ['name', 'full_name', 'full name', 'fullname', 'participant', 'participant name', 'recipient', 'recipient name'];
@@ -209,11 +225,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         if ($action === 'issue_all_members') {
             $memberType = in_array($_POST['member_type'] ?? '', ['individual','lab'], true) ? $_POST['member_type'] : '';
             $whereType  = $memberType ? "AND type = '" . $memberType . "'" : '';
+            $pickIds = ($_POST['pick_mode'] ?? '') === 'pick' ? array_values(array_filter(array_map('intval', (array)($_POST['member_ids'] ?? [])))) : [];
+            if (($_POST['pick_mode'] ?? '') === 'pick' && !$pickIds) {
+                $_SESSION['flash'] = ['type'=>'error','msg'=>'Tick at least one member to issue certificates to.'];
+                header('Location: certificates.php'); exit;
+            }
+            $whereIds = $pickIds ? 'AND id IN (' . implode(',', $pickIds) . ')' : '';
+            if ($pickIds) $whereType = '';
             $members = $pdo->query("SELECT email,
                 CASE WHEN type='individual' THEN COALESCE(NULLIF(TRIM(full_name),''), email)
                      ELSE COALESCE(NULLIF(TRIM(lab_name),''), NULLIF(TRIM(pi_name),''), email) END AS display_name
                 FROM members
-                WHERE status = 'active' AND email_verified_at IS NOT NULL AND email NOT LIKE '%@rarl.internal' {$whereType}
+                WHERE status = 'active' AND email_verified_at IS NOT NULL AND email NOT LIKE '%@rarl.internal' {$whereType} {$whereIds}
                 ORDER BY created_at ASC")->fetchAll();
             if (!$members) {
                 $_SESSION['flash'] = ['type'=>'error','msg'=>'No active, verified members found to issue certificates to.'];
@@ -225,8 +248,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             foreach ($members as $m) {
                 $counts[certIssue($pdo, $event, $m['display_name'], $m['email'], $templateId, $sendEmail, $batch)]++;
             }
-            $typeLabel = $memberType ? " ({$memberType}s only)" : '';
-            $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s) to all registered members{$typeLabel}" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued" . ($counts['invalid'] ? " and {$counts['invalid']} with an invalid email" : '') . "."];
+            $typeLabel = $pickIds ? '' : ($memberType ? " ({$memberType}s only)" : '');
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s) to " . ($pickIds ? 'the selected members' : 'all registered members') . "{$typeLabel}" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued" . ($counts['invalid'] ? " and {$counts['invalid']} with an invalid email" : '') . "."];
             header('Location: certificates.php?event=' . $eventId); exit;
         }
 
@@ -368,7 +391,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
       <div class="flex border-b border-gray-100 p-1.5 gap-1" role="tablist">
         <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white" data-tab="csv"><i class="fa-solid fa-file-csv"></i> From CSV</button>
         <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="single"><i class="fa-solid fa-user-plus"></i> Single person</button>
-        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="all_members"><i class="fa-solid fa-users"></i> All members</button>
+        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="all_members"><i class="fa-solid fa-users"></i> Members</button>
       </div>
       <form method="POST" enctype="multipart/form-data" class="p-5 space-y-4" id="issue-form">
         <?= acsrfField() ?><input type="hidden" name="action" value="issue_csv" id="issue-action"><input type="hidden" name="csv_mode" value="upload" id="csv-mode-input">
@@ -446,13 +469,30 @@ John Doe,john@lab.org"
         </div>
 
         <div data-pane="all_members" class="hidden space-y-3">
-          <div>
+          <input type="hidden" name="pick_mode" id="pick-mode" value="all">
+          <div class="flex border border-gray-200 rounded-lg p-0.5 gap-0.5 bg-gray-50" role="tablist">
+            <button type="button" class="pick-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md bg-white shadow-sm text-gray-800" data-mode="all"><i class="fa-solid fa-users"></i> Everyone</button>
+            <button type="button" class="pick-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md text-gray-500 hover:text-gray-700" data-mode="pick"><i class="fa-solid fa-list-check"></i> Choose people</button>
+          </div>
+          <div id="pick-pane" class="hidden space-y-2">
+            <div class="relative">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+              <input type="search" id="pick-search" placeholder="Search name or email" aria-label="Search members" class="<?= $input ?> pl-8"/>
+            </div>
+            <div class="flex items-center justify-between text-[11px]">
+              <span id="pick-count" class="font-semibold text-gray-700">0 selected</span>
+              <span class="flex gap-3"><button type="button" id="pick-all" class="font-semibold text-rarl-red hover:underline">Select shown</button><button type="button" id="pick-none" class="font-semibold text-gray-500 hover:underline">Clear</button></span>
+            </div>
+            <div id="pick-list" class="max-h-64 overflow-y-auto border border-gray-200 rounded-xl divide-y divide-gray-100 bg-white" role="group" aria-label="Members"></div>
+          </div>
+          <div id="all-pane">
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Member type</label>
             <select name="member_type" id="all-members-type" class="<?= $input ?>">
               <option value="">All members (individual + labs)</option>
               <option value="individual">Individual researchers only</option>
               <option value="lab">Research labs only</option>
             </select>
+          </div>
           </div>
           <div id="all-members-preview" class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
             <div class="flex items-center gap-1.5 font-semibold"><i class="fa-solid fa-spinner fa-spin"></i> Loading member count…</div>
@@ -581,7 +621,7 @@ John Doe,john@lab.org"
 <dialog id="new-event" class="rarl-dialog w-full max-w-md">
   <form method="POST" class="p-6 space-y-3">
     <?= acsrfField() ?><input type="hidden" name="action" value="create_event">
-    <div class="flex items-center justify-between mb-2"><h2 class="font-heading font-bold text-lg">New event</h2><button type="button" onclick="this.closest('dialog').close()" class="w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="flex items-center justify-between mb-2"><h2 class="font-heading font-bold text-lg">New event</h2><button type="button" onclick="this.closest('dialog').close()" class="w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <input type="text" name="ev_title" required placeholder="Event title" class="<?= $input ?>"/>
     <div class="grid grid-cols-2 gap-2">
       <select name="ev_type" class="<?= $input ?>">
@@ -608,6 +648,7 @@ John Doe,john@lab.org"
   // Tabs: CSV vs single recipient vs all members
   const form = document.getElementById('issue-form'), actionInput = document.getElementById('issue-action');
   const btnLabel = document.querySelector('#issue-btn span');
+  let pickMode = 'all', pickN = 0, pickLoadedFor = null;
   let csvRows = 0, allMembersNew = 0, countXhr = null, csvMode = 'upload';
   try { csvMode = localStorage.getItem('rarl-csv-mode') || 'upload'; } catch(e) {}
   function setTab(tab) {
@@ -628,10 +669,11 @@ John Doe,john@lab.org"
   function updateBtn(tab) {
     tab = tab || actionInput.value.replace('issue_','');
     const ib = document.getElementById('issue-btn');
-    if (tab === 'all_members') { ib.dataset.confirm = 'Issue certificates to ' + (allMembersNew || 'all') + ' registered member(s)' + (form.querySelector('[name=send_email]').checked ? ' and email them now' : '') + '?'; ib.dataset.confirmOk = 'Issue'; }
+    const memN = pickMode === 'pick' ? pickN : allMembersNew;
+    if (tab === 'all_members') { ib.dataset.confirm = 'Issue certificates to ' + (memN || (pickMode === 'pick' ? 'the' : 'all')) + ' ' + (pickMode === 'pick' ? 'selected' : 'registered') + ' member(s)' + (form.querySelector('[name=send_email]').checked ? ' and email them now' : '') + '?'; ib.dataset.confirmOk = 'Issue'; }
     else { delete ib.dataset.confirm; delete ib.dataset.confirmOk; }
     if (tab === 'single') btnLabel.textContent = 'Issue certificate';
-    else if (tab === 'all_members') btnLabel.textContent = allMembersNew > 0 ? 'Issue ' + allMembersNew + ' certificate' + (allMembersNew === 1 ? '' : 's') : 'Issue certificates to all members';
+    else if (tab === 'all_members') btnLabel.textContent = memN > 0 ? 'Issue ' + memN + ' certificate' + (memN === 1 ? '' : 's') : (pickMode === 'pick' ? 'Select members to issue' : 'Issue certificates to all members');
     else btnLabel.textContent = csvRows ? 'Issue ' + csvRows + ' certificate' + (csvRows === 1 ? '' : 's') : 'Generate & issue';
   }
   document.querySelectorAll('.issue-tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
@@ -681,6 +723,60 @@ John Doe,john@lab.org"
   form.querySelector('[name=event_id]')?.addEventListener('change', function() {
     if (actionInput.value === 'issue_all_members') refreshMemberCount();
   });
+
+  // Members tab: "Choose people" picker
+  const pickList = document.getElementById('pick-list'), pickSearch = document.getElementById('pick-search');
+  const escP = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+  function setPickMode(mode) {
+    pickMode = mode;
+    document.getElementById('pick-mode').value = mode;
+    document.getElementById('pick-pane').classList.toggle('hidden', mode !== 'pick');
+    document.getElementById('all-pane').classList.toggle('hidden', mode === 'pick');
+    document.getElementById('all-members-preview').classList.toggle('hidden', mode === 'pick');
+    document.querySelectorAll('.pick-mode-btn').forEach(b => b.className = 'pick-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md ' + (b.dataset.mode === mode ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700'));
+    if (mode === 'pick') loadPickList();
+    updateBtn('all_members');
+  }
+  function syncPickCount() {
+    const boxes = [...pickList.querySelectorAll('input[name="member_ids[]"]:checked')];
+    pickN = boxes.filter(b => b.dataset.has !== '1').length;
+    const dup = boxes.length - pickN;
+    document.getElementById('pick-count').textContent = boxes.length + ' selected' + (dup ? ' · ' + dup + ' already issued (skipped)' : '');
+    updateBtn('all_members');
+  }
+  function loadPickList() {
+    const eventId = form.querySelector('[name=event_id]').value;
+    if (pickLoadedFor === eventId) return;
+    pickLoadedFor = eventId;
+    const keep = new Set([...pickList.querySelectorAll('input:checked')].map(b => b.value));
+    pickList.innerHTML = '<div class="p-3 text-xs text-gray-500"><i class="fa-solid fa-spinner fa-spin"></i> Loading members…</div>';
+    fetch('certificates.php?' + new URLSearchParams({action: 'member_list', event_id: eventId})).then(r => r.json()).then(list => {
+      pickList.innerHTML = list.length ? list.map(m =>
+        '<label class="flex items-center gap-2.5 px-3 py-2 min-h-[44px] cursor-pointer hover:bg-gray-50" data-q="' + escP((m.name + ' ' + m.email).toLowerCase()) + '">' +
+        '<input type="checkbox" name="member_ids[]" value="' + m.id + '" data-has="' + (m.has ? 1 : 0) + '"' + (keep.has(String(m.id)) ? ' checked' : '') + ' class="w-4 h-4 accent-rarl-red flex-shrink-0">' +
+        '<span class="min-w-0 flex-1"><span class="block text-xs font-medium text-gray-900 truncate">' + escP(m.name) + '</span><span class="block text-[11px] text-gray-500 truncate">' + escP(m.email) + '</span></span>' +
+        (m.has ? '<span class="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full whitespace-nowrap"><i class="fa-solid fa-check"></i> Has one</span>' : (m.type === 'lab' ? '<span class="text-[10px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full">Lab</span>' : '')) +
+        '</label>').join('') : '<div class="p-3 text-xs text-gray-500">No active, verified members yet.</div>';
+      filterPick(); syncPickCount();
+    }).catch(() => { pickLoadedFor = null; pickList.innerHTML = '<div class="p-3 text-xs text-red-700">Could not load members. <button type="button" class="underline font-semibold" id="pick-retry">Try again</button></div>'; });
+  }
+  function filterPick() {
+    const q = pickSearch.value.trim().toLowerCase();
+    pickList.querySelectorAll('label[data-q]').forEach(l => l.classList.toggle('hidden', !!q && !l.dataset.q.includes(q)));
+  }
+  document.querySelectorAll('.pick-mode-btn').forEach(b => b.addEventListener('click', () => setPickMode(b.dataset.mode)));
+  pickSearch.addEventListener('input', filterPick);
+  pickSearch.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+  pickList.addEventListener('change', syncPickCount);
+  pickList.addEventListener('click', e => { if (e.target.id === 'pick-retry') loadPickList(); });
+  document.getElementById('pick-all').addEventListener('click', () => { pickList.querySelectorAll('label[data-q]:not(.hidden) input').forEach(b => b.checked = true); syncPickCount(); });
+  document.getElementById('pick-none').addEventListener('click', () => { pickList.querySelectorAll('input:checked').forEach(b => b.checked = false); syncPickCount(); });
+  form.querySelector('[name=event_id]').addEventListener('change', () => { if (pickMode === 'pick') loadPickList(); });
+  form.addEventListener('submit', e => {
+    if (actionInput.value === 'issue_all_members' && pickMode === 'pick' && !pickList.querySelector('input:checked')) {
+      e.preventDefault(); e.stopImmediatePropagation(); rarlToast('Tick at least one member first.', 'error');
+    }
+  }, true);
 
   // Template thumbnail
   const sel = document.getElementById('tpl-select'), link = document.getElementById('tpl-preview-link');

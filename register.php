@@ -17,7 +17,7 @@ echo htmlHead('Join the Community');
   <div class="w-full max-w-2xl">
     <div class="text-center mb-10">
       <div class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-5">
-        <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse"></span> Free Membership
+        <span class="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse [animation-iteration-count:3]"></span> Free Membership
       </div>
       <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Who are you joining as?</h1>
       <p class="text-white/55 text-sm">Choose the profile type that best describes you. You can always update your details later.</p>

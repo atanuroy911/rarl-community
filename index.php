@@ -22,7 +22,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         $firstName = trim(explode(' ', $myName ?: '')[0] ?? '');
       ?>
       <div class="inline-flex items-center gap-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-400 text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-7">
-        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span> Welcome back
+        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse [animation-iteration-count:3]"></span> Welcome back
       </div>
       <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-gray-900 dark:text-white leading-tight mb-5">
         Good to see you,<br/><span class="text-rarl-red"><?= htmlspecialchars($firstName ?: 'there') ?></span>
@@ -46,7 +46,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
       </div>
       <?php else: ?>
       <div class="inline-flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-rarl-red text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-7">
-        <span class="w-1.5 h-1.5 rounded-full bg-rarl-red animate-pulse"></span> <?= htmlspecialchars(setting('home_hero_badge', 'Now Open for Membership')) ?>
+        <span class="w-1.5 h-1.5 rounded-full bg-rarl-red animate-pulse [animation-iteration-count:3]"></span> <?= htmlspecialchars(setting('home_hero_badge', 'Now Open for Membership')) ?>
       </div>
       <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-gray-900 dark:text-white leading-tight mb-5">
         <?php

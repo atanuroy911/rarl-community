@@ -1370,7 +1370,7 @@ function renderTemplateHtml(array $template, array $data): string {
     $mm = 100 / $w;
 
     $html = '<div style="position:relative;width:100%;max-width:900px;aspect-ratio:' . $w . '/' . $h . ';container-type:inline-size;background:#fff;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);">';
-    $html .= '<img src="' . htmlspecialchars($bgUrl) . '" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;" />';
+    $html .= '<img src="' . htmlspecialchars($bgUrl) . '" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;" />';
 
     foreach ($config as $f) {
         $key = $f['key'] ?? '';
@@ -1384,7 +1384,7 @@ function renderTemplateHtml(array $template, array $data): string {
                 default => !empty($data['avatar_url']) ? $data['avatar_url'] : $placeholder,
             };
             $html .= sprintf(
-                '<img src="%s" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:%s;" />',
+                '<img src="%s" alt="" style="position:absolute;left:%s%%;top:%s%%;width:%s%%;height:%s%%;object-fit:%s;" />',
                 htmlspecialchars($src), $x, $y, ($imgW / $w * 100), ($imgH / $h * 100), $key === 'avatar' ? 'cover' : 'fill'
             );
             continue;

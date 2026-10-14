@@ -572,7 +572,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
 <div id="ctx"></div>
 <dialog id="help-dlg" class="rarl-dialog w-full max-w-md">
   <div class="p-6">
-    <div class="flex items-center justify-between mb-4"><h2 class="font-heading font-bold text-lg">Keyboard shortcuts</h2><button type="button" onclick="this.closest('dialog').close()" class="w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="flex items-center justify-between mb-4"><h2 class="font-heading font-bold text-lg">Keyboard shortcuts</h2><button type="button" onclick="this.closest('dialog').close()" class="w-8 h-8 rounded-lg text-gray-400 hover:bg-gray-100" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="grid grid-cols-[1fr_auto] gap-y-2 text-sm text-gray-700">
       <span>Save</span><span><span class="kbd">Ctrl</span> <span class="kbd">S</span></span>
       <span>Undo / redo</span><span><span class="kbd">Ctrl</span> <span class="kbd">Z</span> / <span class="kbd">Ctrl</span> <span class="kbd">Shift</span> <span class="kbd">Z</span></span>

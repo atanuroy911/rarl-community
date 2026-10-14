@@ -543,7 +543,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         <span class="truncate"><?= htmlspecialchars($le['email']) ?> <?= $le['is_primary'] ? '· primary' : ($le['verified_at'] ? '· verified' : '· pending') ?></span>
         <?php if (!$le['is_primary']): ?>
         <form method="POST" onsubmit="return confirm('Unlink this email?')"><?= acsrfField() ?><input type="hidden" name="assist_action" value="remove_email"><input type="hidden" name="email_id" value="<?= $le['id'] ?>">
-          <button type="submit" class="text-red-500 font-semibold flex-shrink-0"><i class="fa-solid fa-xmark"></i></button>
+          <button type="submit" class="text-red-500 font-semibold flex-shrink-0" title="Unlink this email" aria-label="Unlink this email"><i class="fa-solid fa-xmark"></i></button>
         </form>
         <?php endif; ?>
       </div>

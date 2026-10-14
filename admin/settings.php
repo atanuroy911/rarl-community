@@ -268,7 +268,7 @@ adminWrap(function() use ($set) {
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Image</label>
           <?php if (!empty($set['popup_image_path'])): ?>
-          <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($set['popup_image_path']) ?>" class="h-20 rounded-lg border border-gray-200 mb-2"/>
+          <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($set['popup_image_path']) ?>" alt="Current popup image" class="h-20 rounded-lg border border-gray-200 mb-2"/>
           <?php endif; ?>
           <input type="file" name="popup_image" accept=".jpg,.jpeg,.png,.webp"
             class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>

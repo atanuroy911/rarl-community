@@ -168,7 +168,7 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
 <aside class="rarl-drawer" id="sec-drawer">
   <form method="POST" class="flex flex-col h-full" id="sec-form">
     <?= acsrfField() ?><input type="hidden" name="action" value="add_section"><input type="hidden" name="section_id" value="">
-    <div class="p-5 border-b border-gray-100 flex items-center justify-between"><h2 class="font-heading font-black text-lg" id="sec-title">New chapter</h2><button type="button" class="rarl-icon-btn" data-close><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="p-5 border-b border-gray-100 flex items-center justify-between"><h2 class="font-heading font-black text-lg" id="sec-title">New chapter</h2><button type="button" class="rarl-icon-btn" data-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
     <div class="flex-1 overflow-y-auto p-5 space-y-4">
       <div>
         <label class="rarl-label">Level</label>
