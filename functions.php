@@ -408,6 +408,8 @@ function rarlA11yCss(): string {
     html:not(.dark) {$light} .text-green-600 { color:#15803d; }                                           /* 3.30:1 → 5.02:1 */
     html:not(.dark) {$light} .text-green-500 { color:#16a34a; }
     .rarl-empty { color:#64748b; }
+    /* Field borders at 3:1 against white so the box is visible (ulab-mms --input) */
+    html:not(.dark) :is(input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([type=color]), select, textarea):is(.border-gray-300,.border-gray-200) { border-color:#9b9ba1; }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
       .reveal { opacity:1 !important; transform:none !important; }

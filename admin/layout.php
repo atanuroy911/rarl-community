@@ -29,10 +29,6 @@ function htmlAdminHead(string $title): void {
   @keyframes rarlSpin{to{transform:rotate(360deg)}}
   .rarl-spinner{display:inline-block;width:1em;height:1em;border:2px solid rgba(255,255,255,.35);border-top-color:currentColor;border-radius:50%;animation:rarlSpin .6s linear infinite;vertical-align:-0.15em;margin-right:.4em;}
   button[disabled] .rarl-btn-label,a[aria-disabled="true"] .rarl-btn-label{opacity:.85}
-  .rarl-nav-group-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55);padding:.9rem .75rem .35rem;}
-  #admin-sidebar a.rarl-nav-active{position:relative}
-  #admin-sidebar a.rarl-nav-active::before{content:"";position:absolute;left:-0.75rem;top:0.4rem;bottom:0.4rem;width:3px;border-radius:0 3px 3px 0;background:' . BRAND_RED . ';}
-  #admin-sidebar a{position:relative}
   .rarl-skeleton{background:linear-gradient(90deg,rgba(0,0,0,.06) 25%,rgba(0,0,0,.10) 37%,rgba(0,0,0,.06) 63%);background-size:400% 100%;animation:rarlSkeleton 1.4s ease infinite;border-radius:.5rem;}
   @keyframes rarlSkeleton{0%{background-position:100% 50%}100%{background-position:0 50%}}
   .rarl-dialog{border:0;padding:0;border-radius:1.25rem;box-shadow:0 24px 64px rgba(15,23,42,.28);margin:auto;max-height:90vh;overflow:auto;}
@@ -112,6 +108,57 @@ function htmlAdminHead(string $title): void {
   .rarl-admin-content table thead.bg-gray-50{background:#f8fafc}
   .rarl-admin-content table tbody tr:hover{background:#fafbfc}
   .rarl-kbd{font-family:ui-monospace,monospace;font-size:11px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
+  /* ── ulab-mms design language (shadcn new-york): neutral greys, one primary (RARL red),
+     10px radius, white cards on an off-white page, a light floating sidebar, quiet tables. ── */
+  :root{--radius:.625rem;--bg:#fafafa;--fg:#1a1f29;--card:#fff;--muted:#f4f4f5;--muted-fg:#5f6672;--border:#e4e4e7;--input:#9b9ba1;--primary:' . BRAND_RED . ';--primary-dark:' . BRAND_RED_DARK . ';--ring:rgba(204,7,3,.35)}
+  body{background:var(--bg) !important;color:var(--fg)}
+  h1,h2,h3,h4{letter-spacing:-.015em}
+  .app-sidebar-panel{display:flex;flex-direction:column;height:100%;min-height:0;border-radius:1.125rem;background:#fff;color:var(--fg);box-shadow:0 0 0 1px rgba(26,31,41,.06),0 1px 2px rgba(0,0,0,.04),0 12px 32px -16px rgba(0,0,0,.22)}
+  .rarl-nav-group-label{padding:1rem .75rem .35rem;font-size:.6875rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted-fg)}
+  .app-nav-item{display:flex;align-items:center;gap:.75rem;height:2.5rem;padding:0 .75rem;border-radius:.75rem;font-size:.875rem;font-weight:500;color:rgba(26,31,41,.8);transition:background-color .15s ease-out,color .15s ease-out}
+  .app-nav-item>i{width:1.125rem;text-align:center;flex-shrink:0;color:var(--primary);opacity:.85}
+  .app-nav-item:hover{background:rgba(26,31,41,.06);color:var(--fg)}
+  .app-nav-item[aria-current="page"],.app-nav-item[aria-current="page"]:hover{background:rgba(204,7,3,.10);color:var(--fg);font-weight:600}
+  .app-nav-item[aria-current="page"]>i{opacity:1}
+  .app-nav-search{display:flex;width:100%;align-items:center;gap:.6rem;height:2.25rem;padding:0 .75rem;border-radius:.75rem;font-size:.8125rem;color:var(--muted-fg);background:rgba(26,31,41,.04);transition:background-color .15s ease-out}
+  .app-nav-search:hover{background:rgba(26,31,41,.07);color:var(--fg)}
+  /* Page head */
+  .rarl-page-head h1,.rarl-admin-content > h1.text-2xl,.rarl-admin-content h1.text-2xl{font-weight:700 !important;font-size:1.5rem !important;color:var(--fg) !important;letter-spacing:-.02em}
+  .rarl-admin-content .font-black{font-weight:700 !important}
+  /* Cards: rounded-xl, hairline border, shadow-sm */
+  .rarl-card,.rarl-stat,.rarl-admin-content .bg-white.border.rounded-2xl,.rarl-admin-content .bg-white.border.border-gray-200.rounded-2xl{border-radius:calc(var(--radius) + 4px) !important;border-color:var(--border) !important;box-shadow:0 1px 2px rgba(0,0,0,.05) !important}
+  a.rarl-stat:hover{transform:none;box-shadow:0 1px 2px rgba(0,0,0,.05),0 0 0 1px var(--border) !important;background:#fcfcfc}
+  .rarl-stat-value{font-weight:700}
+  /* Buttons: h-9, rounded-lg, medium weight, pressed scale */
+  .rarl-btn{height:2.25rem;border-radius:var(--radius);font-size:.875rem;font-weight:500;border-color:var(--border);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+  .rarl-btn:hover{background:var(--muted);border-color:var(--border)}
+  .rarl-btn-primary{background:var(--primary);border-color:var(--primary)}
+  .rarl-btn-primary:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+  .rarl-btn-sm{height:2rem;border-radius:var(--radius);font-size:.8125rem}
+  .rarl-btn:active,.rarl-admin-content button:active{transform:scale(.97)}
+  @media (prefers-reduced-motion: reduce){.rarl-btn:active,.rarl-admin-content button:active{transform:none}}
+  .rarl-icon-btn{border-radius:var(--radius);color:var(--muted-fg)}
+  .rarl-icon-btn:hover{background:var(--muted);color:var(--fg)}
+  /* Inputs: 3:1 border, 3px focus ring */
+  .rarl-input,.rarl-admin-content input.border-gray-300:not([type=checkbox]):not([type=radio]):not([type=file]),.rarl-admin-content select.border-gray-300,.rarl-admin-content textarea.border-gray-300{border-color:var(--input) !important;border-radius:var(--radius) !important;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+  .rarl-input:focus,.rarl-admin-content input.border-gray-300:focus,.rarl-admin-content select.border-gray-300:focus,.rarl-admin-content textarea.border-gray-300:focus{border-color:var(--primary) !important;box-shadow:0 0 0 3px var(--ring) !important;outline:none}
+  .rarl-label{font-size:.8125rem;font-weight:500;color:var(--fg)}
+  /* Tabs: muted track, white active pill */
+  .rarl-tabs{background:var(--muted);border-radius:var(--radius);padding:3px;gap:0}
+  .rarl-tabs a,.rarl-tabs button{border-radius:calc(var(--radius) - 2px);font-size:.875rem;font-weight:500;color:var(--muted-fg);padding:.35rem .8rem}
+  .rarl-tabs .on{background:#fff;color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+  /* Badges: rounded-full, text-xs, medium */
+  .rarl-badge{font-size:.75rem;font-weight:500;padding:.125rem .5rem}
+  /* Tables: quiet sentence-case header, hairline rows, soft hover */
+  .rarl-table thead th,.rarl-admin-content table thead th{text-transform:none !important;letter-spacing:0 !important;font-size:.8125rem !important;font-weight:500 !important;color:var(--muted-fg) !important;background:#f7f7f8 !important;border-color:var(--border) !important}
+  .rarl-admin-content table thead{background:#f7f7f8 !important;border-color:var(--border) !important}
+  .rarl-admin-content table tbody tr{border-color:#efeff1}
+  .rarl-admin-content table tbody tr:hover{background:#fafafa}
+  /* Empty states */
+  .rarl-empty{color:var(--muted-fg)}
+  /* Dialogs + toasts follow the same radius */
+  .rarl-dialog{border-radius:calc(var(--radius) + 6px)}
+  .rarl-toast{border-radius:var(--radius)}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">
 <script>
@@ -372,29 +419,28 @@ function adminSidebar(string $active = ''): void {
         ],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
-    <aside id="admin-sidebar" class="w-64 sm:w-56 flex-shrink-0 bg-rarl-navy text-white flex flex-col h-screen fixed top-0 left-0 z-40 overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-200">
-    <div class="p-4 border-b border-white/10 flex items-center justify-between">
-      <div class="flex items-center gap-2 min-w-0">
-        <img src="' . BRAND_MARK_PATH . '" alt="RARL" class="w-8 h-8 rounded-lg object-contain flex-shrink-0"/>
-        <div class="min-w-0"><div class="font-heading font-bold text-xs leading-tight truncate">RARL Admin</div><div class="text-white/35 text-[9px] truncate">Community Platform</div></div>
+    <aside id="admin-sidebar" class="w-64 md:w-60 flex-shrink-0 h-screen fixed top-0 left-0 z-40 p-2 transform -translate-x-full md:translate-x-0 transition-transform duration-200">
+    <div class="app-sidebar-panel">
+    <div class="px-4 pt-4 pb-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5 min-w-0">
+        <img src="' . BRAND_MARK_PATH . '" alt="" class="w-9 h-9 rounded-xl object-contain flex-shrink-0"/>
+        <div class="min-w-0"><div class="text-sm font-semibold leading-tight truncate">RARL Admin</div><div class="text-xs text-[color:var(--muted-fg)] truncate">Community Platform</div></div>
       </div>
-      <button type="button" onclick="toggleAdminSidebar()" class="md:hidden w-8 h-8 flex items-center justify-center rounded-lg text-white/60 hover:bg-white/10 hover:text-white flex-shrink-0" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
+      <button type="button" onclick="toggleAdminSidebar()" class="md:hidden rarl-icon-btn" aria-label="Close menu"><i class="fa-solid fa-xmark"></i></button>
     </div>
-    <div class="px-3 pt-3"><button type="button" onclick="rarlPalette()" class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs text-white/50 bg-white/5 hover:bg-white/10 hover:text-white border border-white/10"><i class="fa-solid fa-magnifying-glass"></i><span class="flex-1 text-left">Jump to…</span><span class="rarl-kbd text-white/40">Ctrl K</span></button></div>
-    <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto">';
+    <div class="px-3 pb-2"><button type="button" onclick="rarlPalette()" class="app-nav-search"><i class="fa-solid fa-magnifying-glass"></i><span class="flex-1 text-left">Jump to…</span><span class="rarl-kbd">Ctrl K</span></button></div>
+    <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto" aria-label="Admin">
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
         foreach ($items as $key => [$href, $icon, $label]) {
-            $cls = $key === $active
-                ? 'bg-white/15 text-white font-semibold rarl-nav-active'
-                : 'text-white/55 hover:bg-white/10 hover:text-white hover:translate-x-0.5';
-            echo '<a href="' . $href . '" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs transition duration-150 ' . $cls . '">' . $icon . ' ' . $label . '</a>';
+            echo '<a href="' . $href . '" class="app-nav-item"' . ($key === $active ? ' aria-current="page"' : '') . '>' . $icon . '<span class="truncate">' . $label . '</span></a>';
         }
     }
     echo '</nav>
-    <div class="p-3 border-t border-white/10 space-y-0.5">
-      <a href="../index.php" target="_blank" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors"><i class="fa-solid fa-earth-americas"></i> Public Site</a>
-      <a href="logout.php" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs text-white/40 hover:bg-white/10 hover:text-white transition-colors"><i class="fa-solid fa-right-from-bracket"></i> Logout</a>
+    <div class="p-3 pt-2 space-y-0.5 border-t border-[color:var(--border)]">
+      <a href="../index.php" target="_blank" class="app-nav-item"><i class="fa-solid fa-earth-americas"></i><span>Public site</span></a>
+      <a href="logout.php" class="app-nav-item"><i class="fa-solid fa-right-from-bracket"></i><span>Log out</span></a>
+    </div>
     </div>
     </aside>
     <script>
@@ -409,8 +455,8 @@ function adminWrap(callable $content, string $page = '', string $title = ''): vo
     htmlAdminHead($title);
     echo '<div class="flex min-h-screen">';
     adminSidebar($page);
-    echo '<main class="flex-1 md:ml-56 min-w-0">';
-    echo '<div class="md:hidden sticky top-0 z-20 bg-white border-b border-gray-200 px-4 h-14 flex items-center gap-3">
+    echo '<main class="flex-1 md:ml-60 min-w-0">';
+    echo '<div class="md:hidden sticky top-0 z-20 bg-[color:var(--bg)] px-4 h-14 flex items-center gap-3">
       <button type="button" onclick="toggleAdminSidebar()" class="w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 hover:bg-gray-100" aria-label="Menu">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
       </button>
