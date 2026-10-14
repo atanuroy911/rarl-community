@@ -196,7 +196,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
         <a href="templates.php?edit=<?= $t['id'] ?>" class="px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-lg hover:bg-gray-700">Design</a>
         <a href="preview-template.php?id=<?= $t['id'] ?>" class="px-3 py-1.5 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200"><i class="fa-solid fa-eye"></i> Preview</a>
         <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="duplicate_template"><input type="hidden" name="template_id" value="<?= $t['id'] ?>">
-          <button type="submit" class="px-3 py-1.5 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" title="Duplicate"><i class="fa-regular fa-copy"></i></button>
+          <button type="submit" class="px-3 py-1.5 text-xs font-semibold bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200" title="Duplicate"><i class="fa-solid fa-copy"></i></button>
         </form>
         <?php if (!$t['is_default']): ?>
         <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="set_default"><input type="hidden" name="template_id" value="<?= $t['id'] ?>">
@@ -457,21 +457,21 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
       <button type="button" class="tpl-btn" data-align="bottom" title="Align bottoms"><i class="fa-solid fa-arrow-down-long"></i></button>
       <button type="button" class="tpl-btn" data-align="vdist" title="Distribute vertically (3+ items)"><i class="fa-solid fa-arrows-up-down"></i></button>
       <span class="w-px h-5 bg-gray-200 mx-1"></span>
-      <button type="button" class="tpl-btn" id="btn-dup" title="Duplicate (Ctrl+D)"><i class="fa-regular fa-copy"></i></button>
-      <button type="button" class="tpl-btn" id="btn-del" title="Delete (Del)"><i class="fa-regular fa-trash-can"></i></button>
+      <button type="button" class="tpl-btn" id="btn-dup" title="Duplicate (Ctrl+D)"><i class="fa-solid fa-copy"></i></button>
+      <button type="button" class="tpl-btn" id="btn-del" title="Delete (Del)"><i class="fa-solid fa-trash-can"></i></button>
       <span class="w-px h-5 bg-gray-200 mx-1"></span>
       <button type="button" class="tpl-btn" id="btn-grid" title="Grid & snap to 1 mm"><i class="fa-solid fa-border-all"></i></button>
       <button type="button" class="tpl-btn on" id="btn-snap" title="Smart guides (hold Alt to bypass)"><i class="fa-solid fa-magnet"></i></button>
       <button type="button" class="tpl-btn" id="btn-safe" title="Show print safe margin (5 mm / 3 mm on cards)"><i class="fa-regular fa-square"></i></button>
-      <button type="button" class="tpl-btn" id="btn-clean" title="Clean preview — hide outlines (P)"><i class="fa-regular fa-eye"></i></button>
+      <button type="button" class="tpl-btn" id="btn-clean" title="Clean preview — hide outlines (P)"><i class="fa-solid fa-eye"></i></button>
       <button type="button" class="tpl-btn" id="btn-tokens" title="Show field names instead of sample data"><i class="fa-solid fa-code"></i></button>
       <div class="ml-auto flex items-center gap-0.5">
         <button type="button" class="tpl-btn" id="zoom-out" title="Zoom out (Ctrl −)"><i class="fa-solid fa-minus"></i></button>
         <button type="button" class="tpl-btn w-14" id="zoom-label" title="Fit to screen (Ctrl 0)">100%</button>
         <button type="button" class="tpl-btn" id="zoom-in" title="Zoom in (Ctrl +)"><i class="fa-solid fa-plus"></i></button>
-        <button type="button" class="tpl-btn" id="btn-bg" title="Replace background image"><i class="fa-regular fa-image"></i></button>
+        <button type="button" class="tpl-btn" id="btn-bg" title="Replace background image"><i class="fa-solid fa-image"></i></button>
         <input type="file" id="bg-replace" accept=".jpg,.jpeg,.png,.webp" class="hidden" data-no-chip/>
-        <button type="button" class="tpl-btn" id="btn-help" title="Keyboard shortcuts (?)"><i class="fa-regular fa-keyboard"></i></button>
+        <button type="button" class="tpl-btn" id="btn-help" title="Keyboard shortcuts (?)"><i class="fa-solid fa-keyboard"></i></button>
       </div>
     </div>
     <div id="stage" class="flex-1">
@@ -562,8 +562,8 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
       <div class="flex gap-1.5 pt-1 border-t border-gray-100">
         <button type="button" class="tpl-btn flex-1 border border-gray-200" id="p-front" title="Bring to front"><i class="fa-solid fa-arrow-up-wide-short"></i></button>
         <button type="button" class="tpl-btn flex-1 border border-gray-200" id="p-back" title="Send to back"><i class="fa-solid fa-arrow-down-short-wide"></i></button>
-        <button type="button" class="tpl-btn flex-1 border border-gray-200" id="p-dup" title="Duplicate"><i class="fa-regular fa-copy"></i></button>
-        <button type="button" class="tpl-btn flex-1 border border-red-200 !text-red-600 hover:!bg-red-50" id="p-del" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+        <button type="button" class="tpl-btn flex-1 border border-gray-200" id="p-dup" title="Duplicate"><i class="fa-solid fa-copy"></i></button>
+        <button type="button" class="tpl-btn flex-1 border border-red-200 !text-red-600 hover:!bg-red-50" id="p-del" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
       </div>
     </div>
   </aside>
@@ -1109,14 +1109,14 @@ canvas.addEventListener('contextmenu', e => {
   const id = +el.dataset.id; if (!sel.includes(id)) select(id);
   const f = byId(id);
   const items = [
-    ['fa-regular fa-copy', 'Duplicate', 'Ctrl D', duplicate],
+    ['fa-solid fa-copy', 'Duplicate', 'Ctrl D', duplicate],
     ['fa-solid fa-copy', 'Copy', 'Ctrl C', () => { clipboard = JSON.stringify(selFields()); }],
     ['fa-solid fa-arrow-up-wide-short', 'Bring to front', '', () => reorder(1)],
     ['fa-solid fa-arrow-down-short-wide', 'Send to back', '', () => reorder(-1)],
     ['fa-solid fa-align-center', 'Centre on page', '', () => { const s = sel; align('hcenter'); sel = s; }],
     [f.locked ? 'fa-solid fa-lock-open' : 'fa-solid fa-lock', f.locked ? 'Unlock' : 'Lock', '', () => updateSel(x => x.locked = !f.locked)],
     null,
-    ['fa-regular fa-trash-can', 'Delete', 'Del', removeSel],
+    ['fa-solid fa-trash-can', 'Delete', 'Del', removeSel],
   ];
   ctx.innerHTML = '';
   items.forEach(it => {

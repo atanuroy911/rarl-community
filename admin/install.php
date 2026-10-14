@@ -44,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>
 <link href="<?= FONTAWESOME_CDN_URL ?>" rel="stylesheet"/>
-<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>",sans-serif;letter-spacing:-0.01em;}<?= rarlFontSizeCss() ?></style>
+<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>",sans-serif;letter-spacing:-0.01em;}<?= rarlFontSizeCss() . rarlA11yCss() ?></style>
 </head>
 <body class="min-h-screen flex items-center justify-center py-10" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
 <div class="w-full max-w-lg mx-4">
@@ -84,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form method="POST">
       <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['install_csrf']) ?>">
-      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl text-sm transition-all shadow-lg hover:-translate-y-0.5">Set Up Database →</button>
+      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl text-sm transition shadow-lg hover:-translate-y-0.5">Set Up Database →</button>
     </form>
   </div>
 </div>

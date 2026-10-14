@@ -54,7 +54,7 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
   <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
     <?php foreach ($categories as $cat): ?>
     <a href="resources.php?cat=<?= urlencode($cat['slug']) ?>"
-      class="group block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-rarl-red/40 transition-all relative">
+      class="group block bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg hover:border-rarl-red/40 transition relative">
       <?php if (($cat['access_level'] ?? 'public') === 'member'): ?>
       <span class="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lock"></i> Premium</span>
       <?php endif; ?>
@@ -96,7 +96,7 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
       $tag = $isLocked ? 'div' : 'a';
     ?>
     <<?= $tag ?> <?= $isLocked ? '' : 'href="' . htmlspecialchars($r['url']) . '" target="_blank" rel="noopener"' ?>
-      class="group flex gap-4 bg-white dark:bg-gray-900 border rounded-2xl p-5 transition-all <?= $isLocked ? 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md' ?>">
+      class="group flex gap-4 bg-white dark:bg-gray-900 border rounded-2xl p-5 transition <?= $isLocked ? 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md' ?>">
       <div class="w-12 h-12 rounded-xl <?= $isLocked ? 'bg-amber-100 dark:bg-amber-900/30' : ($isYT ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800') ?> flex items-center justify-center text-xl flex-shrink-0">
         <?= $isLocked ? '<i class="fa-solid fa-lock"></i>' : $icon ?>
       </div>

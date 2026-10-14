@@ -153,7 +153,7 @@ adminWrap(function() use ($sections, $plans, $events, $result, $in) {
     <button name="submit_action" value="send" data-confirm="Send this email to <?= (int)$result['count'] ?> recipient(s) now?" data-confirm-ok="Send now" class="rarl-btn rarl-btn-primary w-full mt-4 !h-11"><i class="fa-solid fa-paper-plane"></i> Send to <?= (int)$result['count'] ?> recipient<?= $result['count'] == 1 ? '' : 's' ?></button>
     <p class="text-[11px] text-gray-400 mt-2 text-center">Edit on the left and preview again any time — nothing is lost.</p>
     <?php else: ?>
-    <div class="rarl-empty"><i class="fa-regular fa-envelope-open text-3xl mb-2 block"></i>Write your message, then <strong>Preview</strong> to see exactly what recipients get before sending.</div>
+    <div class="rarl-empty"><i class="fa-solid fa-envelope-open text-3xl mb-2 block"></i>Write your message, then <strong>Preview</strong> to see exactly what recipients get before sending.</div>
     <?php endif; ?>
   </div>
 </form>

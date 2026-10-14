@@ -155,7 +155,7 @@ if (isset($_GET['panel'])) {
       <?= memberAvatarHtml($m['avatar_path'] ?? null, $name, 'w-16 h-16 text-xl') ?>
       <div class="min-w-0 flex-1">
         <h2 class="font-heading font-black text-xl text-gray-900 leading-tight"><?= htmlspecialchars($name) ?></h2>
-        <p class="text-sm text-gray-500 truncate"><?= htmlspecialchars($m['email']) ?> <button type="button" class="rarl-icon-btn !w-6 !h-6 align-middle" data-copy="<?= htmlspecialchars($m['email']) ?>" title="Copy email"><i class="fa-regular fa-copy text-xs"></i></button></p>
+        <p class="text-sm text-gray-500 truncate"><?= htmlspecialchars($m['email']) ?> <button type="button" class="rarl-icon-btn !w-6 !h-6 align-middle" data-copy="<?= htmlspecialchars($m['email']) ?>" title="Copy email"><i class="fa-solid fa-copy text-xs"></i></button></p>
         <div class="flex flex-wrap gap-1.5 mt-2">
           <span class="rarl-badge <?= $badge ?>"><?= ucfirst($m['status']) ?></span>
           <span class="rarl-badge <?= $m['type'] === 'lab' ? 'rarl-badge-blue' : 'rarl-badge-purple' ?>"><?= $m['type'] === 'lab' ? 'Research lab' : 'Individual' ?></span>
@@ -261,7 +261,7 @@ if (isset($_GET['panel'])) {
       <form data-ajax data-reload-panel><input type="hidden" name="action" value="activate"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-user-check"></i> Reactivate</button></form>
     <?php endif; ?>
     <a href="member-edit.php?id=<?= (int)$m['id'] ?>" class="rarl-btn"><i class="fa-solid fa-pen"></i> Edit everything</a>
-    <form data-ajax data-next class="ml-auto" data-confirm="Permanently delete <?= htmlspecialchars($name) ?> and all their posts, certificates, registrations and files?" data-confirm-ok="Delete forever"><input type="hidden" name="action" value="delete"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-icon-btn danger" title="Delete member"><i class="fa-regular fa-trash-can"></i></button></form>
+    <form data-ajax data-next class="ml-auto" data-confirm="Permanently delete <?= htmlspecialchars($name) ?> and all their posts, certificates, registrations and files?" data-confirm-ok="Delete forever"><input type="hidden" name="action" value="delete"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-icon-btn danger" title="Delete member"><i class="fa-solid fa-trash-can"></i></button></form>
   </div>
 </div>
 <?php

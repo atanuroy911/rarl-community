@@ -219,7 +219,7 @@ echo htmlHead('Community Portal');
   <?php if ($isMember): ?>
   <div class="relative z-10 max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
     <h1 class="font-heading font-black text-xl text-white"><i class="fa-solid fa-earth-americas"></i> Robotics & Automation Research Lab (RARL) Feed</h1>
-    <a href="#feed" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-rarl-red font-black rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-xs flex-shrink-0">
+    <a href="#feed" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-rarl-red font-black rounded-xl shadow-lg hover:-translate-y-0.5 transition text-xs flex-shrink-0">
       Go to the Feed ↓
     </a>
   </div>
@@ -229,7 +229,7 @@ echo htmlHead('Community Portal');
     <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">Robotics & Automation Research Lab (RARL) Feed</h1>
     <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
     <div class="inline-flex flex-col items-center gap-3">
-      <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition-all text-sm">
+      <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition text-sm">
         <i class="fa-solid fa-lock"></i> Join as a Member to Post &amp; Comment
       </a>
       <p class="text-white/40 text-xs">Membership is free and open to all researchers</p>

@@ -184,7 +184,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
                 $params = array_merge($params, [
                     clean($_POST['full_name'] ?? ''), clean($_POST['institution'] ?? ''), clean($_POST['department'] ?? ''),
                     clean($_POST['position'] ?? ''), clean($_POST['research_interests'] ?? ''), clean($_POST['primary_lab_name'] ?? ''),
-                    cleanUrl($_POST['google_scholar_url'] ?? ''), clean($_POST['orcid_id'] ?? ''), cleanUrl($_POST['linkedin_url'] ?? ''),
+                    cleanUrl($_POST['google_scholar_url'] ?? ''), cleanOrcid($_POST['orcid_id'] ?? ''), cleanUrl($_POST['linkedin_url'] ?? ''),
                 ]);
             }
 
@@ -235,7 +235,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
     <p class="text-gray-500 text-sm flex flex-wrap items-center gap-2"><span class="rarl-badge <?= $statusBadge ?>"><?= ucfirst($m['status']) ?></span><?= $m['email_verified_at'] ? '' : '<span class="rarl-badge rarl-badge-red">Email not verified</span>' ?> <?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?><?= !empty($m['member_code']) ? ' · <span class="font-mono">#' . htmlspecialchars($m['member_code']) . '</span>' : '' ?></p>
   </div>
   <div class="ml-auto flex gap-2">
-    <a href="mailto:<?= htmlspecialchars($m['email']) ?>" class="rarl-btn"><i class="fa-regular fa-envelope"></i> Email</a>
+    <a href="mailto:<?= htmlspecialchars($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-envelope"></i> Email</a>
     <?php if (!empty($m['id_card_path'])): ?><a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="rarl-btn"><i class="fa-solid fa-id-card"></i> ID card</a><?php endif; ?>
     <a href="certificates.php?q=<?= urlencode($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-trophy"></i> Certificates</a>
   </div>

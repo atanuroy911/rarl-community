@@ -33,7 +33,7 @@ unset($_SESSION['flash']);
 <script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>
 <link href="<?= FONTAWESOME_CDN_URL ?>" rel="stylesheet"/>
-<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>",sans-serif;letter-spacing:-0.01em;}<?= rarlFontSizeCss() ?></style>
+<style>body{font-family:"<?= BRAND_FONT_SANS ?>",sans-serif;}h1{font-family:"<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>",sans-serif;letter-spacing:-0.01em;}<?= rarlFontSizeCss() . rarlA11yCss() ?></style>
 </head>
 <body class="min-h-screen flex items-center justify-center" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
 <div class="w-full max-w-sm mx-4">
@@ -46,17 +46,17 @@ unset($_SESSION['flash']);
   <?php if ($flash): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><i class="fa-solid fa-circle-check"></i> <?= htmlspecialchars($flash['msg']) ?></div><?php endif; ?>
   <?php if (($_GET['e'] ?? '') === 'purged'): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> Database purged. Please sign in again.</div>
   <?php elseif (($_GET['e'] ?? '') === 'logged_out'): ?><div class="mb-4 p-3.5 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm"><i class="fa-solid fa-circle-check"></i> You have been signed out.</div>
-  <?php elseif ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-regular fa-clock"></i> Session expired. Please sign in again.</div><?php endif; ?>
+  <?php elseif ($expired): ?><div class="mb-4 p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-700 text-sm"><i class="fa-solid fa-clock"></i> Session expired. Please sign in again.</div><?php endif; ?>
   <?php if ($error): ?><div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?></div><?php endif; ?>
   <div class="bg-white rounded-2xl shadow-2xl p-8">
     <h1 class="text-xl font-black text-gray-900 mb-1">Sign In</h1>
     <p class="text-gray-400 text-sm mb-5">Access the admin dashboard</p>
     <form method="POST" class="space-y-4">
       <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Username</label>
-      <input type="text" name="u" required autofocus class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/></div>
+      <input type="text" name="u" required autofocus class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/></div>
       <div><label class="block text-xs font-semibold text-gray-700 mb-1.5">Password</label>
-      <input type="password" name="p" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/></div>
-      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl text-sm transition-all shadow-lg hover:-translate-y-0.5">Sign In →</button>
+      <input type="password" name="p" required class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/></div>
+      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl text-sm transition shadow-lg hover:-translate-y-0.5">Sign In →</button>
     </form>
   </div>
   <p class="text-center mt-5"><a href="../index.php" class="text-white/30 hover:text-white/60 text-xs transition-colors">← Public Site</a></p>

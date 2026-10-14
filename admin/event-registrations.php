@@ -111,7 +111,7 @@ adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId,
   <div class="flex flex-wrap gap-2">
     <button type="button" class="rarl-btn rarl-btn-primary" id="btn-checkin"><i class="fa-solid fa-clipboard-check"></i> Check-in mode</button>
     <button type="button" class="rarl-btn" onclick="document.getElementById('add-dlg').showModal()"><i class="fa-solid fa-user-plus"></i> Add attendee</button>
-    <button type="button" class="rarl-btn" data-copy="<?= htmlspecialchars($emails) ?>" <?= $emails ? '' : 'disabled' ?>><i class="fa-regular fa-copy"></i> Copy emails</button>
+    <button type="button" class="rarl-btn" data-copy="<?= htmlspecialchars($emails) ?>" <?= $emails ? '' : 'disabled' ?>><i class="fa-solid fa-copy"></i> Copy emails</button>
     <a href="event-registrations.php?event=<?= $eventId ?>&export=csv" class="rarl-btn"><i class="fa-solid fa-download"></i> CSV</a>
   </div>
 </div>

@@ -13,7 +13,7 @@ if (!empty($_SESSION['member_id'])) redirect($next ?: 'dashboard.php');
 $error = ''; $notice = null; $email = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrfCheck()) { $error = 'Invalid request.'; }
+    if (!csrfCheck()) { $error = 'Your session timed out. Please submit the form again.'; }
     else {
         $email    = cleanEmail($_POST['email']    ?? '');
         $password = $_POST['password']            ?? '';
@@ -104,7 +104,7 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
         <div>
           <label for="email" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email address</label>
           <input id="email" type="email" name="email" required autocomplete="username" value="<?= htmlspecialchars($email) ?>" <?= $email ? '' : 'autofocus' ?>
-            class="w-full h-12 px-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red transition-all" />
+            class="w-full h-12 px-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red transition" />
           <p class="text-[11px] text-gray-400 mt-1">Any verified email linked to your account works.</p>
         </div>
         <div>
@@ -114,12 +114,12 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
           </div>
           <div class="relative">
             <input id="password" type="password" name="password" required autocomplete="current-password" <?= $email ? 'autofocus' : '' ?>
-              class="w-full h-12 pl-4 pr-12 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red transition-all" />
-            <button type="button" id="toggle-pw" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Show password"><i class="fa-regular fa-eye"></i></button>
+              class="w-full h-12 pl-4 pr-12 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red transition" />
+            <button type="button" id="toggle-pw" class="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
           </div>
           <p id="caps" class="hidden text-[11px] text-amber-600 mt-1"><i class="fa-solid fa-triangle-exclamation"></i> Caps Lock is on</p>
         </div>
-        <button type="submit" class="w-full h-12 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg shadow-rarl-red/20">Sign in</button>
+        <button type="submit" class="w-full h-12 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition text-sm shadow-lg shadow-rarl-red/20">Sign in</button>
       </form>
 
       <div class="mt-8 p-4 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 flex items-center gap-3">
@@ -132,7 +132,7 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
 </div>
 <script>
   const pw = document.getElementById('password'), tg = document.getElementById('toggle-pw');
-  tg.addEventListener('click', () => { const show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; tg.innerHTML = '<i class="fa-regular ' + (show ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; tg.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); pw.focus(); });
+  tg.addEventListener('click', () => { const show = pw.type === 'password'; pw.type = show ? 'text' : 'password'; tg.innerHTML = '<i class="fa-solid ' + (show ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; tg.setAttribute('aria-label', show ? 'Hide password' : 'Show password'); pw.focus(); });
   pw.addEventListener('keyup', e => document.getElementById('caps').classList.toggle('hidden', !(e.getModifierState && e.getModifierState('CapsLock'))));
   document.getElementById('login-form').addEventListener('submit', e => { const b = e.target.querySelector('button[type=submit]'); b.disabled = true; b.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Signing in…'; });
 </script>

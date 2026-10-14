@@ -151,8 +151,8 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
           <span class="block font-heading font-black text-lg leading-none"><?= (int)$s['members'] ?></span><span class="text-[10px] text-gray-500">members</span></a>
         <div class="flex flex-shrink-0">
           <button type="button" class="rarl-icon-btn" data-edit="<?= (int)$s['id'] ?>" title="Edit"><i class="fa-solid fa-pen"></i></button>
-          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn" title="<?= $s['is_published'] ? 'Hide' : 'Publish' ?>" data-no-loading><i class="fa-regular <?= $s['is_published'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
-          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($s['name']) ?>”?<?= $s['members'] ? ' Its ' . (int)$s['members'] . ' member(s) will become unassigned (not deleted).' : '' ?>"><?= acsrfField() ?><input type="hidden" name="action" value="delete_section"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-regular fa-trash-can"></i></button></form>
+          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn" title="<?= $s['is_published'] ? 'Hide' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $s['is_published'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
+          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($s['name']) ?>”?<?= $s['members'] ? ' Its ' . (int)$s['members'] . ' member(s) will become unassigned (not deleted).' : '' ?>"><?= acsrfField() ?><input type="hidden" name="action" value="delete_section"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
         </div>
       </div>
       <?php endforeach; ?>

@@ -11,7 +11,7 @@ $done  = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfCheck()) {
-        $error = 'Invalid request.';
+        $error = 'Your session timed out. Please submit the form again.';
     } else {
         $code = trim($_POST['code'] ?? '');
         $pw   = $_POST['password'] ?? '';
@@ -66,7 +66,7 @@ echo htmlHead('Reset Password');
         <div class="text-4xl mb-3"><i class="fa-solid fa-circle-check text-green-500"></i></div>
         <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2">Password updated</h2>
         <p class="text-gray-500 text-sm mb-5">You can now sign in with your new password.</p>
-        <a href="login.php" class="inline-flex items-center gap-2 px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition-all">Sign In →</a>
+        <a href="login.php" class="inline-flex items-center gap-2 px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition">Sign In →</a>
       </div>
       <?php else: ?>
       <?php if ($error): ?>
@@ -79,26 +79,26 @@ echo htmlHead('Reset Password');
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
           <input type="email" name="email" value="<?= htmlspecialchars($email) ?>" required
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">6-Digit Code</label>
           <input type="text" name="code" required maxlength="6" pattern="[0-9]{6}" inputmode="numeric" autocomplete="one-time-code"
             placeholder="000000"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-center tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-center tracking-[0.5em] font-bold focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">New Password</label>
           <input type="password" name="password" required minlength="8"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Confirm New Password</label>
           <input type="password" name="password_confirm" required minlength="8"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
         <p class="text-[11px] text-gray-400 -mt-2">At least 8 characters. Didn't get a code? <a href="forgot-password.php" class="text-rarl-red font-semibold hover:underline">Send a new one</a></p>
-        <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg hover:-translate-y-0.5">
+        <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition text-sm shadow-lg hover:-translate-y-0.5">
           Update password &amp; sign in
         </button>
       </form>

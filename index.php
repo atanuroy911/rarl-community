@@ -37,10 +37,10 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
       </p>
       <?php endif; ?>
       <div class="flex flex-wrap gap-4 mb-14">
-        <a href="dashboard.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+        <a href="dashboard.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
           Go to My Dashboard →
         </a>
-        <a href="community.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-0.5 transition-all text-sm">
+        <a href="community.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-0.5 transition text-sm">
           Community Feed
         </a>
       </div>
@@ -63,10 +63,10 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         <?= htmlspecialchars(setting('home_hero_subtitle', 'Connect with researchers worldwide. Access curated learning resources, receive newsletters, attend events, and earn verifiable digital certificates for your contributions.')) ?>
       </p>
       <div class="flex flex-wrap gap-4 mb-14">
-        <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+        <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
           Join Free — Get Started →
         </a>
-        <a href="community.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-0.5 transition-all text-sm">
+        <a href="community.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-white font-semibold rounded-xl border border-gray-200 dark:border-gray-700 hover:-translate-y-0.5 transition text-sm">
           Explore Community
         </a>
       </div>
@@ -136,7 +136,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         ['fa-book', 'Authorship of 3 books and 4 book chapters', 'Authored 3 books and 4 book chapters, advancing knowledge in the field.'],
       ]; ?>
       <?php foreach ($achievements as $i => [$icon, $title, $desc]): ?>
-      <div class="reveal reveal-delay-<?= $i+1 ?> bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-250">
+      <div class="reveal reveal-delay-<?= $i+1 ?> bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg transition duration-250">
         <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-2xl mb-4"><i class="fa-solid <?= $icon ?>"></i></div>
         <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2 leading-snug"><?= htmlspecialchars($title) ?></h3>
         <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= htmlspecialchars($desc) ?></p>
@@ -169,7 +169,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
       ]; ?>
 
       <?php foreach ($modules as $i => [$icon, $name, $desc, $bg, $tc, $bc]): ?>
-      <div class="reveal reveal-delay-<?= $i+1 ?> group p-6 rounded-2xl border <?= $bg ?> <?= $bc ?> hover:-translate-y-1 hover:shadow-lg transition-all duration-250 cursor-default">
+      <div class="reveal reveal-delay-<?= $i+1 ?> group p-6 rounded-2xl border <?= $bg ?> <?= $bc ?> hover:-translate-y-1 hover:shadow-lg transition duration-250 cursor-default">
         <div class="w-11 h-11 rounded-xl <?= $bg ?> flex items-center justify-center text-xl mb-4"><i class="fa-solid <?= $icon ?>"></i></div>
         <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2"><?= $name ?></h3>
         <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= $desc ?></p>
@@ -217,7 +217,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
             <li class="flex items-center gap-2.5 text-white/70 text-base"><span class="w-4 h-4 rounded-full bg-green-900/40 text-green-400 flex items-center justify-center text-[10px] font-bold"><i class="fa-solid fa-check"></i></span><?= $pt ?></li>
             <?php endforeach; ?>
           </ul>
-          <a href="register.php" class="inline-flex items-center gap-2 px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition-all hover:-translate-y-0.5">Get Started Free →</a>
+          <a href="register.php" class="inline-flex items-center gap-2 px-6 py-3 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-xl text-sm transition hover:-translate-y-0.5">Get Started Free →</a>
         </div>
         <!-- Certificate mockup -->
         <div class="flex-shrink-0 reveal reveal-delay-2 w-full md:w-auto">
@@ -314,14 +314,14 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
     <?php if ($loggedInMember): ?>
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to share something with the community?</h2>
     <p class="text-white/75 text-base mb-7">Post an update, ask a question, or check out what other members are working on.</p>
-    <a href="community.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+    <a href="community.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
       Go to the Community Feed →
     </a>
     <?php else: ?>
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Ready to Join the Robotics & Automation Research Lab (RARL)?</h2>
     <p class="text-white/75 text-base mb-2">Free for your first year. No credit card. Open to researchers worldwide.</p>
     <p class="text-white/60 text-sm mb-7 max-w-lg mx-auto">Members are expected to use the RARL affiliation as the second affiliation on at least one paper during their free year.</p>
-    <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+    <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
       Create Your Free Account →
     </a>
     <?php endif; ?>

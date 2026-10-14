@@ -117,7 +117,7 @@ echo htmlHead('Events & Webinars');
       $membersOnly = $e['visibility'] === 'members_only';
       $locked = $membersOnly && !$isActiveMember;
     ?>
-    <div id="event-<?= $e['id'] ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition-all">
+    <div id="event-<?= $e['id'] ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition">
       <?php if (!empty($e['cover_image'])): ?>
       <img src="<?= UPLOADS_URL ?>/events/<?= htmlspecialchars($e['cover_image']) ?>" alt="" class="w-full h-36 object-cover"/>
       <?php else: ?>
@@ -192,7 +192,7 @@ echo htmlHead('Events & Webinars');
         <?php else: ?>
           <form method="POST">
             <?= csrfField() ?><input type="hidden" name="action" value="rsvp"><input type="hidden" name="event_id" value="<?= $e['id'] ?>">
-            <button type="submit" class="px-5 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-bold rounded-xl transition-all hover:-translate-y-0.5 shadow">Register →</button>
+            <button type="submit" class="px-5 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-bold rounded-xl transition hover:-translate-y-0.5 shadow">Register →</button>
           </form>
         <?php endif; ?>
       </div>

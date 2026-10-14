@@ -106,14 +106,14 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
           <label class="block text-xs font-semibold text-gray-700 mb-1.5">Subject Line <span class="text-rarl-red">*</span></label>
           <input type="text" name="subject" required value="<?= htmlspecialchars($editing['subject'] ?? '') ?>"
             placeholder="e.g. Robotics & Automation Research Lab (RARL) — June Update & Events"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-gray-700 mb-1.5">Preview Text <span class="text-gray-400 font-normal">(shown in email client)</span></label>
           <input type="text" name="preview_text" value="<?= htmlspecialchars($editing['preview_text'] ?? '') ?>"
             placeholder="Short preview that shows under subject line…"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
 
         <div>
@@ -135,7 +135,7 @@ adminWrap(function() use ($newsletters, $segCounts, $totalNL, $editing) {
           </label>
           <textarea name="body_html" required rows="16"
             placeholder="Write your newsletter here. HTML supported: &lt;h2&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;a href&gt;, &lt;strong&gt;, etc."
-            class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all resize-y min-h-[300px]"><?= htmlspecialchars($editing['body_html'] ?? '') ?></textarea>
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-y min-h-[300px]"><?= htmlspecialchars($editing['body_html'] ?? '') ?></textarea>
           <p class="text-xs text-gray-400 mt-1">Unsubscribe links are added automatically. The recipient's name is available as a greeting.</p>
         </div>
 

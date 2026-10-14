@@ -40,7 +40,7 @@ echo htmlHead('Verify Certificate');
       <div class="flex gap-3">
         <input type="text" name="id" value="<?= htmlspecialchars($uuid) ?>" required
           placeholder="e.g. RARL-2025-0042 or paste UUID from QR code"
-          class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors flex-shrink-0">Verify</button>
       </div>
     </form>

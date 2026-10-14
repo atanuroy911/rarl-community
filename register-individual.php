@@ -16,7 +16,7 @@ if ($keptCv && !file_exists(UPLOADS_PATH . '/cv/' . basename($keptCv))) { $keptC
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (!csrfCheck()) { $errors[] = 'Invalid request. Please try again.'; }
+    if (!csrfCheck()) { $errors[] = 'Your session timed out. Please submit the form again.'; }
 
     // Honeypot
     if (!empty($_POST['website'])) { redirect('register-individual.php'); }
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         'referral_source'   => clean($_POST['referral_source']   ?? ''),
         'research_interests'=> clean($_POST['research_interests']?? ''),
         'google_scholar_url'=> cleanUrl($_POST['google_scholar_url'] ?? ''),
-        'orcid_id'          => clean($_POST['orcid_id']          ?? ''),
+        'orcid_id'          => cleanOrcid($_POST['orcid_id']          ?? ''),
         'linkedin_url'      => cleanUrl($_POST['linkedin_url']   ?? ''),
         'newsletter_opt_in' => isset($_POST['newsletter_opt_in']) ? 1 : 0,
     ];
@@ -162,13 +162,13 @@ echo htmlHead('Individual Researcher Registration');
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name <span class="text-rarl-red">*</span></label>
           <input type="text" name="full_name" value="<?= htmlspecialchars($vals['full_name'] ?? '') ?>" required
             placeholder="Dr. Jane Smith"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email <span class="text-rarl-red">*</span></label>
           <input type="email" name="email" value="<?= htmlspecialchars($vals['email'] ?? '') ?>" required
             placeholder="you@university.edu"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
 
@@ -177,7 +177,7 @@ echo htmlHead('Individual Researcher Registration');
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Password <span class="text-rarl-red">*</span></label>
         <input type="password" name="password" required minlength="8"
           placeholder="Minimum 8 characters"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
       </div>
 
       <!-- Institution + Department -->
@@ -186,13 +186,13 @@ echo htmlHead('Individual Researcher Registration');
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Institution <span class="text-rarl-red">*</span></label>
           <input type="text" name="institution" value="<?= htmlspecialchars($vals['institution'] ?? '') ?>" required
             placeholder="University or Organisation"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Department <span class="text-gray-400 font-normal">(optional)</span></label>
           <input type="text" name="department" value="<?= htmlspecialchars($vals['department'] ?? '') ?>"
             placeholder="e.g. Computer Science"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
 
@@ -200,7 +200,7 @@ echo htmlHead('Individual Researcher Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Current Designation</label>
-          <select name="position" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+          <select name="position" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition">
             <?= positionSelectOptions($vals['position'] ?? '') ?>
           </select>
         </div>
@@ -216,13 +216,13 @@ echo htmlHead('Individual Researcher Registration');
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">City &amp; State/Province <span class="text-rarl-red">*</span></label>
           <input type="text" name="city_state" value="<?= htmlspecialchars($vals['city_state'] ?? '') ?>" required
             placeholder="e.g. Boston, MA"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Primary Lab Name <span class="text-rarl-red">*</span></label>
           <input type="text" name="primary_lab_name" value="<?= htmlspecialchars($vals['primary_lab_name'] ?? '') ?>" required
             placeholder="e.g. Robotics & Automation Lab"
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
 
@@ -230,13 +230,13 @@ echo htmlHead('Individual Researcher Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Years of Research Experience <span class="text-rarl-red">*</span></label>
-          <select name="years_experience" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+          <select name="years_experience" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition">
             <?= optionsSelectHtml(YEARS_OPTIONS, $vals['years_experience'] ?? '') ?>
           </select>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">How did you hear about us? <span class="text-rarl-red">*</span></label>
-          <select name="referral_source" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all">
+          <select name="referral_source" required class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition">
             <?= optionsSelectHtml(REFERRAL_OPTIONS, $vals['referral_source'] ?? '') ?>
           </select>
         </div>
@@ -251,7 +251,7 @@ echo htmlHead('Individual Researcher Registration');
         </label>
         <?php endif; ?>
         <input type="file" name="cv_file" accept=".pdf,.doc,.docx"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <p class="text-[11px] text-gray-400 mt-1">PDF, DOC, or DOCX — max 10MB. Or, skip the upload and paste a link below instead.</p>
       </div>
 
@@ -259,7 +259,7 @@ echo htmlHead('Individual Researcher Registration');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Or, link to your CV / Resume <span class="text-gray-400 font-normal">(e.g. Google Drive)</span></label>
         <input type="url" name="cv_url" value="<?= htmlspecialchars($vals['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <p class="text-[11px] text-gray-400 mt-1">Make sure link sharing is turned on so we can access it. Either the upload above or this link is required.</p>
       </div>
 
@@ -267,7 +267,7 @@ echo htmlHead('Individual Researcher Registration');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Interests <span class="text-rarl-red">*</span></label>
         <textarea name="research_interests" required rows="2" placeholder="e.g. Service Robotics, Computer Vision, Path Planning, Autonomous Systems"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all resize-none"><?= htmlspecialchars($vals['research_interests'] ?? '') ?></textarea>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= htmlspecialchars($vals['research_interests'] ?? '') ?></textarea>
       </div>
 
       <!-- Academic links -->
@@ -278,19 +278,19 @@ echo htmlHead('Individual Researcher Registration');
             <label class="block text-xs text-gray-500 mb-1">Google Scholar URL <span class="text-gray-400 font-normal">(optional)</span></label>
             <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($vals['google_scholar_url'] ?? '') ?>"
               placeholder="scholar.google.com/…"
-              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">ORCID ID <span class="text-gray-400 font-normal">(optional)</span></label>
             <input type="text" name="orcid_id" value="<?= htmlspecialchars($vals['orcid_id'] ?? '') ?>"
               placeholder="0000-0000-0000-0000"
-              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
             <input type="url" name="linkedin_url" value="<?= htmlspecialchars($vals['linkedin_url'] ?? '') ?>"
               placeholder="linkedin.com/in/…"
-              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"/>
+              class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>
         </div>
       </div>
@@ -306,7 +306,7 @@ echo htmlHead('Individual Researcher Registration');
 
       <!-- Submit -->
       <button type="submit"
-        class="w-full py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+        class="w-full py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
         Create My Account →
       </button>
       <p class="text-center text-xs text-gray-400">Already a member? <a href="login.php" class="text-rarl-red hover:underline">Sign in</a></p>

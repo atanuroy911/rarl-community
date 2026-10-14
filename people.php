@@ -27,7 +27,7 @@ echo htmlHead('Our People');
   <?php else: ?>
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     <?php foreach ($people as $p): ?>
-    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg transition-all">
+    <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-7 text-center shadow-sm hover:-translate-y-1 hover:shadow-lg transition">
       <?php if (!empty($p['photo_path'])): ?>
       <img src="<?= UPLOADS_URL ?>/people/<?= htmlspecialchars($p['photo_path']) ?>" alt="<?= htmlspecialchars($p['name']) ?>"
         class="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-2 border-gray-100 dark:border-gray-800"/>

@@ -21,7 +21,7 @@ echo htmlHead('Membership Roster');
     <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Membership Roster</h1>
     <p class="text-white/60 text-base max-w-lg mx-auto mb-6">Official public record of Robotics & Automation Research Lab (RARL) members.</p>
     <?php if ($customRosterPdf): ?>
-    <a href="uploads/roster/<?= urlencode($customRosterPdf) ?>" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm">
+    <a href="uploads/roster/<?= urlencode($customRosterPdf) ?>" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition text-sm">
       <i class="fa-solid fa-file-pdf"></i> Download Membership Roster (PDF)
     </a>
     <?php endif; ?>

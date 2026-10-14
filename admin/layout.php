@@ -12,10 +12,11 @@ function htmlAdminHead(string $title): void {
 <script>tailwind.config={darkMode:"class",theme:{extend:{colors:' . brandTailwindConfigJson() . ',fontFamily:{heading:["' . BRAND_FONT_HEADING . '","' . BRAND_FONT_SANS . '","system-ui","sans-serif"]},boxShadow:{card:"0 1px 2px rgba(16,16,16,.04), 0 1px 12px rgba(16,16,16,.05)"}}}}</script>
 <link href="' . BRAND_FONT_GOOGLE_URL . '" rel="stylesheet"/>
 <link href="' . FONTAWESOME_CDN_URL . '" rel="stylesheet"/>
+' . rarlFormFrictionJs() . '
 <style>
   body{font-family:"' . BRAND_FONT_SANS . '",sans-serif;-webkit-font-smoothing:antialiased;}
   h1,h2,h3,h4{font-family:"' . BRAND_FONT_HEADING . '","' . BRAND_FONT_SANS . '",sans-serif;letter-spacing:-0.01em;}
-  ' . rarlFontSizeCss() . '
+  ' . rarlFontSizeCss() . rarlA11yCss() . '
   a,button,[role="button"]{transition:color .15s ease,background-color .15s ease,border-color .15s ease,opacity .15s ease,box-shadow .15s ease;}
   a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid ' . BRAND_RED . ';outline-offset:2px;border-radius:4px;}
   ::-webkit-scrollbar{width:10px;height:10px;}
@@ -28,7 +29,7 @@ function htmlAdminHead(string $title): void {
   @keyframes rarlSpin{to{transform:rotate(360deg)}}
   .rarl-spinner{display:inline-block;width:1em;height:1em;border:2px solid rgba(255,255,255,.35);border-top-color:currentColor;border-radius:50%;animation:rarlSpin .6s linear infinite;vertical-align:-0.15em;margin-right:.4em;}
   button[disabled] .rarl-btn-label,a[aria-disabled="true"] .rarl-btn-label{opacity:.85}
-  .rarl-nav-group-label{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);padding:.9rem .75rem .35rem;}
+  .rarl-nav-group-label{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.55);padding:.9rem .75rem .35rem;}
   #admin-sidebar a.rarl-nav-active{position:relative}
   #admin-sidebar a.rarl-nav-active::before{content:"";position:absolute;left:-0.75rem;top:0.4rem;bottom:0.4rem;width:3px;border-radius:0 3px 3px 0;background:' . BRAND_RED . ';}
   #admin-sidebar a{position:relative}
@@ -85,7 +86,7 @@ function htmlAdminHead(string $title): void {
   .rarl-table tbody td{padding:.75rem 1rem;border-bottom:1px solid #f1f3f6;vertical-align:middle}
   .rarl-table tbody tr:last-child td{border-bottom:0}
   .rarl-table tbody tr:hover td{background:#fafbfc}
-  .rarl-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .55rem;border-radius:999px;font-size:.68rem;font-weight:700;white-space:nowrap;line-height:1.4}
+  .rarl-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .55rem;border-radius:999px;font-size:.72rem;font-weight:700;white-space:nowrap;line-height:1.4}
   .rarl-badge-green{background:#ecfdf5;color:#047857}.rarl-badge-amber{background:#fffbeb;color:#b45309}.rarl-badge-red{background:#fef2f2;color:#b91c1c}
   .rarl-badge-blue{background:#eff6ff;color:#1d4ed8}.rarl-badge-indigo{background:#eef2ff;color:#4338ca}.rarl-badge-purple{background:#faf5ff;color:#7e22ce}.rarl-badge-gray{background:#f1f5f9;color:#475569}
   .rarl-tabs{display:flex;gap:.25rem;padding:.25rem;background:#eef0f3;border-radius:.85rem;overflow-x:auto}
@@ -110,7 +111,7 @@ function htmlAdminHead(string $title): void {
   .rarl-admin-content input.border-gray-300:focus,.rarl-admin-content select.border-gray-300:focus,.rarl-admin-content textarea.border-gray-300:focus{border-color:' . BRAND_RED . ';box-shadow:0 0 0 3px rgba(204,7,3,.12);outline:none}
   .rarl-admin-content table thead.bg-gray-50{background:#f8fafc}
   .rarl-admin-content table tbody tr:hover{background:#fafbfc}
-  .rarl-kbd{font-family:ui-monospace,monospace;font-size:10px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
+  .rarl-kbd{font-family:ui-monospace,monospace;font-size:11px;padding:1px 6px;border:1px solid rgba(127,127,127,.35);border-bottom-width:2px;border-radius:5px;}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">
 <script>
@@ -387,7 +388,7 @@ function adminSidebar(string $active = ''): void {
             $cls = $key === $active
                 ? 'bg-white/15 text-white font-semibold rarl-nav-active'
                 : 'text-white/55 hover:bg-white/10 hover:text-white hover:translate-x-0.5';
-            echo '<a href="' . $href . '" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs transition-all duration-150 ' . $cls . '">' . $icon . ' ' . $label . '</a>';
+            echo '<a href="' . $href . '" class="flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-xs transition duration-150 ' . $cls . '">' . $icon . ' ' . $label . '</a>';
         }
     }
     echo '</nav>
@@ -434,7 +435,7 @@ function statCard(string $label, int|string $val, string $icon, string $color, s
     [$bg, $tc, $iconBg] = $colors[$color] ?? $colors['gray'];
     $tag = $href ? "a href=\"{$href}\"" : 'div';
     $cls = $href ? 'hover:-translate-y-0.5 hover:shadow-md cursor-pointer' : '';
-    echo "<{$tag} class=\"block bg-white border rounded-2xl p-5 shadow-sm transition-all {$bg} {$cls}\">
+    echo "<{$tag} class=\"block bg-white border rounded-2xl p-5 shadow-sm transition {$bg} {$cls}\">
     <div class=\"flex items-center justify-between mb-2\">
       <div class=\"w-10 h-10 {$iconBg} rounded-xl flex items-center justify-center text-lg\">{$icon}</div>
     </div>

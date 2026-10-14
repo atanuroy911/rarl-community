@@ -1,7 +1,7 @@
 <?php
 /**
  * RARL Admin — Certificate Management
- * Issue (CSV or single) → Generate PDFs → Email → Store in member profiles
+ * Issue (CSV or single or all-members) → Generate PDFs → Email → Store in member profiles
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
@@ -9,6 +9,27 @@ require_once __DIR__ . '/layout.php';
 $pdo    = db();
 $events = $pdo->query("SELECT * FROM events WHERE is_active = 1 ORDER BY event_date DESC")->fetchAll();
 const CERT_PER_PAGE = 50;
+
+// ── JSON endpoint: member count preview for "All Members" tab ──
+if (($_GET['action'] ?? '') === 'member_count_preview') {
+    $eventId    = (int)($_GET['event_id'] ?? 0);
+    $memberType = in_array($_GET['member_type'] ?? '', ['individual','lab'], true) ? $_GET['member_type'] : '';
+    $whereType  = $memberType ? "AND m.type = '" . $memberType . "'" : '';
+    $already    = 0;
+    if ($eventId) {
+        $s = $pdo->prepare("SELECT COUNT(*) FROM certificates c
+            JOIN members m ON m.email = c.recipient_email
+            WHERE c.event_id = ? AND m.status = 'active' AND m.email_verified_at IS NOT NULL AND m.email NOT LIKE '%@rarl.internal' {$whereType}");
+        $s->execute([$eventId]);
+        $already = (int)$s->fetchColumn();
+    }
+    $t = $pdo->prepare("SELECT COUNT(*) FROM members m WHERE m.status = 'active' AND m.email_verified_at IS NOT NULL AND m.email NOT LIKE '%@rarl.internal' {$whereType}");
+    $t->execute();
+    $total = (int)$t->fetchColumn();
+    header('Content-Type: application/json');
+    echo json_encode(['total' => $total, 'already' => $already, 'new' => max(0, $total - $already)]);
+    exit;
+}
 
 // Accepted header spellings, so spreadsheets exported from Google Forms /
 // Excel / registration tools work without renaming columns first.
@@ -165,7 +186,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: certificates.php'); exit;
     }
 
-    if ($action === 'issue_csv' || $action === 'issue_single') {
+    if ($action === 'issue_csv' || $action === 'issue_single' || $action === 'issue_all_members') {
         $eventId    = (int)($_POST['event_id'] ?? 0);
         $sendEmail  = !empty($_POST['send_email']);
         $templateId = (int)($_POST['template_id'] ?? 0) ?: null;
@@ -185,12 +206,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             header('Location: certificates.php'); exit;
         }
 
-        if (empty($_FILES['csv_file']['tmp_name'])) {
-            $_SESSION['flash'] = ['type'=>'error','msg'=>'Choose a CSV file to upload.'];
+        if ($action === 'issue_all_members') {
+            $memberType = in_array($_POST['member_type'] ?? '', ['individual','lab'], true) ? $_POST['member_type'] : '';
+            $whereType  = $memberType ? "AND type = '" . $memberType . "'" : '';
+            $members = $pdo->query("SELECT email,
+                CASE WHEN type='individual' THEN COALESCE(NULLIF(TRIM(full_name),''), email)
+                     ELSE COALESCE(NULLIF(TRIM(lab_name),''), NULLIF(TRIM(pi_name),''), email) END AS display_name
+                FROM members
+                WHERE status = 'active' AND email_verified_at IS NOT NULL AND email NOT LIKE '%@rarl.internal' {$whereType}
+                ORDER BY created_at ASC")->fetchAll();
+            if (!$members) {
+                $_SESSION['flash'] = ['type'=>'error','msg'=>'No active, verified members found to issue certificates to.'];
+                header('Location: certificates.php'); exit;
+            }
+            @set_time_limit(0);
+            $counts = ['issued' => 0, 'duplicate' => 0, 'invalid' => 0];
+            $batch  = $sendEmail ? newEmailBatch() : null;
+            foreach ($members as $m) {
+                $counts[certIssue($pdo, $event, $m['display_name'], $m['email'], $templateId, $sendEmail, $batch)]++;
+            }
+            $typeLabel = $memberType ? " ({$memberType}s only)" : '';
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s) to all registered members{$typeLabel}" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued" . ($counts['invalid'] ? " and {$counts['invalid']} with an invalid email" : '') . "."];
+            header('Location: certificates.php?event=' . $eventId); exit;
+        }
+
+        // Resolve raw CSV text: either from uploaded file or from the paste textarea
+        $csvPaste = ($_POST['csv_mode'] ?? '') === 'paste' ? trim($_POST['csv_paste'] ?? '') : '';
+        if ($csvPaste) {
+            $rawText = preg_replace('/^\xEF\xBB\xBF/', '', $csvPaste);
+            $lines   = array_filter(explode("\n", str_replace("\r\n", "\n", str_replace("\r", "\n", $rawText))), 'strlen');
+            $lines   = array_values($lines);
+        } elseif (!empty($_FILES['csv_file']['tmp_name'])) {
+            $lines = file($_FILES['csv_file']['tmp_name'], FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            if ($lines) $lines[0] = preg_replace('/^\xEF\xBB\xBF/', '', $lines[0]); // Excel UTF-8 BOM
+        } else {
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'Upload a CSV file or paste CSV text.'];
             header('Location: certificates.php'); exit;
         }
-        $lines  = file($_FILES['csv_file']['tmp_name'], FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
-        if ($lines) $lines[0] = preg_replace('/^\xEF\xBB\xBF/', '', $lines[0]); // Excel UTF-8 BOM
         $delim  = $lines && substr_count($lines[0], ';') > substr_count($lines[0], ',') ? ';' : ',';
         $csv    = array_map(fn($l) => str_getcsv($l, $delim), $lines);
         $header = array_map(fn($h) => strtolower(trim((string)$h)), array_shift($csv) ?? []);
@@ -316,9 +368,10 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
       <div class="flex border-b border-gray-100 p-1.5 gap-1" role="tablist">
         <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white" data-tab="csv"><i class="fa-solid fa-file-csv"></i> From CSV</button>
         <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="single"><i class="fa-solid fa-user-plus"></i> Single person</button>
+        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="all_members"><i class="fa-solid fa-users"></i> All members</button>
       </div>
       <form method="POST" enctype="multipart/form-data" class="p-5 space-y-4" id="issue-form">
-        <?= acsrfField() ?><input type="hidden" name="action" value="issue_csv" id="issue-action">
+        <?= acsrfField() ?><input type="hidden" name="action" value="issue_csv" id="issue-action"><input type="hidden" name="csv_mode" value="upload" id="csv-mode-input">
 
         <div>
           <div class="flex items-center justify-between mb-1.5">
@@ -353,16 +406,38 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
           <?php endif; ?>
         </div>
 
-        <div data-pane="csv">
-          <label class="block text-xs font-semibold text-gray-600 mb-1.5">Participant list <span class="text-rarl-red">*</span></label>
-          <label id="csv-drop" class="block border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-5 text-center transition-colors cursor-pointer">
-            <i class="fa-solid fa-file-csv text-2xl text-gray-400"></i>
-            <p class="text-xs text-gray-600 mt-1.5" id="csv-label">Drop a CSV here or <span class="text-rarl-red font-semibold">browse</span></p>
-            <p class="text-[10px] text-gray-400 mt-0.5">Needs <strong>name</strong> and <strong>email</strong> columns · max 500 rows</p>
-            <input type="file" name="csv_file" id="csv-input" accept=".csv,text/csv" class="sr-only" data-no-chip/>
-          </label>
-          <div id="csv-preview" class="hidden mt-3"></div>
-          <a href="data:text/csv;charset=utf-8,name%2Cemail%0ADr.%20Jane%20Smith%2Cjane%40university.edu%0AJohn%20Doe%2Cjohn%40lab.org" download="rarl_cert_template.csv" class="mt-2 inline-block text-[11px] text-gray-500 hover:text-rarl-red"><i class="fa-solid fa-arrow-down"></i> Download sample CSV</a>
+        <div data-pane="csv" class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Participant list <span class="text-rarl-red">*</span></label>
+            <!-- CSV sub-mode toggle -->
+            <div class="flex border border-gray-200 rounded-lg p-0.5 gap-0.5 mb-2 bg-gray-50" role="tablist">
+              <button type="button" id="csv-mode-upload" class="csv-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md bg-white shadow-sm text-gray-800" data-mode="upload"><i class="fa-solid fa-upload"></i> Upload file</button>
+              <button type="button" id="csv-mode-paste"  class="csv-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md text-gray-500 hover:text-gray-700" data-mode="paste"><i class="fa-solid fa-paste"></i> Paste text</button>
+            </div>
+
+            <!-- Upload sub-pane -->
+            <div id="csv-subpane-upload">
+              <label id="csv-drop" class="block border-2 border-dashed border-gray-300 hover:border-rarl-red/50 rounded-xl p-5 text-center transition-colors cursor-pointer">
+                <i class="fa-solid fa-file-csv text-2xl text-gray-400"></i>
+                <p class="text-xs text-gray-600 mt-1.5" id="csv-label">Drop a CSV here or <span class="text-rarl-red font-semibold">browse</span></p>
+                <p class="text-[10px] text-gray-400 mt-0.5">Needs <strong>name</strong> and <strong>email</strong> columns · max 500 rows</p>
+                <input type="file" name="csv_file" id="csv-input" accept=".csv,text/csv" class="sr-only" data-no-chip/>
+              </label>
+              <div id="csv-preview" class="hidden mt-2"></div>
+            </div>
+
+            <!-- Paste sub-pane -->
+            <div id="csv-subpane-paste" class="hidden">
+              <textarea id="csv-paste-area" name="csv_paste" rows="7"
+                placeholder="Paste CSV text here, e.g.:
+name,email
+Dr. Jane Smith,jane@university.edu
+John Doe,john@lab.org"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-xs font-mono bg-white focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-y"></textarea>
+              <div id="csv-paste-preview" class="hidden mt-2"></div>
+            </div>
+          </div>
+          <a href="data:text/csv;charset=utf-8,name%2Cemail%0ADr.%20Jane%20Smith%2Cjane%40university.edu%0AJohn%20Doe%2Cjohn%40lab.org" download="rarl_cert_template.csv" class="inline-block text-[11px] text-gray-500 hover:text-rarl-red"><i class="fa-solid fa-arrow-down"></i> Download sample CSV</a>
         </div>
 
         <div data-pane="single" class="hidden space-y-3">
@@ -370,12 +445,27 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
           <div><label class="block text-xs font-semibold text-gray-600 mb-1.5">Email <span class="text-rarl-red">*</span></label><input type="email" name="email" class="<?= $input ?>" placeholder="name@example.com"/></div>
         </div>
 
+        <div data-pane="all_members" class="hidden space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5">Member type</label>
+            <select name="member_type" id="all-members-type" class="<?= $input ?>">
+              <option value="">All members (individual + labs)</option>
+              <option value="individual">Individual researchers only</option>
+              <option value="lab">Research labs only</option>
+            </select>
+          </div>
+          <div id="all-members-preview" class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
+            <div class="flex items-center gap-1.5 font-semibold"><i class="fa-solid fa-spinner fa-spin"></i> Loading member count…</div>
+          </div>
+          <p class="text-[10px] text-gray-400">Only <strong>active</strong> members with a <strong>verified email</strong> will receive a certificate. Members who already have a certificate for the selected event are skipped automatically.</p>
+        </div>
+
         <label class="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer text-sm">
           <input type="checkbox" name="send_email" value="1" checked class="w-4 h-4 mt-0.5 accent-rarl-red"/>
           <span><span class="font-semibold text-gray-800">Email certificates now</span><span class="block text-xs text-gray-500">Untick to review first, then send from the list.</span></span>
         </label>
 
-        <button type="submit" id="issue-btn" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition-all shadow hover:-translate-y-0.5">
+        <button type="submit" id="issue-btn" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition shadow hover:-translate-y-0.5">
           <i class="fa-solid fa-trophy"></i> <span>Generate & issue</span>
         </button>
       </form>
@@ -446,12 +536,12 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
               <td class="px-3 py-3">
                 <?php if (!$c['pdf_path']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-file-circle-exclamation"></i> No PDF</span>
                 <?php elseif ($c['emailed_at']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full" title="<?= htmlspecialchars($c['emailed_at']) ?>"><i class="fa-solid fa-check"></i> Sent <?= date('d M', strtotime($c['emailed_at'])) ?></span>
-                <?php else: ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><i class="fa-regular fa-clock"></i> Not sent</span><?php endif; ?>
+                <?php else: ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-clock"></i> Not sent</span><?php endif; ?>
               </td>
               <td class="px-4 py-3">
                 <div class="flex items-center justify-end gap-0.5">
                   <?php if ($c['pdf_path']): ?>
-                  <a href="../uploads/certificates/<?= urlencode($c['pdf_path']) ?>" target="_blank" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Open PDF"><i class="fa-regular fa-file-pdf"></i></a>
+                  <a href="../uploads/certificates/<?= urlencode($c['pdf_path']) ?>" target="_blank" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Open PDF"><i class="fa-solid fa-file-pdf"></i></a>
                   <?php endif; ?>
                   <button type="button" class="copy-btn w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" data-copy="<?= htmlspecialchars($verify) ?>" title="Copy verification link"><i class="fa-solid fa-link"></i></button>
                   <?php if ($c['pdf_path']): ?>
@@ -465,7 +555,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
                   </form>
                   <?php endif; ?>
                   <form method="POST" class="inline" data-confirm="Delete the certificate for <?= htmlspecialchars($c['recipient_name']) ?>? Its verification link will stop working."><?= acsrfField() ?><input type="hidden" name="action" value="delete_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= htmlspecialchars($qs) ?>">
-                    <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete"><i class="fa-regular fa-trash-can"></i></button>
+                    <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                   </form>
                 </div>
               </td>
@@ -515,22 +605,82 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
     try { await navigator.clipboard.writeText(b.dataset.copy); rarlToast('Copied to clipboard', 'success'); } catch (e) { prompt('Copy:', b.dataset.copy); }
   }));
 
-  // Tabs: CSV vs single recipient
+  // Tabs: CSV vs single recipient vs all members
   const form = document.getElementById('issue-form'), actionInput = document.getElementById('issue-action');
   const btnLabel = document.querySelector('#issue-btn span');
-  let csvRows = 0;
+  let csvRows = 0, allMembersNew = 0, countXhr = null, csvMode = 'upload';
+  try { csvMode = localStorage.getItem('rarl-csv-mode') || 'upload'; } catch(e) {}
   function setTab(tab) {
     document.querySelectorAll('.issue-tab').forEach(t => t.className = 'issue-tab flex-1 py-2 text-xs font-semibold rounded-lg ' + (t.dataset.tab === tab ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'));
     form.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== tab));
-    actionInput.value = tab === 'csv' ? 'issue_csv' : 'issue_single';
+    if (tab === 'all_members') {
+      actionInput.value = 'issue_all_members';
+      refreshMemberCount();
+    } else {
+      actionInput.value = tab === 'csv' ? 'issue_csv' : 'issue_single';
+    }
     form.querySelector('[name=name]').required = form.querySelector('[name=email]').required = tab === 'single';
-    document.getElementById('csv-input').required = tab === 'csv';
-    btnLabel.textContent = tab === 'single' ? 'Issue certificate' : (csvRows ? 'Issue ' + csvRows + ' certificate' + (csvRows === 1 ? '' : 's') : 'Generate & issue');
+    // csv-input required only when in CSV tab AND in upload mode
+    updateCsvInputRequired();
+    updateBtn(tab);
     try { localStorage.setItem('rarl-cert-tab', tab); } catch (e) {}
   }
+  function updateBtn(tab) {
+    tab = tab || actionInput.value.replace('issue_','');
+    const ib = document.getElementById('issue-btn');
+    if (tab === 'all_members') { ib.dataset.confirm = 'Issue certificates to ' + (allMembersNew || 'all') + ' registered member(s)' + (form.querySelector('[name=send_email]').checked ? ' and email them now' : '') + '?'; ib.dataset.confirmOk = 'Issue'; }
+    else { delete ib.dataset.confirm; delete ib.dataset.confirmOk; }
+    if (tab === 'single') btnLabel.textContent = 'Issue certificate';
+    else if (tab === 'all_members') btnLabel.textContent = allMembersNew > 0 ? 'Issue ' + allMembersNew + ' certificate' + (allMembersNew === 1 ? '' : 's') : 'Issue certificates to all members';
+    else btnLabel.textContent = csvRows ? 'Issue ' + csvRows + ' certificate' + (csvRows === 1 ? '' : 's') : 'Generate & issue';
+  }
   document.querySelectorAll('.issue-tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
+  form.querySelector('[name=send_email]').addEventListener('change', () => updateBtn());
   let saved = 'csv'; try { saved = localStorage.getItem('rarl-cert-tab') || 'csv'; } catch (e) {}
   setTab(saved);
+
+  // All-members: live count preview
+  function refreshMemberCount() {
+    const eventSel = form.querySelector('[name=event_id]');
+    const typeSel  = document.getElementById('all-members-type');
+    const preview  = document.getElementById('all-members-preview');
+    if (!eventSel || !typeSel || !preview) return;
+    const eventId   = eventSel.value;
+    const memberType = typeSel.value;
+    preview.innerHTML = '<div class="flex items-center gap-1.5 font-semibold"><i class="fa-solid fa-spinner fa-spin"></i> Loading member count…</div>';
+    preview.className = 'p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1';
+    if (countXhr) countXhr.abort();
+    const params = new URLSearchParams({action:'member_count_preview', event_id: eventId, member_type: memberType});
+    countXhr = new XMLHttpRequest();
+    countXhr.open('GET', 'certificates.php?' + params);
+    countXhr.onload = function() {
+      try {
+        const d = JSON.parse(this.responseText);
+        allMembersNew = d.new || 0;
+        updateBtn('all_members');
+        if (!eventId) {
+          preview.innerHTML = '<div class="flex items-center gap-1.5"><i class="fa-solid fa-circle-info"></i> Select an event above to see how many members will receive a certificate.</div>';
+          preview.className = 'p-3 rounded-xl bg-gray-50 border border-gray-200 text-xs text-gray-600 space-y-1';
+        } else if (d.total === 0) {
+          preview.innerHTML = '<div class="flex items-center gap-1.5"><i class="fa-solid fa-triangle-exclamation"></i> No active verified members found for the selected type.</div>';
+          preview.className = 'p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-700 space-y-1';
+        } else {
+          const skipped = d.already ? '<span class="text-amber-700"><i class="fa-solid fa-forward"></i> ' + d.already + ' already have a certificate for this event (will be skipped)</span>' : '';
+          preview.innerHTML =
+            '<div class="flex items-center gap-1.5 font-bold text-indigo-900"><i class="fa-solid fa-users"></i> ' + d.total + ' registered member' + (d.total === 1 ? '' : 's') + ' found</div>' +
+            (d.new > 0 ? '<span class="text-green-700 font-semibold"><i class="fa-solid fa-check"></i> ' + d.new + ' will receive a new certificate</span>' : '') +
+            (skipped ? skipped : '') +
+            (d.new === 0 ? '<div class="text-amber-700"><i class="fa-solid fa-circle-exclamation"></i> All members already have a certificate for this event.</div>' : '');
+          preview.className = 'p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1';
+        }
+      } catch(e) {}
+    };
+    countXhr.send();
+  }
+  document.getElementById('all-members-type')?.addEventListener('change', refreshMemberCount);
+  form.querySelector('[name=event_id]')?.addEventListener('change', function() {
+    if (actionInput.value === 'issue_all_members') refreshMemberCount();
+  });
 
   // Template thumbnail
   const sel = document.getElementById('tpl-select'), link = document.getElementById('tpl-preview-link');
@@ -601,8 +751,75 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
   ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('border-rarl-red'); }));
   ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('border-rarl-red'); }));
   drop.addEventListener('drop', e => { if (e.dataTransfer.files[0]) { csvInput.files = e.dataTransfer.files; preview(csvInput.files[0]); } });
+
+  // ── CSV sub-mode toggle: Upload vs Paste ─────────────────────────────────
+  function updateCsvInputRequired() {
+    const isActive = actionInput.value === 'issue_csv';
+    document.getElementById('csv-input').required = isActive && csvMode === 'upload';
+  }
+
+  function setCsvMode(mode) {
+    csvMode = mode;
+    document.getElementById('csv-mode-input').value = mode;
+    const isUpload = mode === 'upload';
+    document.getElementById('csv-subpane-upload').classList.toggle('hidden', !isUpload);
+    document.getElementById('csv-subpane-paste').classList.toggle('hidden', isUpload);
+    document.querySelectorAll('.csv-mode-btn').forEach(b => {
+      const active = b.dataset.mode === mode;
+      b.className = 'csv-mode-btn flex-1 py-1.5 text-[11px] font-semibold rounded-md ' +
+        (active ? 'bg-white shadow-sm text-gray-800' : 'text-gray-500 hover:text-gray-700');
+    });
+    updateCsvInputRequired();
+    try { localStorage.setItem('rarl-csv-mode', mode); } catch(e) {}
+  }
+  document.querySelectorAll('.csv-mode-btn').forEach(b => b.addEventListener('click', () => setCsvMode(b.dataset.mode)));
+  setCsvMode(csvMode);
+
+  // Paste area: live preview (reuses parseCsv + preview rendering)
+  const pasteArea  = document.getElementById('csv-paste-area');
+  const pastePrev  = document.getElementById('csv-paste-preview');
+  let pasteTimer;
+  function previewPaste(text) {
+    if (!text.trim()) { pastePrev.classList.add('hidden'); csvRows = 0; updateBtn('csv'); return; }
+    const rows = parseCsv(text);
+    const header = (rows.shift() || []).map(h => h.trim().toLowerCase());
+    const ni = NAME_H.map(h => header.indexOf(h)).find(i => i >= 0) ?? -1;
+    const ei = EMAIL_H.map(h => header.indexOf(h)).find(i => i >= 0) ?? -1;
+    if (ni < 0 || ei < 0) {
+      csvRows = 0; updateBtn('csv');
+      pastePrev.innerHTML = '<div class="p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-700"><i class="fa-solid fa-triangle-exclamation"></i> Missing ' + (ni < 0 ? '<strong>name</strong>' : '') + (ni < 0 && ei < 0 ? ' and ' : '') + (ei < 0 ? '<strong>email</strong>' : '') + ' column. Found: ' + esc(header.filter(Boolean).join(', ') || 'nothing') + '</div>';
+      pastePrev.classList.remove('hidden'); return;
+    }
+    const seen = new Set(); let bad = 0, dup = 0;
+    const data = rows.slice(0, 500).map(r => {
+      const name = (r[ni] || '').trim(), email = (r[ei] || '').trim().toLowerCase();
+      const ok = name && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      const isDup = ok && seen.has(email); if (ok) seen.add(email);
+      if (!ok) bad++; else if (isDup) dup++;
+      return {name, email, ok: ok && !isDup, why: !ok ? (name ? 'invalid email' : 'missing name') : isDup ? 'duplicate' : ''};
+    });
+    csvRows = data.filter(r => r.ok).length;
+    updateBtn('csv');
+    let html = '<div class="flex flex-wrap gap-1.5 mb-2 text-[11px]"><span class="px-2 py-0.5 rounded-full bg-green-50 text-green-700 font-semibold">' + csvRows + ' ready</span>' +
+      (bad ? '<span class="px-2 py-0.5 rounded-full bg-red-50 text-red-700 font-semibold">' + bad + ' invalid</span>' : '') +
+      (dup ? '<span class="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 font-semibold">' + dup + ' duplicate</span>' : '') +
+      (rows.length > 500 ? '<span class="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">first 500 of ' + rows.length + '</span>' : '') + '</div>';
+    html += '<div class="max-h-48 overflow-y-auto border border-gray-100 rounded-xl"><table class="w-full text-[11px]" data-no-sort><tbody class="divide-y divide-gray-100">' +
+      data.map(r => '<tr class="' + (r.ok ? '' : 'bg-red-50/60') + '"><td class="px-2.5 py-1.5 text-gray-800">' + (esc(r.name) || '<em class="text-gray-400">—</em>') + '</td><td class="px-2.5 py-1.5 text-gray-500 truncate max-w-[140px]">' + esc(r.email) + '</td><td class="px-2 py-1.5 text-right">' + (r.ok ? '<i class="fa-solid fa-check text-green-500"></i>' : '<span class="text-red-600">' + r.why + '</span>') + '</td></tr>').join('') +
+      '</tbody></table></div><p class="text-[10px] text-gray-400 mt-1.5">People who already have a certificate for this event are skipped automatically.</p>';
+    pastePrev.innerHTML = html; pastePrev.classList.remove('hidden');
+  }
+  pasteArea?.addEventListener('input', () => { clearTimeout(pasteTimer); pasteTimer = setTimeout(() => previewPaste(pasteArea.value), 350); });
+
   form.addEventListener('submit', e => {
-    if (actionInput.value === 'issue_csv' && csvInput.files[0] && csvRows === 0) { e.preventDefault(); e.stopImmediatePropagation(); rarlToast('The CSV has no valid rows to issue.', 'error'); }
+    if (actionInput.value !== 'issue_csv') return;
+    if (csvMode === 'upload' && csvInput.files[0] && csvRows === 0) {
+      e.preventDefault(); e.stopImmediatePropagation(); rarlToast('The CSV has no valid rows to issue.', 'error');
+    } else if (csvMode === 'paste' && !pasteArea?.value.trim()) {
+      e.preventDefault(); e.stopImmediatePropagation(); rarlToast('Paste some CSV text first.', 'error');
+    } else if (csvMode === 'paste' && csvRows === 0 && pasteArea?.value.trim()) {
+      e.preventDefault(); e.stopImmediatePropagation(); rarlToast('The pasted CSV has no valid rows to issue.', 'error');
+    }
   }, true);
 })();
 </script>

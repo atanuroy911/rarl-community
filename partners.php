@@ -56,7 +56,7 @@ echo htmlHead('Partner With Us');
     <span class="inline-flex items-center gap-2 bg-red-900/30 border border-red-700/40 text-red-300 text-xs font-bold uppercase tracking-widest px-3 py-1.5 rounded-full mb-4"><i class="fa-solid fa-gift"></i> Free Membership</span>
     <h2 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">RARL membership is free and open to all researchers and labs</h2>
     <p class="text-white/60 text-sm max-w-lg mx-auto mb-6">No tiers, no pricing — just join and get full access to the community, learning resources, and certificates.</p>
-    <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all text-sm">
+    <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
       Join here →
     </a>
   </div>

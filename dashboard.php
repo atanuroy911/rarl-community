@@ -240,7 +240,7 @@ echo htmlHead('My Dashboard');
           <p class="font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($chapter['name']) ?></p>
           <?php if (!empty($chapter['chair_name'])): ?>
           <p class="text-sm text-gray-500 mt-1"><?= htmlspecialchars($chapter['chair_title'] ?? 'Chapter Chair') ?>: <span class="text-gray-800 dark:text-gray-200"><?= htmlspecialchars($chapter['chair_name']) ?></span></p>
-          <?php if (!empty($chapter['chair_email'])): ?><a href="mailto:<?= htmlspecialchars($chapter['chair_email']) ?>" class="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-rarl-red hover:underline"><i class="fa-regular fa-envelope"></i> Contact your chair</a><?php endif; ?>
+          <?php if (!empty($chapter['chair_email'])): ?><a href="mailto:<?= htmlspecialchars($chapter['chair_email']) ?>" class="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-envelope"></i> Contact your chair</a><?php endif; ?>
           <?php endif; ?>
           <a href="chapter.php" class="block mt-3 text-xs font-semibold text-gray-500 hover:text-rarl-red">Chapter page →</a>
           <?php else: ?>

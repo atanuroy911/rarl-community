@@ -11,7 +11,7 @@ $sent  = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfCheck()) {
-        $error = 'Invalid request.';
+        $error = 'Your session timed out. Please submit the form again.';
     } else {
         $email = cleanEmail($_POST['email'] ?? '');
         $stmt = db()->prepare('SELECT id, full_name, lab_name, type FROM members WHERE email = ?');
@@ -67,9 +67,9 @@ echo htmlHead('Forgot Password');
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
           <input type="email" name="email" required autofocus
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all" />
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
-        <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg hover:-translate-y-0.5">
+        <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition text-sm shadow-lg hover:-translate-y-0.5">
           Send reset code
         </button>
       </form>

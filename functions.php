@@ -4,6 +4,17 @@
  */
 require_once __DIR__ . '/config.php';
 
+// Session lifetime: PHP's default (24 min idle, gone on browser close) signed
+// members out mid-task and broke forms with "Invalid request". Members stay
+// signed in for 30 days; admin sessions are capped at 12 hours.
+if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
+    $rarlLife = str_contains($_SERVER['SCRIPT_NAME'] ?? '', '/admin/') ? 43200 : 2592000;
+    ini_set('session.gc_maxlifetime', (string)$rarlLife);
+    session_set_cookie_params(['lifetime' => $rarlLife, 'path' => '/', 'httponly' => true, 'samesite' => 'Lax',
+        'secure' => (($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off')]);
+    unset($rarlLife);
+}
+
 // ── PDO Singleton ──────────────────────────────────────────
 function db(): PDO {
     static $pdo = null;
@@ -46,6 +57,11 @@ function cleanUrl(string $v): string {
     $v = trim($v);
     if ($v && !preg_match('#^https?://#i', $v)) $v = 'https://' . $v;
     return filter_var($v, FILTER_SANITIZE_URL);
+}
+
+// Accepts a bare ORCID iD or a pasted orcid.org link; returns the bare iD.
+function cleanOrcid(string $v): string {
+    return preg_match('/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/i', $v, $m) ? strtoupper($m[1]) : clean($v);
 }
 
 // ── CSRF ───────────────────────────────────────────────────
@@ -380,6 +396,78 @@ function redirect(string $url): never {
 // themselves, one tier up, with !important — same markup, larger type
 // everywhere at once. Shared by both htmlHead() (public) and
 // htmlAdminHead() (admin/layout.php).
+// Accessibility floor shared by the public site and admin (Apple HIG / WCAG AA):
+// muted text on light surfaces lifted to ≥4.5:1, reduced motion honoured,
+// 44px touch targets on coarse pointers, stronger edges under Increase Contrast.
+function rarlA11yCss(): string {
+    $light = ':is(.bg-white,.bg-gray-50,.bg-slate-50,.rarl-card,.rarl-stat,dialog)';
+    return <<<CSS
+    html:not(.dark) {$light} .text-gray-400, html:not(.dark) {$light}.text-gray-400 { color:#6b7280; }   /* 2.54:1 → 4.83:1 */
+    html:not(.dark) {$light} .text-slate-400 { color:#64748b; }                                           /* 2.56:1 → 4.76:1 */
+    html:not(.dark) {$light} .text-amber-600 { color:#b45309; }                                           /* 3.19:1 → 5.02:1 */
+    html:not(.dark) {$light} .text-green-600 { color:#15803d; }                                           /* 3.30:1 → 5.02:1 */
+    html:not(.dark) {$light} .text-green-500 { color:#16a34a; }
+    .rarl-empty { color:#64748b; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+      .reveal { opacity:1 !important; transform:none !important; }
+      [class*="hover:-translate-y"]:hover, a.rarl-stat:hover { transform:none !important; }
+    }
+    @media (pointer: coarse) {
+      .rarl-icon-btn, button.w-8.h-8, a.w-8.h-8, button.w-7.h-7, a.w-7.h-7 { min-width:44px; min-height:44px; }
+      .rarl-btn-sm { height:2.5rem; }
+    }
+    @media (prefers-contrast: more) {
+      .rarl-card, .rarl-stat, .rarl-input, .rarl-btn, .border-gray-100, .border-gray-200 { border-color:#475569 !important; }
+      .text-gray-500, .text-gray-400, .text-slate-500 { color:#1f2937 !important; }
+    }
+    @media (forced-colors: active) { a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline:2px solid CanvasText; } }
+    CSS;
+}
+
+// Site-wide form friction fixes (public + admin heads):
+// - type=url accepts "scholar.google.com/…" — https:// is added before the
+//   browser's validity check instead of blocking the submit (cleanUrl does the same server-side)
+// - pasted ORCID URLs are reduced to the bare iD
+// - browser autofill tokens are filled in by field name where a field has none
+function rarlFormFrictionJs(): string {
+    return <<<'HTML'
+<script>
+(function() {
+  const AC = {full_name:'name', name:'name', email:'email', phone:'tel', institution:'organization', organization:'organization',
+    position:'organization-title', country:'country-name', city_state:'address-level2', password:'new-password',
+    password_confirm:'new-password', new_password:'new-password', new_password_confirm:'new-password', current_password:'current-password',
+    linkedin_url:'url', website_url:'url', google_scholar_url:'url'};
+  const fixUrl = el => { const v = el.value.trim(); if (v && !/^[a-z][a-z0-9+.-]*:/i.test(v)) el.value = 'https://' + v.replace(/^\/+/, ''); };
+  const fixOrcid = el => { const m = el.value.match(/(\d{4}-\d{4}-\d{4}-\d{3}[\dX])/i); if (m) el.value = m[1].toUpperCase(); };
+  function prep(root) {
+    root.querySelectorAll('input[name],select[name],textarea[name]').forEach(el => {
+      if (!el.hasAttribute('autocomplete') && AC[el.name] && el.type !== 'hidden') el.setAttribute('autocomplete', AC[el.name]);
+    });
+    // Icon-only buttons/links get an accessible name from their tooltip.
+    root.querySelectorAll('button[title]:not([aria-label]),a[title]:not([aria-label])').forEach(el => {
+      if (!el.textContent.trim()) el.setAttribute('aria-label', el.getAttribute('title'));
+    });
+  }
+  document.addEventListener('DOMContentLoaded', () => prep(document));
+  document.addEventListener('change', e => {
+    const el = e.target;
+    if (el.type === 'url') fixUrl(el);
+    if (el.name === 'orcid_id') fixOrcid(el);
+  }, true);
+  // Runs before the browser validates, so a scheme-less URL never blocks submit.
+  document.addEventListener('click', e => {
+    const b = e.target.closest && e.target.closest('button[type=submit],button:not([type]),input[type=submit]');
+    if (b && b.form) b.form.querySelectorAll('input[type=url]').forEach(fixUrl);
+  }, true);
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && e.target.form) e.target.form.querySelectorAll('input[type=url]').forEach(fixUrl);
+  }, true);
+})();
+</script>
+HTML;
+}
+
 function rarlFontSizeCss(): string {
     return <<<CSS
     html { font-size: 17px; }
@@ -403,7 +491,8 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     $colorsJson = brandTailwindConfigJson();
     $fontUrl    = BRAND_FONT_GOOGLE_URL;
     $faUrl      = FONTAWESOME_CDN_URL;
-    $sizeCss    = rarlFontSizeCss();
+    $sizeCss    = rarlFontSizeCss() . rarlA11yCss();
+    $formJs     = rarlFormFrictionJs();
     $brandRedHex = BRAND_RED;
     return <<<HTML
 <!DOCTYPE html>
@@ -432,6 +521,7 @@ function htmlHead(string $title, bool $isAdmin = false): string {
   <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="{$fontUrl}" rel="stylesheet"/>
   <link href="{$faUrl}" rel="stylesheet"/>
+  {$formJs}
   <style>
     body { font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility; }
     h1,h2,h3,h4 { font-family:'Sora','Inter',system-ui,sans-serif; letter-spacing:-0.01em; }
@@ -445,7 +535,7 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     ::-webkit-scrollbar-track { background:transparent; }
     ::-webkit-scrollbar-thumb { background:rgba(120,120,120,.35); border-radius:999px; }
     ::-webkit-scrollbar-thumb:hover { background:rgba(120,120,120,.55); }
-    .reveal { opacity:0; transform:translateY(20px); transition:opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1); }
+    .reveal { opacity:0; transform:translateY(20px); transition:opacity .3s cubic-bezier(0,0,.2,1),transform .3s cubic-bezier(0,0,.2,1); }
     .reveal.visible { opacity:1; transform:none; }
     select { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%235a6478' d='M6 8L0 0h12z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 1rem center; padding-right:2.5rem!important; -webkit-appearance:none; }
     /* Markdown-rendered content (community posts/comments) */
@@ -599,7 +689,7 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
     return '
         <div class="flex items-center gap-2">
           <select name="country" id="' . $selectId . '"' . $reqAttr . '
-            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition-all"
+            class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"
             onchange="var o=this.options[this.selectedIndex],f=document.getElementById(\'' . $flagId . '\');if(o.dataset.code){f.src=\'https://flags.restcountries.com/v5/w320/\'+o.dataset.code+\'.png\';f.style.display=\'\';}else{f.style.display=\'none\';}">
             ' . countrySelectOptions($selected) . '
           </select>
@@ -1845,7 +1935,7 @@ function membershipPausedHtml(): string {
         <div class="text-5xl mb-5"><i class="fa-solid fa-power-off text-white/40"></i></div>
         <h1 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Membership Paused</h1>
         <p class="text-white/55 text-sm mb-8">' . htmlspecialchars($msg) . '</p>
-        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm">← Back to Home</a>
+        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition text-sm">← Back to Home</a>
       </div>
     </section>';
 }
@@ -1865,7 +1955,7 @@ function closedRegistrationHtml(): string {
         <div class="text-5xl mb-5"><i class="fa-solid fa-lock text-white/40"></i></div>
         <h1 class="font-heading font-black text-2xl md:text-3xl text-white mb-3">Registrations Are Closed</h1>
         <p class="text-white/55 text-sm mb-8">' . htmlspecialchars($msg) . '</p>
-        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition-all text-sm">← Back to Home</a>
+        <a href="index.php" class="inline-flex items-center gap-2 px-7 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition text-sm">← Back to Home</a>
       </div>
     </section>';
 }
@@ -2113,19 +2203,19 @@ function registrationFormEnhancerJs(string $formId, string $draftKey, string $bu
   // Password: show toggle + strength
   form.querySelectorAll('input[type=password]').forEach(pw => {
     const wrap = document.createElement('div'); wrap.className = 'relative'; pw.parentNode.insertBefore(wrap, pw); wrap.appendChild(pw); pw.classList.add('pr-11');
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700'; b.innerHTML = '<i class="fa-regular fa-eye"></i>'; b.setAttribute('aria-label', 'Show password');
-    b.onclick = () => { const s = pw.type === 'password'; pw.type = s ? 'text' : 'password'; b.innerHTML = '<i class="fa-regular ' + (s ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; };
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg text-gray-400 hover:text-gray-700'; b.innerHTML = '<i class="fa-solid fa-eye"></i>'; b.setAttribute('aria-label', 'Show password');
+    b.onclick = () => { const s = pw.type === 'password'; pw.type = s ? 'text' : 'password'; b.innerHTML = '<i class="fa-solid ' + (s ? 'fa-eye-slash' : 'fa-eye') + '"></i>'; b.setAttribute('aria-label', s ? 'Hide password' : 'Show password'); };
     wrap.appendChild(b);
     if (pw.name !== 'password') return;
     const meter = document.createElement('div'); meter.className = 'mt-2 flex items-center gap-2';
-    meter.innerHTML = '<div class="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"><div class="h-full w-0 transition-all"></div></div><span class="text-[11px] text-gray-400 w-20 text-right"></span>';
+    meter.innerHTML = '<div class="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden"><div class="h-full w-0 transition-[width]"></div></div><span class="text-[11px] text-gray-400 w-20 text-right"></span>';
     wrap.after(meter);
     pw.addEventListener('input', () => {
       const v = pw.value; let s = 0;
       if (v.length >= 8) s++; if (v.length >= 12) s++; if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++; if (/\d/.test(v)) s++; if (/[^\w\s]/.test(v)) s++;
       const lv = !v ? 0 : v.length < 8 ? 1 : Math.min(4, Math.max(2, s));
       const bar = meter.querySelector('.h-full'); bar.style.width = lv * 25 + '%';
-      bar.className = 'h-full transition-all ' + ['', 'bg-red-500', 'bg-amber-500', 'bg-lime-500', 'bg-green-600'][lv];
+      bar.className = 'h-full transition-[width] ' + ['', 'bg-red-500', 'bg-amber-500', 'bg-lime-500', 'bg-green-600'][lv];
       meter.querySelector('span').textContent = ['', 'Too short', 'Okay', 'Good', 'Strong'][lv];
     });
   });

@@ -206,9 +206,9 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
         <button type="button" class="rarl-btn rarl-btn-sm" data-edit-event="<?= (int)$e['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</button>
         <div class="ml-auto flex">
           <button type="button" class="rarl-icon-btn" data-copy="<?= htmlspecialchars(SITE_URL . '/events.php') ?>" title="Copy public events link"><i class="fa-solid fa-link"></i></button>
-          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="duplicate_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><button class="rarl-icon-btn" title="Duplicate" data-no-loading><i class="fa-regular fa-copy"></i></button></form>
-          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn" title="<?= $e['is_active'] ? 'Hide from members' : 'Publish' ?>" data-no-loading><i class="fa-regular <?= $e['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
-          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($e['title']) ?>”? This removes its <?= (int)$e['reg_count'] ?> registration(s) too. Issued certificates stay valid."><?= acsrfField() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-regular fa-trash-can"></i></button></form>
+          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="duplicate_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><button class="rarl-icon-btn" title="Duplicate" data-no-loading><i class="fa-solid fa-copy"></i></button></form>
+          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn" title="<?= $e['is_active'] ? 'Hide from members' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $e['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
+          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($e['title']) ?>”? This removes its <?= (int)$e['reg_count'] ?> registration(s) too. Issued certificates stay valid."><?= acsrfField() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
         </div>
       </div>
     </div>
@@ -228,7 +228,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
     <div class="flex-1 overflow-y-auto p-5 space-y-4">
       <label id="ev-cover-drop" class="relative block h-40 rounded-xl border-2 border-dashed border-gray-300 hover:border-rarl-red/60 bg-gray-50 overflow-hidden cursor-pointer">
         <img id="ev-cover-preview" class="hidden absolute inset-0 w-full h-full object-cover" alt=""/>
-        <span id="ev-cover-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center text-gray-500 text-xs"><i class="fa-regular fa-image text-2xl mb-1"></i>Cover image (optional)<span class="text-[10px] text-gray-400">16:9 · jpg/png/webp · max 3 MB</span></span>
+        <span id="ev-cover-empty" class="absolute inset-0 flex flex-col items-center justify-center text-center text-gray-500 text-xs"><i class="fa-solid fa-image text-2xl mb-1"></i>Cover image (optional)<span class="text-[10px] text-gray-400">16:9 · jpg/png/webp · max 3 MB</span></span>
         <input type="file" name="ev_cover" accept=".jpg,.jpeg,.png,.webp" class="sr-only" data-no-chip/>
       </label>
       <label class="hidden items-center gap-2 text-xs text-gray-600" id="ev-remove-cover"><input type="checkbox" name="remove_cover" value="1" class="accent-rarl-red"/> Remove current cover</label>

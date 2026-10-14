@@ -17,7 +17,7 @@ $errors = [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrfCheck()) {
-        $errors[] = 'Invalid request. Please try again.';
+        $errors[] = 'Your session timed out. Please submit the form again.';
     } else {
         $institution = clean($_POST['institution'] ?? '');
         $country     = clean($_POST['country'] ?? '');
@@ -109,7 +109,7 @@ echo htmlHead('Reverify ID Card');
         <input type="file" name="avatar" accept=".jpg,.jpeg,.png,.webp" class="w-full text-sm"/>
       </div>
 
-      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition-all text-sm shadow-lg hover:-translate-y-0.5">
+      <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl transition text-sm shadow-lg hover:-translate-y-0.5">
         Reverify &amp; Renew ID Card
       </button>
     </form>
