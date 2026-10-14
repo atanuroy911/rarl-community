@@ -250,7 +250,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             }
             $typeLabel = $pickIds ? '' : ($memberType ? " ({$memberType}s only)" : '');
             $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s) to " . ($pickIds ? 'the selected members' : 'all registered members') . "{$typeLabel}" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued" . ($counts['invalid'] ? " and {$counts['invalid']} with an invalid email" : '') . "."];
-            header('Location: certificates.php?event=' . $eventId); exit;
+            header('Location: certificates.php?view=history&event=' . $eventId); exit;
         }
 
         // Resolve raw CSV text: either from uploaded file or from the paste textarea
@@ -283,7 +283,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         }
         $extra = count($csv) > 500 ? ' Only the first 500 rows were processed.' : '';
         $_SESSION['flash'] = ['type'=>'success','msg'=>"Issued {$counts['issued']} certificate(s)" . ($sendEmail ? ' — emails are sending in the background' : '') . ". Skipped {$counts['duplicate']} already issued and {$counts['invalid']} invalid row(s).{$extra}"];
-        header('Location: certificates.php?event=' . $eventId); exit;
+        header('Location: certificates.php?view=history&event=' . $eventId); exit;
     }
 
     if ($action === 'email_cert') {
@@ -353,49 +353,40 @@ $templates    = $pdo->query("SELECT * FROM certificate_templates WHERE type = 'c
 $stats = $pdo->query("SELECT COUNT(*) total, SUM(emailed_at IS NOT NULL) emailed, SUM(emailed_at IS NULL) unsent,
     SUM(issued_at >= DATE_FORMAT(CURDATE(), '%Y-%m-01')) month FROM certificates")->fetch();
 $lastEvent = (int)($_SESSION['cert_last_event'] ?? 0);
-$qs = http_build_query(array_filter(['q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus, 'page' => $page > 1 ? $page : null]));
+// Two jobs, two views: Issue (default) and History. Any filter means History.
+$view = (($_GET['view'] ?? '') === 'history' || $filterEvent || $filterStatus || $search || isset($_GET['page'])) ? 'history' : 'issue';
+$recent = $pdo->query("SELECT e.id, e.title, COUNT(*) n, SUM(c.emailed_at IS NULL) unsent, MAX(c.issued_at) last_at
+    FROM certificates c JOIN events e ON e.id = c.event_id GROUP BY e.id, e.title ORDER BY last_at DESC LIMIT 5")->fetchAll();
+$qs = http_build_query(array_filter(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus, 'page' => $page > 1 ? $page : null]));
 
-adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $filterStatus, $search, $stats, $total, $page, $pages, $lastEvent, $qs) {
+adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $filterStatus, $search, $stats, $total, $page, $pages, $lastEvent, $qs, $view, $recent) {
     adminFlash();
     $input = 'w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red';
-    $pageUrl = fn(array $over) => 'certificates.php?' . http_build_query(array_filter(array_merge(['q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus], $over)));
+    $pageUrl = fn(array $over) => 'certificates.php?' . http_build_query(array_filter(array_merge(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus], $over)));
     $defaultTpl = null; foreach ($templates as $t) if ($t['is_default']) $defaultTpl = $t;
 ?>
 
-<div class="flex flex-wrap items-end justify-between gap-3 mb-6">
-  <div><h1 class="text-2xl font-black text-gray-900">Certificates</h1><p class="text-gray-500 text-sm mt-0.5">Issue, manage, and distribute event certificates</p></div>
+<div class="flex flex-wrap items-end justify-between gap-3 mb-5">
+  <div><h1 class="text-2xl font-black text-gray-900">Certificates</h1><p class="text-gray-500 text-sm mt-0.5"><?= $view === 'issue' ? 'Choose an event and who gets a certificate, then issue.' : 'Everyone you have issued a certificate to, and whether it was emailed.' ?></p></div>
   <div class="flex gap-2">
-    <a href="templates.php" class="px-4 py-2 bg-white border border-gray-200 hover:border-gray-400 text-sm font-semibold rounded-xl"><i class="fa-solid fa-pen-ruler"></i> Design templates</a>
-    <a href="<?= htmlspecialchars($pageUrl(['export' => 'csv'])) ?>" class="px-4 py-2 bg-white border border-gray-200 hover:border-gray-400 text-sm font-semibold rounded-xl"><i class="fa-solid fa-file-csv"></i> Export</a>
+    <a href="templates.php" class="rarl-btn"><i class="fa-solid fa-pen-ruler"></i> Design templates</a>
+    <?php if ($view === 'history'): ?><a href="<?= htmlspecialchars($pageUrl(['export' => 'csv'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-csv"></i> Export</a><?php endif; ?>
   </div>
 </div>
 
-<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-  <?php foreach ([
-      ['Total issued', (int)$stats['total'], 'fa-trophy', 'text-gray-900', ''],
-      ['Emailed', (int)$stats['emailed'], 'fa-envelope-circle-check', 'text-green-600', 'emailed'],
-      ['Not sent yet', (int)$stats['unsent'], 'fa-clock', 'text-amber-600', 'unsent'],
-      ['This month', (int)$stats['month'], 'fa-calendar-check', 'text-blue-600', ''],
-  ] as [$label, $val, $icon, $tone, $st]): ?>
-  <a href="<?= $st ? htmlspecialchars($pageUrl(['status' => $st, 'page' => null])) : 'certificates.php' ?>" class="bg-white border <?= $st && $filterStatus === $st ? 'border-rarl-red ring-2 ring-rarl-red/15' : 'border-gray-200' ?> rounded-2xl p-4 shadow-sm hover:shadow-md transition-shadow">
-    <div class="flex items-center justify-between"><span class="text-xs font-semibold text-gray-500"><?= $label ?></span><i class="fa-solid <?= $icon ?> <?= $tone ?> opacity-70"></i></div>
-    <div class="font-heading font-black text-2xl mt-1 <?= $tone ?>"><?= number_format($val) ?></div>
-  </a>
-  <?php endforeach; ?>
-</div>
+<nav class="rarl-tabs mb-6 w-fit" aria-label="Certificates">
+  <a href="certificates.php" class="<?= $view === 'issue' ? 'on' : '' ?>" <?= $view === 'issue' ? 'aria-current="page"' : '' ?>><i class="fa-solid fa-paper-plane"></i> Issue</a>
+  <a href="certificates.php?view=history" class="<?= $view === 'history' ? 'on' : '' ?>" <?= $view === 'history' ? 'aria-current="page"' : '' ?>><i class="fa-solid fa-clock-rotate-left"></i> History <span class="count <?= (int)$stats['unsent'] ? 'hot' : '' ?>" title="<?= (int)$stats['unsent'] ?> not emailed yet"><?= number_format((int)$stats['total']) ?></span></a>
+</nav>
 
-<div class="grid grid-cols-1 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)] gap-6">
-  <!-- ── Issue panel ── -->
-  <div>
-    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm xl:sticky xl:top-4">
-      <div class="flex border-b border-gray-100 p-1.5 gap-1" role="tablist">
-        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg bg-gray-900 text-white" data-tab="csv"><i class="fa-solid fa-file-csv"></i> From CSV</button>
-        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="single"><i class="fa-solid fa-user-plus"></i> Single person</button>
-        <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg text-gray-600 hover:bg-gray-100" data-tab="all_members"><i class="fa-solid fa-users"></i> Members</button>
-      </div>
-      <form method="POST" enctype="multipart/form-data" class="p-5 space-y-4" id="issue-form">
+<!-- ══ ISSUE VIEW ══ -->
+<section id="view-issue" class="<?= $view === 'issue' ? '' : 'hidden' ?> grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start max-w-6xl">
+  <div class="bg-white border border-gray-200 rounded-2xl shadow-sm">
+      <form method="POST" enctype="multipart/form-data" class="p-6 space-y-4" id="issue-form">
         <?= acsrfField() ?><input type="hidden" name="action" value="issue_csv" id="issue-action"><input type="hidden" name="csv_mode" value="upload" id="csv-mode-input">
 
+        <h2 class="cert-step"><span>1</span> Event &amp; design</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <div class="flex items-center justify-between mb-1.5">
             <label class="text-xs font-semibold text-gray-600">Event <span class="text-rarl-red">*</span></label>
@@ -427,6 +418,14 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
           <?php else: ?>
           <div class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-800">No custom design yet — a plain built-in certificate will be used. <a href="templates.php#new" class="font-semibold underline">Design one</a></div>
           <?php endif; ?>
+        </div>
+        </div>
+
+        <h2 class="cert-step pt-2"><span>2</span> Who gets one</h2>
+        <div class="flex p-1 gap-1 bg-gray-100 rounded-xl" role="tablist" aria-label="Recipients">
+          <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg" data-tab="all_members"><i class="fa-solid fa-users"></i> Registered members</button>
+          <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg" data-tab="csv"><i class="fa-solid fa-file-csv"></i> CSV list</button>
+          <button type="button" class="issue-tab flex-1 py-2 text-xs font-semibold rounded-lg" data-tab="single"><i class="fa-solid fa-user-plus"></i> One person</button>
         </div>
 
         <div data-pane="csv" class="space-y-3">
@@ -493,29 +492,69 @@ John Doe,john@lab.org"
               <option value="lab">Research labs only</option>
             </select>
           </div>
-          </div>
           <div id="all-members-preview" class="p-3 rounded-xl bg-indigo-50 border border-indigo-200 text-xs text-indigo-800 space-y-1">
             <div class="flex items-center gap-1.5 font-semibold"><i class="fa-solid fa-spinner fa-spin"></i> Loading member count…</div>
           </div>
           <p class="text-[10px] text-gray-400">Only <strong>active</strong> members with a <strong>verified email</strong> will receive a certificate. Members who already have a certificate for the selected event are skipped automatically.</p>
         </div>
 
-        <label class="flex items-start gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl cursor-pointer text-sm">
+        <h2 class="cert-step pt-2"><span>3</span> Send</h2>
+        <label class="flex items-start gap-2.5 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer text-sm">
           <input type="checkbox" name="send_email" value="1" checked class="w-4 h-4 mt-0.5 accent-rarl-red"/>
           <span><span class="font-semibold text-gray-800">Email certificates now</span><span class="block text-xs text-gray-500">Untick to review first, then send from the list.</span></span>
         </label>
 
-        <button type="submit" id="issue-btn" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition shadow hover:-translate-y-0.5">
+        <button type="submit" id="issue-btn" class="w-full min-h-[48px] py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition shadow">
           <i class="fa-solid fa-trophy"></i> <span>Generate & issue</span>
         </button>
       </form>
-    </div>
   </div>
 
-  <!-- ── Certificates table ── -->
+  <aside class="space-y-3 lg:sticky lg:top-4">
+    <div class="bg-white border border-gray-200 rounded-2xl shadow-sm">
+      <div class="flex items-center justify-between px-4 pt-4 pb-2">
+        <h2 class="text-sm font-bold text-gray-900">Recently issued</h2>
+        <a href="certificates.php?view=history" class="text-xs font-semibold text-rarl-red hover:underline">All history</a>
+      </div>
+      <?php if (!$recent): ?>
+      <p class="px-4 pb-4 text-xs text-gray-500">Nothing issued yet. Batches you issue show up here.</p>
+      <?php else: ?>
+      <ul class="divide-y divide-gray-100">
+        <?php foreach ($recent as $b): ?>
+        <li><a href="certificates.php?view=history&amp;event=<?= (int)$b['id'] ?>" class="flex items-center gap-3 px-4 py-3 min-h-[44px] hover:bg-gray-50 rounded-xl">
+          <span class="min-w-0 flex-1">
+            <span class="block text-xs font-semibold text-gray-900 truncate"><?= htmlspecialchars($b['title']) ?></span>
+            <span class="block text-[11px] text-gray-500"><?= (int)$b['n'] ?> issued · <?= date('d M', strtotime($b['last_at'])) ?></span>
+          </span>
+          <?php if ((int)$b['unsent']): ?><span class="rarl-badge rarl-badge-amber"><i class="fa-solid fa-clock"></i> <?= (int)$b['unsent'] ?> not sent</span>
+          <?php else: ?><span class="rarl-badge rarl-badge-green"><i class="fa-solid fa-check"></i> Sent</span><?php endif; ?>
+        </a></li>
+        <?php endforeach; ?>
+      </ul>
+      <?php endif; ?>
+    </div>
+    <p class="px-1 text-[11px] text-gray-500">People who already have a certificate for the chosen event are always skipped, so re-running a batch is safe.</p>
+  </aside>
+</section>
+
+<!-- ══ HISTORY VIEW ══ -->
+<section id="view-history" class="<?= $view === 'history' ? '' : 'hidden' ?>">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+  <?php foreach ([
+      ['Total issued', (int)$stats['total'], 'fa-trophy', 'text-gray-900', ''],
+      ['Emailed', (int)$stats['emailed'], 'fa-envelope-circle-check', 'text-green-600', 'emailed'],
+      ['Not sent yet', (int)$stats['unsent'], 'fa-clock', 'text-amber-600', 'unsent'],
+      ['This month', (int)$stats['month'], 'fa-calendar-check', 'text-gray-900', ''],
+  ] as [$label, $val, $icon, $tone, $st]): ?>
+  <a href="<?= htmlspecialchars($st ? $pageUrl(['status' => $st, 'page' => null]) : 'certificates.php?view=history') ?>" class="rarl-stat <?= $st && $filterStatus === $st ? 'is-active' : '' ?>">
+    <span class="rarl-stat-label"><i class="fa-solid <?= $icon ?> <?= $tone ?>"></i> <?= $label ?></span>
+    <span class="rarl-stat-value <?= $tone ?>"><?= number_format($val) ?></span>
+  </a>
+  <?php endforeach; ?>
+</div>
   <div class="min-w-0">
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <form method="GET" class="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center">
+      <form method="GET" class="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center"><input type="hidden" name="view" value="history">
         <div class="relative flex-1 min-w-[180px]">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
           <input type="search" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, email, certificate no…  ( / )" class="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
@@ -530,7 +569,7 @@ John Doe,john@lab.org"
           <?php endforeach; ?>
         </select>
         <button type="submit" class="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg">Search</button>
-        <?php if ($search || $filterEvent || $filterStatus): ?><a href="certificates.php" class="px-2 py-2 text-xs text-gray-500 hover:text-rarl-red">Clear</a><?php endif; ?>
+        <?php if ($search || $filterEvent || $filterStatus): ?><a href="certificates.php?view=history" class="px-2 py-2 text-xs text-gray-500 hover:text-rarl-red">Clear</a><?php endif; ?>
       </form>
 
       <?= bulkFormOpen('', ['return_qs' => $qs]) ?>
@@ -556,7 +595,7 @@ John Doe,john@lab.org"
             <?php if (empty($certificates)): ?>
             <tr><td colspan="6" class="py-14 text-center">
               <div class="w-12 h-12 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-trophy"></i></div>
-              <p class="text-sm text-gray-500"><?= $search || $filterEvent || $filterStatus ? 'No certificates match these filters.' : 'No certificates yet — issue your first batch on the left.' ?></p>
+              <p class="text-sm text-gray-500"><?= $search || $filterEvent || $filterStatus ? 'No certificates match these filters.' : 'No certificates yet. <a href="certificates.php" class="font-semibold text-rarl-red hover:underline">Issue your first batch</a>' ?></p>
             </td></tr>
             <?php endif; ?>
             <?php foreach ($certificates as $c): $verify = CERT_VERIFY_URL . '?id=' . $c['uuid']; $isMembership = ($c['cert_type'] ?? 'event') === 'membership'; ?>
@@ -616,7 +655,7 @@ John Doe,john@lab.org"
       </div>
     </div>
   </div>
-</div>
+</section>
 
 <dialog id="new-event" class="rarl-dialog w-full max-w-md">
   <form method="POST" class="p-6 space-y-3">
@@ -637,6 +676,11 @@ John Doe,john@lab.org"
   </form>
 </dialog>
 
+<style>
+  .cert-step{display:flex;align-items:center;gap:.6rem;font-size:.95rem;font-weight:700;color:#0f172a}
+  .cert-step>span{display:inline-flex;align-items:center;justify-content:center;width:1.6rem;height:1.6rem;border-radius:999px;background:#0f172a;color:#fff;font-size:.75rem}
+  .issue-tab{color:#475569}.issue-tab.on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.12)}
+</style>
 <?= bulkBarScript() ?>
 <script>
 (function() {
@@ -652,7 +696,7 @@ John Doe,john@lab.org"
   let csvRows = 0, allMembersNew = 0, countXhr = null, csvMode = 'upload';
   try { csvMode = localStorage.getItem('rarl-csv-mode') || 'upload'; } catch(e) {}
   function setTab(tab) {
-    document.querySelectorAll('.issue-tab').forEach(t => t.className = 'issue-tab flex-1 py-2 text-xs font-semibold rounded-lg ' + (t.dataset.tab === tab ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'));
+    document.querySelectorAll('.issue-tab').forEach(t => { t.classList.toggle('on', t.dataset.tab === tab); t.setAttribute('aria-selected', t.dataset.tab === tab); });
     form.querySelectorAll('[data-pane]').forEach(p => p.classList.toggle('hidden', p.dataset.pane !== tab));
     if (tab === 'all_members') {
       actionInput.value = 'issue_all_members';
@@ -678,7 +722,7 @@ John Doe,john@lab.org"
   }
   document.querySelectorAll('.issue-tab').forEach(t => t.addEventListener('click', () => setTab(t.dataset.tab)));
   form.querySelector('[name=send_email]').addEventListener('change', () => updateBtn());
-  let saved = 'csv'; try { saved = localStorage.getItem('rarl-cert-tab') || 'csv'; } catch (e) {}
+  let saved = 'all_members'; try { saved = localStorage.getItem('rarl-cert-tab') || 'all_members'; } catch (e) {}
   setTab(saved);
 
   // All-members: live count preview
