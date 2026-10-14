@@ -28,5 +28,5 @@ function adminCsrfOk(): bool {
     return hash_equals($_SESSION['acsrf'] ?? '', $_POST['acsrf'] ?? '');
 }
 function acsrfField(): string {
-    return '<input type="hidden" name="acsrf" value="' . htmlspecialchars($GLOBALS['acsrf']) . '">';
+    return '<input type="hidden" name="acsrf" value="' . ex($GLOBALS['acsrf']) . '">';
 }

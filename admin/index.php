@@ -86,9 +86,9 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
       <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php foreach ($todos as [$href, $icon, $tone, $title, $sub, $cta]): ?>
-        <a href="<?= htmlspecialchars($href) ?>" class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 group">
+        <a href="<?= ex($href) ?>" class="flex items-center gap-4 px-5 py-3.5 hover:bg-gray-50 group">
           <span class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 <?= $tones[$tone] ?>"><i class="fa-solid <?= $icon ?>"></i></span>
-          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($title) ?></span><span class="block text-xs text-gray-500 truncate"><?= htmlspecialchars($sub) ?></span></span>
+          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= ex($title) ?></span><span class="block text-xs text-gray-500 truncate"><?= ex($sub) ?></span></span>
           <span class="rarl-btn rarl-btn-sm group-hover:border-gray-400"><?= $cta ?> <i class="fa-solid fa-arrow-right text-[10px]"></i></span>
         </a>
         <?php endforeach; ?>
@@ -127,7 +127,7 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
         <?php foreach ($pending as $m): ?>
         <a href="members.php?tab=pending&sort=oldest&review=1" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
           <?= memberAvatarHtml($m['avatar_path'] ?? null, $name($m), 'w-9 h-9 text-sm') ?>
-          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($name($m)) ?></span><span class="block text-[11px] text-gray-500 truncate"><?= htmlspecialchars(trim(($m['institution'] ?? '') . ($m['country'] ? ' · ' . $m['country'] : ''), ' ·')) ?></span></span>
+          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= ex($name($m)) ?></span><span class="block text-[11px] text-gray-500 truncate"><?= ex(trim(($m['institution'] ?? '') . ($m['country'] ? ' · ' . $m['country'] : ''), ' ·')) ?></span></span>
           <span class="text-[11px] text-gray-400 whitespace-nowrap"><?= (int)floor((time() - strtotime($m['created_at'])) / 86400) ?>d ago</span>
         </a>
         <?php endforeach; ?>
@@ -141,7 +141,7 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
         <?php foreach ($nextEvents as $e): ?>
         <a href="event-registrations.php?event=<?= $e['id'] ?>" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
           <span class="w-11 text-center rounded-lg border border-gray-200 py-1 flex-shrink-0"><span class="block text-[9px] font-bold uppercase text-rarl-red"><?= date('M', strtotime($e['event_date'])) ?></span><span class="block font-heading font-black text-base leading-none"><?= date('d', strtotime($e['event_date'])) ?></span></span>
-          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= htmlspecialchars($e['title']) ?></span><span class="block text-[11px] text-gray-500"><?= (int)$e['regs'] ?><?= $e['capacity'] ? ' / ' . (int)$e['capacity'] : '' ?> registered</span></span>
+          <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= ex($e['title']) ?></span><span class="block text-[11px] text-gray-500"><?= (int)$e['regs'] ?><?= $e['capacity'] ? ' / ' . (int)$e['capacity'] : '' ?> registered</span></span>
         </a>
         <?php endforeach; ?>
       </div>
@@ -153,7 +153,7 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
         <?php foreach ($recent as $m): $b = ['active' => 'rarl-badge-green', 'pending' => 'rarl-badge-amber', 'inactive' => 'rarl-badge-gray'][$m['status']] ?? 'rarl-badge-gray'; ?>
         <a href="members.php?q=<?= urlencode($name($m)) ?>" class="flex items-center gap-3 px-5 py-2.5 hover:bg-gray-50">
           <?= memberAvatarHtml($m['avatar_path'] ?? null, $name($m), 'w-8 h-8 text-xs') ?>
-          <span class="flex-1 min-w-0 text-sm text-gray-800 truncate"><?= htmlspecialchars($name($m)) ?></span>
+          <span class="flex-1 min-w-0 text-sm text-gray-800 truncate"><?= ex($name($m)) ?></span>
           <span class="rarl-badge <?= $b ?>"><?= ucfirst($m['status']) ?></span>
         </a>
         <?php endforeach; ?>

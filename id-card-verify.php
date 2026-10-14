@@ -36,7 +36,7 @@ echo htmlHead('Verify Member ID');
     <form method="GET" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm mb-8">
       <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Member ID Code</label>
       <div class="flex gap-3">
-        <input type="text" name="code" value="<?= htmlspecialchars($code) ?>" required
+        <input type="text" name="code" value="<?= ex($code) ?>" required
           placeholder="e.g. FRE0042 — scan the QR code on the ID card"
           class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors flex-shrink-0">Verify</button>
@@ -65,18 +65,18 @@ echo htmlHead('Verify Member ID');
       <div class="p-8">
         <div class="text-center mb-7 pb-7 border-b border-gray-100 dark:border-gray-800">
           <img src="<?= BRAND_MARK_PATH ?>" alt="RARL" class="w-16 h-16 rounded-2xl object-contain mx-auto mb-4 shadow-lg"/>
-          <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1"><?= htmlspecialchars($name) ?></h2>
+          <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1"><?= ex($name) ?></h2>
           <p class="text-gray-500 text-sm">RARL Member</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Member ID</p>
-            <p class="font-mono font-bold text-gray-800 dark:text-white">#<?= htmlspecialchars($member['member_code']) ?></p>
+            <p class="font-mono font-bold text-gray-800 dark:text-white">#<?= ex($member['member_code']) ?></p>
           </div>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Section</p>
-            <p class="font-semibold text-gray-800 dark:text-white"><?= htmlspecialchars($section['name'] ?? '—') ?></p>
+            <p class="font-semibold text-gray-800 dark:text-white"><?= ex($section['name'] ?? '—') ?></p>
           </div>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Member Since</p>

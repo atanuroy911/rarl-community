@@ -112,23 +112,23 @@ adminWrap(function() use ($tiers, $set, $editTier) {
           <option value="membership" <?= ($editTier['category'] ?? '') === 'membership' ? 'selected' : '' ?>>Membership</option>
           <option value="partnership" <?= ($editTier['category'] ?? 'partnership') === 'partnership' ? 'selected' : '' ?>>Partnership</option>
         </select>
-        <input type="text" name="name" required value="<?= htmlspecialchars($editTier['name'] ?? '') ?>" placeholder="Tier Name"
+        <input type="text" name="name" required value="<?= ex($editTier['name'] ?? '') ?>" placeholder="Tier Name"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <textarea name="description" rows="2" placeholder="Description"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($editTier['description'] ?? '') ?></textarea>
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editTier['description'] ?? '') ?></textarea>
 
         <div class="grid grid-cols-3 gap-2">
-          <input type="number" step="0.01" name="fee_amount" value="<?= htmlspecialchars($editTier['fee_amount'] ?? '') ?>" placeholder="Fee"
+          <input type="number" step="0.01" name="fee_amount" value="<?= ex($editTier['fee_amount'] ?? '') ?>" placeholder="Fee"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="fee_currency" value="<?= htmlspecialchars($editTier['fee_currency'] ?? 'EUR') ?>" placeholder="EUR"
+          <input type="text" name="fee_currency" value="<?= ex($editTier['fee_currency'] ?? 'EUR') ?>" placeholder="EUR"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="fee_period" value="<?= htmlspecialchars($editTier['fee_period'] ?? 'year') ?>" placeholder="year"
+          <input type="text" name="fee_period" value="<?= ex($editTier['fee_period'] ?? 'year') ?>" placeholder="year"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         </div>
         <p class="text-[10px] text-gray-400">Leave Fee blank to hide pricing on this tier's card.</p>
 
         <div class="grid grid-cols-2 gap-2">
-          <input type="number" name="display_order" value="<?= htmlspecialchars($editTier['display_order'] ?? 0) ?>" placeholder="Order"
+          <input type="number" name="display_order" value="<?= ex($editTier['display_order'] ?? 0) ?>" placeholder="Order"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         </div>
 
@@ -174,10 +174,10 @@ adminWrap(function() use ($tiers, $set, $editTier) {
             <div class="flex items-center gap-2 mb-1">
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($t['category']) ?></span>
               <?php if (!$t['is_published']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span><?php endif; ?>
-              <?php if ($t['fee_amount'] !== null): ?><span class="text-[10px] font-bold text-gray-500"><?= number_format($t['fee_amount'], 0) ?> <?= htmlspecialchars($t['fee_currency']) ?>/<?= htmlspecialchars($t['fee_period']) ?></span><?php endif; ?>
+              <?php if ($t['fee_amount'] !== null): ?><span class="text-[10px] font-bold text-gray-500"><?= number_format($t['fee_amount'], 0) ?> <?= ex($t['fee_currency']) ?>/<?= ex($t['fee_period']) ?></span><?php endif; ?>
             </div>
-            <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($t['name']) ?></p>
-            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($t['description']) ?></p>
+            <p class="font-semibold text-sm text-gray-900"><?= ex($t['name']) ?></p>
+            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= ex($t['description']) ?></p>
           </div>
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
             <a href="partnerships.php?edit=<?= $t['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded text-center">Edit</a>
@@ -197,32 +197,32 @@ adminWrap(function() use ($tiers, $set, $editTier) {
         <?= acsrfField() ?><input type="hidden" name="action" value="save_copy">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Intro Paragraph</label>
-          <textarea name="partner_page_intro" rows="2" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= htmlspecialchars($set['partner_page_intro'] ?? '') ?></textarea>
+          <textarea name="partner_page_intro" rows="2" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= ex($set['partner_page_intro'] ?? '') ?></textarea>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Member Benefits <span class="text-gray-400 font-normal">(one per line)</span></label>
-            <textarea name="partner_benefits_member" rows="4" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= htmlspecialchars($set['partner_benefits_member'] ?? '') ?></textarea>
+            <textarea name="partner_benefits_member" rows="4" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= ex($set['partner_benefits_member'] ?? '') ?></textarea>
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Partner Benefits <span class="text-gray-400 font-normal">(one per line)</span></label>
-            <textarea name="partner_benefits_partner" rows="4" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= htmlspecialchars($set['partner_benefits_partner'] ?? '') ?></textarea>
+            <textarea name="partner_benefits_partner" rows="4" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 resize-none"><?= ex($set['partner_benefits_partner'] ?? '') ?></textarea>
           </div>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Ethics Note</label>
-          <input type="text" name="partner_ethics_note" value="<?= htmlspecialchars($set['partner_ethics_note'] ?? '') ?>"
+          <input type="text" name="partner_ethics_note" value="<?= ex($set['partner_ethics_note'] ?? '') ?>"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Contact Name</label>
-            <input type="text" name="partner_contact_name" value="<?= htmlspecialchars($set['partner_contact_name'] ?? '') ?>"
+            <input type="text" name="partner_contact_name" value="<?= ex($set['partner_contact_name'] ?? '') ?>"
               class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
           </div>
           <div>
             <label class="block text-xs font-semibold text-gray-600 mb-1.5">Contact Email</label>
-            <input type="email" name="partner_contact_email" value="<?= htmlspecialchars($set['partner_contact_email'] ?? '') ?>"
+            <input type="email" name="partner_contact_email" value="<?= ex($set['partner_contact_email'] ?? '') ?>"
               class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
           </div>
         </div>

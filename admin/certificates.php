@@ -370,7 +370,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
   <div><h1 class="text-2xl font-black text-gray-900">Certificates</h1><p class="text-gray-500 text-sm mt-0.5"><?= $view === 'issue' ? 'Choose an event and who gets a certificate, then issue.' : 'Everyone you have issued a certificate to, and whether it was emailed.' ?></p></div>
   <div class="flex gap-2">
     <a href="templates.php" class="rarl-btn"><i class="fa-solid fa-pen-ruler"></i> Design templates</a>
-    <?php if ($view === 'history'): ?><a href="<?= htmlspecialchars($pageUrl(['export' => 'csv'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-csv"></i> Export</a><?php endif; ?>
+    <?php if ($view === 'history'): ?><a href="<?= ex($pageUrl(['export' => 'csv'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-csv"></i> Export</a><?php endif; ?>
   </div>
 </div>
 
@@ -395,7 +395,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
           <select name="event_id" required class="<?= $input ?>">
             <option value="">— Select event —</option>
             <?php foreach ($events as $e): ?>
-            <option value="<?= $e['id'] ?>" <?= $lastEvent === (int)$e['id'] ? 'selected' : '' ?>><?= htmlspecialchars($e['title']) ?> <?= $e['event_date'] ? '(' . date('d M Y', strtotime($e['event_date'])) . ')' : '' ?></option>
+            <option value="<?= $e['id'] ?>" <?= $lastEvent === (int)$e['id'] ? 'selected' : '' ?>><?= ex($e['title']) ?> <?= $e['event_date'] ? '(' . date('d M Y', strtotime($e['event_date'])) . ')' : '' ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -407,8 +407,8 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
           </div>
           <?php if ($templates): ?>
           <select name="template_id" id="tpl-select" class="<?= $input ?>">
-            <option value="" data-preview="<?= $defaultTpl ? (int)$defaultTpl['id'] : '' ?>">Default template<?= $defaultTpl ? ' — ' . htmlspecialchars($defaultTpl['name']) : '' ?></option>
-            <?php foreach ($templates as $t): ?><option value="<?= $t['id'] ?>" data-preview="<?= $t['id'] ?>"><?= htmlspecialchars($t['name']) ?></option><?php endforeach; ?>
+            <option value="" data-preview="<?= $defaultTpl ? (int)$defaultTpl['id'] : '' ?>">Default template<?= $defaultTpl ? ' — ' . ex($defaultTpl['name']) : '' ?></option>
+            <?php foreach ($templates as $t): ?><option value="<?= $t['id'] ?>" data-preview="<?= $t['id'] ?>"><?= ex($t['name']) ?></option><?php endforeach; ?>
           </select>
           <div class="mt-2 rounded-xl overflow-hidden border border-gray-100 bg-gray-50" id="tpl-thumbs">
             <?php foreach ($templates as $t): ?>
@@ -523,7 +523,7 @@ John Doe,john@lab.org"
         <?php foreach ($recent as $b): ?>
         <li><a href="certificates.php?view=history&amp;event=<?= (int)$b['id'] ?>" class="flex items-center gap-3 px-4 py-3 min-h-[44px] hover:bg-gray-50 rounded-xl">
           <span class="min-w-0 flex-1">
-            <span class="block text-xs font-semibold text-gray-900 truncate"><?= htmlspecialchars($b['title']) ?></span>
+            <span class="block text-xs font-semibold text-gray-900 truncate"><?= ex($b['title']) ?></span>
             <span class="block text-[11px] text-gray-500"><?= (int)$b['n'] ?> issued · <?= date('d M', strtotime($b['last_at'])) ?></span>
           </span>
           <?php if ((int)$b['unsent']): ?><span class="rarl-badge rarl-badge-amber"><i class="fa-solid fa-clock"></i> <?= (int)$b['unsent'] ?> not sent</span>
@@ -546,7 +546,7 @@ John Doe,john@lab.org"
       ['Not sent yet', (int)$stats['unsent'], 'fa-clock', 'text-amber-600', 'unsent'],
       ['This month', (int)$stats['month'], 'fa-calendar-check', 'text-gray-900', ''],
   ] as [$label, $val, $icon, $tone, $st]): ?>
-  <a href="<?= htmlspecialchars($st ? $pageUrl(['status' => $st, 'page' => null]) : 'certificates.php?view=history') ?>" class="rarl-stat <?= $st && $filterStatus === $st ? 'is-active' : '' ?>">
+  <a href="<?= ex($st ? $pageUrl(['status' => $st, 'page' => null]) : 'certificates.php?view=history') ?>" class="rarl-stat <?= $st && $filterStatus === $st ? 'is-active' : '' ?>">
     <span class="rarl-stat-label"><i class="fa-solid <?= $icon ?> <?= $tone ?>"></i> <?= $label ?></span>
     <span class="rarl-stat-value <?= $tone ?>"><?= number_format($val) ?></span>
   </a>
@@ -557,11 +557,11 @@ John Doe,john@lab.org"
       <form method="GET" class="px-4 py-3 border-b border-gray-100 flex flex-wrap gap-2 items-center"><input type="hidden" name="view" value="history">
         <div class="relative flex-1 min-w-[180px]">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-          <input type="search" name="q" value="<?= htmlspecialchars($search) ?>" placeholder="Search name, email, certificate no…  ( / )" class="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
+          <input type="search" name="q" value="<?= ex($search) ?>" placeholder="Search name, email, certificate no…  ( / )" class="w-full pl-8 pr-3 py-2 text-xs border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <select name="event" onchange="this.form.submit()" class="px-3 py-2 text-xs border border-gray-300 rounded-lg max-w-[200px]">
           <option value="">All events</option>
-          <?php foreach ($events as $e): ?><option value="<?= $e['id'] ?>" <?= $filterEvent === (int)$e['id'] ? 'selected':'' ?>><?= htmlspecialchars(mb_strimwidth($e['title'],0,35,'…')) ?></option><?php endforeach; ?>
+          <?php foreach ($events as $e): ?><option value="<?= $e['id'] ?>" <?= $filterEvent === (int)$e['id'] ? 'selected':'' ?>><?= ex(mb_strimwidth($e['title'],0,35,'…')) ?></option><?php endforeach; ?>
         </select>
         <select name="status" onchange="this.form.submit()" class="px-3 py-2 text-xs border border-gray-300 rounded-lg">
           <?php foreach (['' => 'Any status', 'emailed' => 'Emailed', 'unsent' => 'Not sent', 'nopdf' => 'Missing PDF', 'membership' => 'Membership'] as $k => $l): ?>
@@ -601,20 +601,20 @@ John Doe,john@lab.org"
             <?php foreach ($certificates as $c): $verify = CERT_VERIFY_URL . '?id=' . $c['uuid']; $isMembership = ($c['cert_type'] ?? 'event') === 'membership'; ?>
             <tr class="hover:bg-gray-50">
               <td class="px-4 py-3"><?= bulkRowCheckbox((int)$c['id']) ?></td>
-              <td class="px-3 py-3" data-sort="<?= htmlspecialchars($c['recipient_name']) ?>">
+              <td class="px-3 py-3" data-sort="<?= ex($c['recipient_name']) ?>">
                 <div class="flex items-center gap-2.5 min-w-0">
-                  <span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red font-bold text-xs flex items-center justify-center flex-shrink-0"><?= htmlspecialchars(mb_strtoupper(mb_substr(preg_replace('/^(dr|prof|mr|mrs|ms)\.?\s+/i', '', $c['recipient_name']), 0, 1))) ?></span>
-                  <div class="min-w-0"><p class="font-medium text-gray-900 text-xs truncate max-w-[150px]"><?= htmlspecialchars($c['recipient_name']) ?></p><p class="text-[10px] text-gray-400 truncate max-w-[150px]"><?= htmlspecialchars($c['recipient_email']) ?></p></div>
+                  <span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red font-bold text-xs flex items-center justify-center flex-shrink-0"><?= ex(mb_strtoupper(mb_substr(preg_replace('/^(dr|prof|mr|mrs|ms)\.?\s+/i', '', $c['recipient_name']), 0, 1))) ?></span>
+                  <div class="min-w-0"><p class="font-medium text-gray-900 text-xs truncate max-w-[150px]"><?= ex($c['recipient_name']) ?></p><p class="text-[10px] text-gray-400 truncate max-w-[150px]"><?= ex($c['recipient_email']) ?></p></div>
                 </div>
               </td>
-              <td class="px-3 py-3" data-sort="<?= htmlspecialchars($c['issued_at']) ?>">
-                <button type="button" class="copy-btn whitespace-nowrap font-mono text-[10px] text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded" data-copy="<?= htmlspecialchars($c['certificate_no']) ?>" title="Copy certificate number"><?= htmlspecialchars($c['certificate_no']) ?></button>
-                <span class="block text-[10px] text-gray-400 mt-0.5 whitespace-nowrap" title="Issued <?= htmlspecialchars($c['issued_at']) ?>">Issued <?= date('d M Y', strtotime($c['issued_at'])) ?></span>
+              <td class="px-3 py-3" data-sort="<?= ex($c['issued_at']) ?>">
+                <button type="button" class="copy-btn whitespace-nowrap font-mono text-[10px] text-gray-700 bg-gray-100 hover:bg-gray-200 px-2 py-0.5 rounded" data-copy="<?= ex($c['certificate_no']) ?>" title="Copy certificate number"><?= ex($c['certificate_no']) ?></button>
+                <span class="block text-[10px] text-gray-400 mt-0.5 whitespace-nowrap" title="Issued <?= ex($c['issued_at']) ?>">Issued <?= date('d M Y', strtotime($c['issued_at'])) ?></span>
               </td>
-              <td class="px-3 py-3 text-[11px] text-gray-600"><?= $isMembership ? '<span class="font-semibold text-purple-600">Membership</span>' : '<span class="line-clamp-2 max-w-[150px] block" title="' . htmlspecialchars($c['event_title'] ?? '') . '">' . htmlspecialchars(mb_strimwidth($c['event_title'] ?? '', 0, 40, '…')) . '</span>' ?></td>
+              <td class="px-3 py-3 text-[11px] text-gray-600"><?= $isMembership ? '<span class="font-semibold text-purple-600">Membership</span>' : '<span class="line-clamp-2 max-w-[150px] block" title="' . ex($c['event_title'] ?? '') . '">' . ex(mb_strimwidth($c['event_title'] ?? '', 0, 40, '…')) . '</span>' ?></td>
               <td class="px-3 py-3">
                 <?php if (!$c['pdf_path']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-file-circle-exclamation"></i> No PDF</span>
-                <?php elseif ($c['emailed_at']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full" title="<?= htmlspecialchars($c['emailed_at']) ?>"><i class="fa-solid fa-check"></i> Sent <?= date('d M', strtotime($c['emailed_at'])) ?></span>
+                <?php elseif ($c['emailed_at']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full" title="<?= ex($c['emailed_at']) ?>"><i class="fa-solid fa-check"></i> Sent <?= date('d M', strtotime($c['emailed_at'])) ?></span>
                 <?php else: ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-clock"></i> Not sent</span><?php endif; ?>
               </td>
               <td class="px-4 py-3">
@@ -622,18 +622,18 @@ John Doe,john@lab.org"
                   <?php if ($c['pdf_path']): ?>
                   <a href="../uploads/certificates/<?= urlencode($c['pdf_path']) ?>" target="_blank" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Open PDF"><i class="fa-solid fa-file-pdf"></i></a>
                   <?php endif; ?>
-                  <button type="button" class="copy-btn w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" data-copy="<?= htmlspecialchars($verify) ?>" title="Copy verification link"><i class="fa-solid fa-link"></i></button>
+                  <button type="button" class="copy-btn w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" data-copy="<?= ex($verify) ?>" title="Copy verification link"><i class="fa-solid fa-link"></i></button>
                   <?php if ($c['pdf_path']): ?>
-                  <form method="POST" class="inline" <?= $c['emailed_at'] ? 'data-confirm="Email this certificate to ' . htmlspecialchars($c['recipient_email']) . ' again?" data-confirm-ok="Resend"' : '' ?>><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= htmlspecialchars($qs) ?>">
+                  <form method="POST" class="inline" <?= $c['emailed_at'] ? 'data-confirm="Email this certificate to ' . ex($c['recipient_email']) . ' again?" data-confirm-ok="Resend"' : '' ?>><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
                     <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg <?= $c['emailed_at'] ? 'text-gray-500 hover:bg-gray-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100' ?>" title="<?= $c['emailed_at'] ? 'Resend email' : 'Send email' ?>"><i class="fa-solid fa-paper-plane"></i></button>
                   </form>
                   <?php endif; ?>
                   <?php if (!$isMembership): ?>
-                  <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="regen_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= htmlspecialchars($qs) ?>">
+                  <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="regen_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
                     <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Regenerate PDF with current design"><i class="fa-solid fa-rotate"></i></button>
                   </form>
                   <?php endif; ?>
-                  <form method="POST" class="inline" data-confirm="Delete the certificate for <?= htmlspecialchars($c['recipient_name']) ?>? Its verification link will stop working."><?= acsrfField() ?><input type="hidden" name="action" value="delete_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= htmlspecialchars($qs) ?>">
+                  <form method="POST" class="inline" data-confirm="Delete the certificate for <?= ex($c['recipient_name']) ?>? Its verification link will stop working."><?= acsrfField() ?><input type="hidden" name="action" value="delete_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
                     <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
                   </form>
                 </div>
@@ -647,9 +647,9 @@ John Doe,john@lab.org"
         <span><?= $total ? 'Showing ' . number_format(($page - 1) * CERT_PER_PAGE + 1) . '–' . number_format(min($total, $page * CERT_PER_PAGE)) . ' of ' . number_format($total) : '0 results' ?></span>
         <?php if ($pages > 1): ?>
         <div class="flex items-center gap-1">
-          <a href="<?= htmlspecialchars($pageUrl(['page' => $page - 1])) ?>" class="px-2.5 py-1.5 rounded-lg border border-gray-200 <?= $page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-gray-50' ?>"><i class="fa-solid fa-chevron-left"></i></a>
+          <a href="<?= ex($pageUrl(['page' => $page - 1])) ?>" class="px-2.5 py-1.5 rounded-lg border border-gray-200 <?= $page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-gray-50' ?>"><i class="fa-solid fa-chevron-left"></i></a>
           <span class="px-2">Page <?= $page ?> of <?= $pages ?></span>
-          <a href="<?= htmlspecialchars($pageUrl(['page' => $page + 1])) ?>" class="px-2.5 py-1.5 rounded-lg border border-gray-200 <?= $page >= $pages ? 'pointer-events-none opacity-40' : 'hover:bg-gray-50' ?>"><i class="fa-solid fa-chevron-right"></i></a>
+          <a href="<?= ex($pageUrl(['page' => $page + 1])) ?>" class="px-2.5 py-1.5 rounded-lg border border-gray-200 <?= $page >= $pages ? 'pointer-events-none opacity-40' : 'hover:bg-gray-50' ?>"><i class="fa-solid fa-chevron-right"></i></a>
         </div>
         <?php endif; ?>
       </div>

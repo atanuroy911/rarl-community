@@ -15,15 +15,15 @@ echo htmlHead('Membership Roster');
 <?= publicNav('directory') ?>
 
 <!-- Hero -->
-<section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
-  <div class="relative z-10 max-w-5xl mx-auto px-6 py-14 text-center">
-    <div class="text-4xl mb-4"><i class="fa-solid fa-earth-americas"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Membership Roster</h1>
-    <p class="text-white/60 text-base max-w-lg mx-auto mb-6">Official public record of Robotics & Automation Research Lab (RARL) members.</p>
+<section class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+  <div class="max-w-5xl mx-auto px-6 py-7 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">Roster</p>
+      <h1 class="font-heading font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">Membership roster</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">The official public record of RARL members.</p>
+    </div>
     <?php if ($customRosterPdf): ?>
-    <a href="uploads/roster/<?= urlencode($customRosterPdf) ?>" target="_blank" class="inline-flex items-center gap-2 px-6 py-3 bg-white text-rarl-red font-bold rounded-xl shadow-lg hover:-translate-y-0.5 transition text-sm">
-      <i class="fa-solid fa-file-pdf"></i> Download Membership Roster (PDF)
-    </a>
+    <a href="uploads/roster/<?= urlencode($customRosterPdf) ?>" target="_blank" class="inline-flex items-center gap-2 px-5 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold rounded-full text-sm"><i class="fa-solid fa-file-pdf"></i> Download roster (PDF)</a>
     <?php endif; ?>
   </div>
 </section>
@@ -51,7 +51,7 @@ echo htmlHead('Membership Roster');
           <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white"><?= $name ?></h3>
           <span class="text-[10px] font-bold text-rarl-red bg-rarl-red/10 px-2 py-0.5 rounded-full"><?= count($countries) ?></span>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= htmlspecialchars(implode(', ', $countries)) ?></p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= ex(implode(', ', $countries)) ?></p>
       </div>
       <?php endforeach; ?>
     </div>

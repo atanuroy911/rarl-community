@@ -42,7 +42,7 @@ if (!file_exists($file)) {
 }
 
 header('Content-Type: application/pdf');
-header('Content-Disposition: attachment; filename="RARL_Certificate_' . htmlspecialchars($cert['certificate_no']) . '.pdf"');
+header('Content-Disposition: attachment; filename="RARL_Certificate_' . ex($cert['certificate_no']) . '.pdf"');
 header('Content-Length: ' . filesize($file));
 readfile($file);
 exit;

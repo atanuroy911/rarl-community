@@ -151,18 +151,17 @@ $cardExpired = $m['id_card_expires_at'] && strtotime($m['id_card_expires_at']) <
 
 echo htmlHead('My Profile');
 ?>
-<?= publicNav('dashboard') ?>
+<?= publicNav('profile') ?>
 
 <div class="bg-gray-50 dark:bg-gray-950 min-h-screen">
-  <div class="bg-rarl-navy border-b border-rarl-mid">
-    <div class="max-w-3xl mx-auto px-6 py-8 flex items-center gap-4">
-      <div class="w-14 h-14 bg-rarl-red rounded-2xl flex items-center justify-center text-white font-heading font-black text-xl shadow-lg">
-        <?= strtoupper(substr($displayName, 0, 1)) ?>
+  <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-3xl mx-auto px-6 py-6 flex items-center gap-4">
+      <?= memberAvatarHtml($m['avatar_path'], (string)$displayName, 'w-14 h-14 text-xl') ?>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">Profile &amp; settings</p>
+        <h1 class="font-heading font-bold text-2xl text-gray-900 dark:text-white truncate"><?= ex($displayName) ?></h1>
       </div>
-      <div>
-        <p class="text-white/50 text-xs uppercase tracking-wider mb-0.5"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-flask"></i> Research Lab' : '<i class="fa-solid fa-user"></i> Individual Researcher' ?></p>
-        <h1 class="font-heading font-black text-xl text-white"><?= htmlspecialchars($displayName) ?></h1>
-      </div>
+      <a href="membership.php" class="hidden sm:inline-flex px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red"><i class="fa-solid fa-id-card mr-1.5"></i> My membership</a>
     </div>
   </div>
 
@@ -171,7 +170,7 @@ echo htmlHead('My Profile');
 
     <?php if ($errors): ?>
     <div class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm space-y-1">
-      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= ex($e) ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 
@@ -181,15 +180,15 @@ echo htmlHead('My Profile');
     </div>
     <?php endif; ?>
 
-    <a href="dashboard.php" class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-rarl-red transition-colors">← Back to Dashboard</a>
+    <a href="dashboard.php" class="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-rarl-red transition-colors">← Back to Home</a>
 
     <!-- Membership / jurisdiction / ID card status -->
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm space-y-3">
       <h2 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-1">Membership Status</h2>
       <div class="flex flex-wrap gap-2 text-xs">
-        <span class="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold">Plan: <?= htmlspecialchars($plan['name'] ?? 'Free') ?></span>
+        <span class="px-3 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 font-semibold">Plan: <?= ex($plan['name'] ?? 'Free') ?></span>
         <?php if ($section): ?>
-        <span class="px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-semibold">Your nearest chair: <?= htmlspecialchars($section['chair_name'] ?? '—') ?> — <?= htmlspecialchars($section['name']) ?></span>
+        <span class="px-3 py-1.5 rounded-full bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 font-semibold">Your nearest chair: <?= ex($section['chair_name'] ?? '—') ?> — <?= ex($section['name']) ?></span>
         <?php endif; ?>
       </div>
 
@@ -206,7 +205,7 @@ echo htmlHead('My Profile');
         </div>
         <?php endif; ?>
       <?php else: ?>
-        <p class="text-xs text-gray-400">No ID card yet — an admin will generate one once your account is approved (a profile photo is required).</p>
+        <p class="text-xs text-gray-400">No ID card yet. It is created automatically once your membership is approved and you have added a profile photo.</p>
       <?php endif; ?>
     </div>
 
@@ -244,12 +243,12 @@ echo htmlHead('My Profile');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="lab_name" value="<?= htmlspecialchars($m['lab_name'] ?? '') ?>" required
+          <input type="text" name="lab_name" value="<?= ex($m['lab_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">PI Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="pi_name" value="<?= htmlspecialchars($m['pi_name'] ?? '') ?>" required
+          <input type="text" name="pi_name" value="<?= ex($m['pi_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
@@ -260,7 +259,7 @@ echo htmlHead('My Profile');
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Website</label>
-          <input type="url" name="lab_website" value="<?= htmlspecialchars($m['lab_website'] ?? '') ?>"
+          <input type="url" name="lab_website" value="<?= ex($m['lab_website'] ?? '') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
@@ -281,25 +280,25 @@ echo htmlHead('My Profile');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Areas</label>
         <textarea name="research_areas" rows="2"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= htmlspecialchars($m['research_areas'] ?? '') ?></textarea>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= ex($m['research_areas'] ?? '') ?></textarea>
       </div>
       <?php else: ?>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="full_name" value="<?= htmlspecialchars($m['full_name'] ?? '') ?>" required
+          <input type="text" name="full_name" value="<?= ex($m['full_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Institution <span class="text-rarl-red">*</span></label>
-          <input type="text" name="institution" value="<?= htmlspecialchars($m['institution'] ?? '') ?>" required
+          <input type="text" name="institution" value="<?= ex($m['institution'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Department</label>
-          <input type="text" name="department" value="<?= htmlspecialchars($m['department'] ?? '') ?>"
+          <input type="text" name="department" value="<?= ex($m['department'] ?? '') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
@@ -330,22 +329,22 @@ echo htmlHead('My Profile');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Interests</label>
         <textarea name="research_interests" rows="2"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= htmlspecialchars($m['research_interests'] ?? '') ?></textarea>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= ex($m['research_interests'] ?? '') ?></textarea>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="block text-xs text-gray-500 mb-1">Google Scholar URL</label>
-          <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($m['google_scholar_url'] ?? '') ?>"
+          <input type="url" name="google_scholar_url" value="<?= ex($m['google_scholar_url'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">ORCID ID</label>
-          <input type="text" name="orcid_id" value="<?= htmlspecialchars($m['orcid_id'] ?? '') ?>"
+          <input type="text" name="orcid_id" value="<?= ex($m['orcid_id'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
-          <input type="url" name="linkedin_url" value="<?= htmlspecialchars($m['linkedin_url'] ?? '') ?>"
+          <input type="url" name="linkedin_url" value="<?= ex($m['linkedin_url'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
@@ -396,7 +395,7 @@ echo htmlHead('My Profile');
         foreach ($linkedEmails->fetchAll() as $le): ?>
         <div class="flex items-center justify-between gap-3 p-3 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl text-sm">
           <div>
-            <span class="text-gray-800 dark:text-gray-200"><?= htmlspecialchars($le['email']) ?></span>
+            <span class="text-gray-800 dark:text-gray-200"><?= ex($le['email']) ?></span>
             <?php if ($le['is_primary']): ?><span class="ml-2 text-[10px] font-bold text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">Primary</span>
             <?php elseif ($le['verified_at']): ?><span class="ml-2 text-[10px] font-bold text-green-600 bg-green-50 dark:bg-green-900/30 px-2 py-0.5 rounded">Verified</span>
             <?php else: ?><span class="ml-2 text-[10px] font-bold text-amber-600 bg-amber-50 dark:bg-amber-900/30 px-2 py-0.5 rounded">Pending verification</span><?php endif; ?>

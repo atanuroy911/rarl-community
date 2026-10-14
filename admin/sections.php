@@ -132,8 +132,8 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
   <section class="rarl-card overflow-hidden">
     <div class="px-5 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center gap-3">
       <span class="w-9 h-9 rounded-xl bg-gray-900 text-white flex items-center justify-center"><i class="fa-solid fa-earth-americas"></i></span>
-      <div class="flex-1"><h2 class="rarl-card-title"><?= htmlspecialchars($continent) ?></h2><p class="text-[11px] text-gray-500"><?= count($list) ?> chapter<?= count($list) === 1 ? '' : 's' ?> · <?= $contMembers ?> active members</p></div>
-      <button type="button" class="rarl-btn rarl-btn-sm" data-new data-continent="<?= htmlspecialchars($continent) ?>" data-scope="country"><i class="fa-solid fa-plus"></i> Country chapter</button>
+      <div class="flex-1"><h2 class="rarl-card-title"><?= ex($continent) ?></h2><p class="text-[11px] text-gray-500"><?= count($list) ?> chapter<?= count($list) === 1 ? '' : 's' ?> · <?= $contMembers ?> active members</p></div>
+      <button type="button" class="rarl-btn rarl-btn-sm" data-new data-continent="<?= ex($continent) ?>" data-scope="country"><i class="fa-solid fa-plus"></i> Country chapter</button>
     </div>
     <div class="divide-y divide-gray-100">
       <?php foreach ($list as $s): ?>
@@ -141,10 +141,10 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
         <?= bulkRowCheckbox((int)$s['id']) ?>
         <span class="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 <?= $s['scope'] === 'continent' ? 'bg-rarl-red/10 text-rarl-red' : 'bg-gray-100 text-gray-500' ?>"><i class="fa-solid <?= $s['scope'] === 'continent' ? 'fa-globe' : 'fa-location-dot' ?>"></i></span>
         <div class="flex-1 min-w-0">
-          <p class="font-semibold text-sm text-gray-900 flex items-center gap-2"><?= htmlspecialchars($s['name']) ?>
-            <?= $s['scope'] === 'country' ? '<span class="rarl-badge rarl-badge-gray">' . htmlspecialchars($s['country']) . '</span>' : '<span class="rarl-badge rarl-badge-red">Continental</span>' ?>
+          <p class="font-semibold text-sm text-gray-900 flex items-center gap-2"><?= ex($s['name']) ?>
+            <?= $s['scope'] === 'country' ? '<span class="rarl-badge rarl-badge-gray">' . ex($s['country']) . '</span>' : '<span class="rarl-badge rarl-badge-red">Continental</span>' ?>
             <?= !$s['is_published'] ? '<span class="rarl-badge rarl-badge-amber"><i class="fa-solid fa-eye-slash"></i> Hidden</span>' : '' ?></p>
-          <p class="text-xs mt-0.5 truncate"><?php if ($s['chair_name']): ?><span class="text-gray-500"><i class="fa-solid fa-crown text-indigo-400"></i> <?= htmlspecialchars($s['chair_title']) ?>:</span> <span class="text-gray-800"><?= htmlspecialchars($s['chair_name']) ?></span><?= $s['chair_email'] ? ' <span class="text-gray-400">· ' . htmlspecialchars($s['chair_email']) . '</span>' : '' ?>
+          <p class="text-xs mt-0.5 truncate"><?php if ($s['chair_name']): ?><span class="text-gray-500"><i class="fa-solid fa-crown text-indigo-400"></i> <?= ex($s['chair_title']) ?>:</span> <span class="text-gray-800"><?= ex($s['chair_name']) ?></span><?= $s['chair_email'] ? ' <span class="text-gray-400">· ' . ex($s['chair_email']) . '</span>' : '' ?>
             <?php else: ?><button type="button" class="text-amber-600 font-semibold hover:underline" data-edit="<?= (int)$s['id'] ?>"><i class="fa-solid fa-crown"></i> Appoint a chair</button><?php endif; ?></p>
         </div>
         <a href="members.php?tab=active&chapter=<?= (int)$s['id'] ?>" class="text-right flex-shrink-0 hover:text-rarl-red" title="See these members">
@@ -152,7 +152,7 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
         <div class="flex flex-shrink-0">
           <button type="button" class="rarl-icon-btn" data-edit="<?= (int)$s['id'] ?>" title="Edit"><i class="fa-solid fa-pen"></i></button>
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn" title="<?= $s['is_published'] ? 'Hide' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $s['is_published'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
-          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($s['name']) ?>”?<?= $s['members'] ? ' Its ' . (int)$s['members'] . ' member(s) will become unassigned (not deleted).' : '' ?>"><?= acsrfField() ?><input type="hidden" name="action" value="delete_section"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
+          <form method="POST" data-confirm="Delete “<?= ex($s['name']) ?>”?<?= $s['members'] ? ' Its ' . (int)$s['members'] . ' member(s) will become unassigned (not deleted).' : '' ?>"><?= acsrfField() ?><input type="hidden" name="action" value="delete_section"><input type="hidden" name="section_id" value="<?= $s['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
         </div>
       </div>
       <?php endforeach; ?>
@@ -161,8 +161,8 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
 <?php endforeach; ?>
 </div>
 
-<datalist id="continent-list"><?php foreach (array_unique(array_merge($continents, ['Africa','Asia','Europe','North America','South America','Oceania'])) as $c): ?><option value="<?= htmlspecialchars($c) ?>"><?php endforeach; ?></datalist>
-<datalist id="country-list"><?php foreach ($countries as $c): ?><option value="<?= htmlspecialchars($c) ?>"><?php endforeach; ?></datalist>
+<datalist id="continent-list"><?php foreach (array_unique(array_merge($continents, ['Africa','Asia','Europe','North America','South America','Oceania'])) as $c): ?><option value="<?= ex($c) ?>"><?php endforeach; ?></datalist>
+<datalist id="country-list"><?php foreach ($countries as $c): ?><option value="<?= ex($c) ?>"><?php endforeach; ?></datalist>
 
 <div class="rarl-drawer-backdrop" id="sec-bg"></div>
 <aside class="rarl-drawer" id="sec-drawer">

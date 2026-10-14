@@ -5,7 +5,7 @@
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 
-if (!empty($_SESSION['member_id'])) redirect('community.php');
+if (!empty($_SESSION['member_id'])) redirect('dashboard.php');
 $loggedInMember = null;
 
 echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
@@ -25,7 +25,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse [animation-iteration-count:3]"></span> Welcome back
       </div>
       <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-gray-900 dark:text-white leading-tight mb-5">
-        Good to see you,<br/><span class="text-rarl-red"><?= htmlspecialchars($firstName ?: 'there') ?></span>
+        Good to see you,<br/><span class="text-rarl-red"><?= ex($firstName ?: 'there') ?></span>
       </h1>
       <?php if ($loggedInMember['status'] !== 'active'): ?>
       <p class="text-amber-600 dark:text-amber-400 text-base max-w-xl leading-relaxed mb-9">
@@ -46,7 +46,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
       </div>
       <?php else: ?>
       <div class="inline-flex items-center gap-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-rarl-red text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-7">
-        <span class="w-1.5 h-1.5 rounded-full bg-rarl-red animate-pulse [animation-iteration-count:3]"></span> <?= htmlspecialchars(setting('home_hero_badge', 'Now Open for Membership')) ?>
+        <span class="w-1.5 h-1.5 rounded-full bg-rarl-red animate-pulse [animation-iteration-count:3]"></span> <?= ex(setting('home_hero_badge', 'Now Open for Membership')) ?>
       </div>
       <h1 class="text-4xl sm:text-5xl lg:text-[3.4rem] font-black text-gray-900 dark:text-white leading-tight mb-5">
         <?php
@@ -54,13 +54,13 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
           $heroTitleParts = explode(' RARL ', $heroTitle, 2);
         ?>
         <?php if (count($heroTitleParts) === 2): ?>
-        <?= htmlspecialchars($heroTitleParts[0]) ?><br/><span class="text-rarl-red">RARL <?= htmlspecialchars($heroTitleParts[1]) ?></span>
+        <?= ex($heroTitleParts[0]) ?><br/><span class="text-rarl-red">RARL <?= ex($heroTitleParts[1]) ?></span>
         <?php else: ?>
-        <?= htmlspecialchars($heroTitle) ?>
+        <?= ex($heroTitle) ?>
         <?php endif; ?>
       </h1>
       <p class="text-gray-500 dark:text-gray-400 text-xl max-w-xl leading-relaxed mb-9">
-        <?= htmlspecialchars(setting('home_hero_subtitle', 'Connect with researchers worldwide. Access curated learning resources, receive newsletters, attend events, and earn verifiable digital certificates for your contributions.')) ?>
+        <?= ex(setting('home_hero_subtitle', 'Join a global robotics research community. Access curated learning resources, receive newsletters, attend events, and earn verifiable digital certificates for your contributions.')) ?>
       </p>
       <div class="flex flex-wrap gap-4 mb-14">
         <a href="register.php" class="inline-flex items-center gap-2 px-7 py-3.5 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition text-sm">
@@ -85,7 +85,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
         <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= $total ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Members</div></div>
         <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= $labs ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Research Labs</div></div>
         <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= $certs ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Certificates Issued</div></div>
-        <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= htmlspecialchars($countries) ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Countries</div></div>
+        <div><div class="font-heading font-black text-3xl text-gray-900 dark:text-white"><?= ex($countries) ?: '0' ?> <span class="text-rarl-red">+</span></div><div class="text-gray-400 text-xs mt-1 uppercase tracking-wider">Countries</div></div>
       </div>
     </div>
     <div class="hidden md:flex justify-center">
@@ -138,8 +138,8 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
       <?php foreach ($achievements as $i => [$icon, $title, $desc]): ?>
       <div class="reveal reveal-delay-<?= $i+1 ?> bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 hover:-translate-y-1 hover:shadow-lg transition duration-250">
         <div class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/20 flex items-center justify-center text-2xl mb-4"><i class="fa-solid <?= $icon ?>"></i></div>
-        <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2 leading-snug"><?= htmlspecialchars($title) ?></h3>
-        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= htmlspecialchars($desc) ?></p>
+        <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2 leading-snug"><?= ex($title) ?></h3>
+        <p class="text-gray-500 dark:text-gray-400 text-base leading-relaxed"><?= ex($desc) ?></p>
       </div>
       <?php endforeach; ?>
     </div>
@@ -260,7 +260,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
           <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white"><?= $name ?></h3>
           <span class="text-[10px] font-bold text-rarl-red bg-rarl-red/10 px-2 py-0.5 rounded-full"><?= count($countries) ?></span>
         </div>
-        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= htmlspecialchars(implode(', ', $countries)) ?></p>
+        <p class="text-xs text-gray-500 dark:text-gray-400 leading-relaxed"><?= ex(implode(', ', $countries)) ?></p>
       </div>
       <?php endforeach; ?>
     </div>
@@ -345,8 +345,8 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
 <div id="rarl-popup-overlay" class="hidden fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm items-center justify-center p-6">
   <div class="relative max-w-md w-full">
     <button id="rarl-popup-close" type="button" aria-label="Close" class="absolute -top-3 -right-3 w-9 h-9 rounded-full bg-white text-gray-700 font-bold shadow-lg flex items-center justify-center hover:bg-gray-100 z-10"><i class="fa-solid fa-xmark"></i></button>
-    <a href="<?= htmlspecialchars(setting('popup_link_url', '')) ?>" target="_blank" rel="noopener">
-      <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($popupImage) ?>" alt="<?= htmlspecialchars(setting('popup_alt_text', '')) ?>" class="w-full rounded-2xl shadow-2xl"/>
+    <a href="<?= ex(setting('popup_link_url', '')) ?>" target="_blank" rel="noopener">
+      <img src="<?= UPLOADS_URL ?>/popups/<?= ex($popupImage) ?>" alt="<?= ex(setting('popup_alt_text', '')) ?>" class="w-full rounded-2xl shadow-2xl"/>
     </a>
   </div>
 </div>

@@ -1,6 +1,8 @@
 <?php
 /**
- * RARL Admin — People / Leadership Directory
+ * RARL Admin — People & Leadership
+ * The public "Leadership & chapters" page: RARL's president, officers and
+ * other featured people. Drag cards to set the order they appear in.
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
@@ -9,173 +11,239 @@ $pdo = db();
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     $action = $_POST['action'] ?? '';
 
-    if ($action === 'add_person' || $action === 'update_person') {
-        $name       = clean($_POST['name'] ?? '');
-        $designation= clean($_POST['designation'] ?? '');
-        $email      = cleanEmail($_POST['email'] ?? '');
-        $linkedin   = cleanUrl($_POST['linkedin_url'] ?? '');
-        $scholar    = cleanUrl($_POST['google_scholar_url'] ?? '');
-        $order      = (int)($_POST['display_order'] ?? 0);
-        $pub        = !empty($_POST['is_published']) ? 1 : 0;
+    if ($action === 'reorder') {
+        // Sent by the drag-and-drop list as ids in their new order.
+        $ids = array_values(array_filter(array_map('intval', (array)($_POST['ids'] ?? []))));
+        $st = $pdo->prepare('UPDATE people SET display_order = ? WHERE id = ?');
+        foreach ($ids as $i => $id) $st->execute([($i + 1) * 10, $id]);
+        header('Content-Type: application/json'); echo json_encode(['ok' => true]); exit;
+    }
 
-        $photoFilename = null;
+    if ($action === 'add_person' || $action === 'update_person') {
+        $id          = (int)($_POST['person_id'] ?? 0);
+        $name        = clean($_POST['name'] ?? '');
+        $designation = clean($_POST['designation'] ?? '');
+        $email       = cleanEmail($_POST['email'] ?? '');
+        $linkedin    = cleanUrl($_POST['linkedin_url'] ?? '');
+        $scholar     = cleanUrl($_POST['google_scholar_url'] ?? '');
+        $pub         = !empty($_POST['is_published']) ? 1 : 0;
+
+        if ($name === '') {
+            $_SESSION['flash'] = ['type' => 'error', 'msg' => 'A name is required.'];
+            header('Location: people.php' . ($id ? '?edit=' . $id : '')); exit;
+        }
+        $photo = null;
         if (!empty($_FILES['photo']['name'])) {
-            $photoFilename = validateUpload($_FILES['photo'], ['jpg','jpeg','png','webp'], 3*1024*1024, UPLOADS_PATH . '/people');
+            $photo = validateUpload($_FILES['photo'], ['jpg', 'jpeg', 'png', 'webp'], 3 * 1024 * 1024, UPLOADS_PATH . '/people');
+            if (!$photo) {
+                $_SESSION['flash'] = ['type' => 'error', 'msg' => 'The photo must be a JPG, PNG or WebP under 3 MB. Nothing was saved.'];
+                header('Location: people.php' . ($id ? '?edit=' . $id : '')); exit;
+            }
         }
 
-        if ($name) {
-            if ($action === 'add_person') {
-                $pdo->prepare("INSERT INTO people (name,designation,email,linkedin_url,google_scholar_url,photo_path,display_order,is_published)
-                    VALUES (?,?,?,?,?,?,?,?)")
-                    ->execute([$name,$designation,$email,$linkedin,$scholar,$photoFilename,$order,$pub]);
-                $_SESSION['flash'] = ['type'=>'success','msg'=>'Person added.'];
-            } else {
-                $id = (int)($_POST['person_id'] ?? 0);
-                if ($id) {
-                    if ($photoFilename) {
-                        $pdo->prepare("UPDATE people SET name=?,designation=?,email=?,linkedin_url=?,google_scholar_url=?,photo_path=?,display_order=?,is_published=? WHERE id=?")
-                            ->execute([$name,$designation,$email,$linkedin,$scholar,$photoFilename,$order,$pub,$id]);
-                    } else {
-                        $pdo->prepare("UPDATE people SET name=?,designation=?,email=?,linkedin_url=?,google_scholar_url=?,display_order=?,is_published=? WHERE id=?")
-                            ->execute([$name,$designation,$email,$linkedin,$scholar,$order,$pub,$id]);
-                    }
-                    $_SESSION['flash'] = ['type'=>'success','msg'=>'Person updated.'];
-                }
-            }
+        if ($action === 'add_person') {
+            // New people go to the end of the list; drag to move them.
+            $order = (int)$pdo->query('SELECT COALESCE(MAX(display_order), 0) + 10 FROM people')->fetchColumn();
+            $pdo->prepare('INSERT INTO people (name, designation, email, linkedin_url, google_scholar_url, photo_path, display_order, is_published) VALUES (?,?,?,?,?,?,?,?)')
+                ->execute([$name, $designation, $email, $linkedin, $scholar, $photo, $order, $pub]);
+            $_SESSION['flash'] = ['type' => 'success', 'msg' => $name . ' added' . ($pub ? ' and visible on the public page.' : ' as hidden.')];
+        } elseif ($id) {
+            $sql = 'UPDATE people SET name=?, designation=?, email=?, linkedin_url=?, google_scholar_url=?, is_published=?' . ($photo ? ', photo_path=?' : '') . ' WHERE id=?';
+            $params = [$name, $designation, $email, $linkedin, $scholar, $pub];
+            if ($photo) $params[] = $photo;
+            $params[] = $id;
+            $pdo->prepare($sql)->execute($params);
+            $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Changes to ' . $name . ' saved.'];
         }
         header('Location: people.php'); exit;
     }
 
     if ($action === 'delete_person') {
-        $pdo->prepare("DELETE FROM people WHERE id=?")->execute([(int)($_POST['person_id']??0)]);
-        $_SESSION['flash'] = ['type'=>'success','msg'=>'Person deleted.'];
+        $pdo->prepare('DELETE FROM people WHERE id=?')->execute([(int)($_POST['person_id'] ?? 0)]);
+        $_SESSION['flash'] = ['type' => 'success', 'msg' => 'Person removed.'];
         header('Location: people.php'); exit;
     }
     if ($action === 'toggle_pub') {
-        $pdo->prepare("UPDATE people SET is_published = 1 - is_published WHERE id=?")->execute([(int)($_POST['person_id']??0)]);
+        $pdo->prepare('UPDATE people SET is_published = 1 - is_published WHERE id=?')->execute([(int)($_POST['person_id'] ?? 0)]);
         header('Location: people.php'); exit;
     }
     if ($action === 'bulk') {
         $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
-        $bulkOp = $_POST['bulk_op'] ?? '';
+        $op = $_POST['bulk_op'] ?? '';
         if ($ids) {
-            $inClause = implode(',', $ids);
-            if ($bulkOp === 'publish') { $pdo->exec("UPDATE people SET is_published=1 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people published.']; }
-            elseif ($bulkOp === 'unpublish') { $pdo->exec("UPDATE people SET is_published=0 WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people unpublished.']; }
-            elseif ($bulkOp === 'delete') { $pdo->exec("DELETE FROM people WHERE id IN ({$inClause})"); $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids).' person/people deleted.']; }
+            $in = implode(',', $ids);
+            $sql = ['publish' => "UPDATE people SET is_published=1 WHERE id IN ($in)", 'unpublish' => "UPDATE people SET is_published=0 WHERE id IN ($in)", 'delete' => "DELETE FROM people WHERE id IN ($in)"][$op] ?? null;
+            if ($sql) $pdo->exec($sql);
+            $_SESSION['flash'] = ['type' => 'success', 'msg' => count($ids) . ' updated.'];
         } else {
-            $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one person first.'];
+            $_SESSION['flash'] = ['type' => 'error', 'msg' => 'Select at least one person first.'];
         }
         header('Location: people.php'); exit;
     }
 }
 
-$people = $pdo->query("SELECT * FROM people ORDER BY display_order, id")->fetchAll();
-$editId = (int)($_GET['edit'] ?? 0);
-$edit   = null;
-if ($editId) {
-    $q = $pdo->prepare("SELECT * FROM people WHERE id=?");
-    $q->execute([$editId]);
-    $edit = $q->fetch();
+$people = $pdo->query('SELECT * FROM people ORDER BY display_order, id')->fetchAll();
+$edit = null;
+if (!empty($_GET['edit'])) {
+    $q = $pdo->prepare('SELECT * FROM people WHERE id = ?'); $q->execute([(int)$_GET['edit']]);
+    $edit = $q->fetch() ?: null;
 }
+$chapterCount = count(chapterLeaders());
 
-adminWrap(function() use ($people, $edit) {
-    adminFlash(); ?>
-<h1 class="text-2xl font-black text-gray-900 mb-1">People &amp; Leadership</h1>
-<p class="text-gray-500 text-sm mb-7">Photo-led directory of president, chairs, and other featured people shown on the public People page.</p>
-
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-  <!-- Left: form -->
-  <div class="xl:col-span-1 space-y-6">
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $edit ? '<i class="fa-solid fa-pen-to-square"></i> Edit Person' : '<i class="fa-solid fa-plus"></i> Add Person' ?></h2>
-      <form method="POST" enctype="multipart/form-data" class="space-y-3">
-        <?= acsrfField() ?>
-        <input type="hidden" name="action" value="<?= $edit ? 'update_person' : 'add_person' ?>">
-        <?php if ($edit): ?><input type="hidden" name="person_id" value="<?= $edit['id'] ?>"><?php endif; ?>
-
-        <?php if ($edit && !empty($edit['photo_path'])): ?>
-        <img src="<?= UPLOADS_URL ?>/people/<?= htmlspecialchars($edit['photo_path']) ?>" alt="" class="w-16 h-16 rounded-full object-cover border border-gray-200"/>
-        <?php endif; ?>
-        <input type="file" name="photo" accept=".jpg,.jpeg,.png,.webp"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        <p class="text-[10px] text-gray-400">JPG/PNG/WebP, max 3MB. Leave blank on edit to keep the current photo.</p>
-
-        <input type="text" name="name" required value="<?= htmlspecialchars($edit['name'] ?? '') ?>" placeholder="Full Name"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <input type="text" name="designation" value="<?= htmlspecialchars($edit['designation'] ?? '') ?>" placeholder="Designation (e.g. RARL President)"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <input type="email" name="email" value="<?= htmlspecialchars($edit['email'] ?? '') ?>" placeholder="Email (optional)"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        <input type="url" name="linkedin_url" value="<?= htmlspecialchars($edit['linkedin_url'] ?? '') ?>" placeholder="LinkedIn URL (optional)"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($edit['google_scholar_url'] ?? '') ?>" placeholder="Google Scholar URL (optional)"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-
-        <input type="number" name="display_order" value="<?= htmlspecialchars($edit['display_order'] ?? 0) ?>" placeholder="Order"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-
-        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="is_published" value="1" <?= ($edit['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-3.5 h-3.5"/>
-          <span class="text-xs text-gray-600">Published</span>
-        </label>
-
-        <button type="submit" class="w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors"><?= $edit ? 'Save Changes' : 'Add Person' ?></button>
-        <?php if ($edit): ?><a href="people.php" class="block text-center text-xs text-gray-400 hover:text-gray-600 mt-1">Cancel edit</a><?php endif; ?>
-      </form>
-    </div>
+adminWrap(function () use ($people, $edit, $chapterCount) {
+    adminFlash();
+    $photoUrl = fn($p) => !empty($p['photo_path']) ? UPLOADS_URL . '/people/' . $p['photo_path'] : null;
+    $published = count(array_filter($people, fn($p) => $p['is_published']));
+    ?>
+<div class="rarl-page-head">
+  <div>
+    <h1>People &amp; Leadership</h1>
+    <p>The people shown on the public <a href="../people.php" target="_blank" class="underline">Leadership &amp; chapters</a> page. Chapter leaders (<?= $chapterCount ?>) are listed there automatically from <a href="sections.php" class="underline">Chapters</a>.</p>
   </div>
-
-  <!-- Right: list -->
-  <div class="xl:col-span-2">
-    <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-        <h2 class="font-heading font-bold text-sm text-gray-800">All People <span class="text-gray-400 font-normal text-xs">(<?= count($people) ?>)</span></h2>
-        <?php if ($people): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
-      </div>
-      <?php if ($people): ?>
-      <?= bulkFormOpen() ?>
-      <?= bulkBar([
-          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
-          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
-          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected people?'],
-      ]) ?>
-      <?php endif; ?>
-      <div class="divide-y divide-gray-100">
-        <?php if (empty($people)): ?>
-        <p class="p-8 text-center text-gray-400 text-sm">No people added yet.</p>
-        <?php endif; ?>
-        <?php foreach ($people as $p): ?>
-        <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
-          <?= bulkRowCheckbox((int)$p['id']) ?>
-          <?php if (!empty($p['photo_path'])): ?>
-          <img src="<?= UPLOADS_URL ?>/people/<?= htmlspecialchars($p['photo_path']) ?>" alt="" class="w-10 h-10 rounded-full object-cover flex-shrink-0"/>
-          <?php else: ?>
-          <div class="w-10 h-10 bg-rarl-red text-white rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"><?= htmlspecialchars(mb_strtoupper(mb_substr($p['name'], 0, 1))) ?></div>
-          <?php endif; ?>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <?php if (!$p['is_published']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span><?php endif; ?>
-            </div>
-            <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($p['name']) ?></p>
-            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($p['designation']) ?></p>
-          </div>
-          <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <a href="people.php?edit=<?= $p['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded text-center">Edit</a>
-            <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="person_id" value="<?= $p['id'] ?>">
-              <button type="submit" class="w-full px-2 py-1 text-[10px] font-semibold <?= $p['is_published']?'bg-gray-100 text-gray-600':'bg-green-50 text-green-600' ?> rounded"><?= $p['is_published']?'Unpublish':'Publish' ?></button>
-            </form>
-            <form method="POST" onsubmit="return confirm('Delete this person?')"><?= acsrfField() ?><input type="hidden" name="action" value="delete_person"><input type="hidden" name="person_id" value="<?= $p['id'] ?>">
-              <button type="submit" class="w-full px-2 py-1 text-[10px] font-semibold bg-red-50 text-red-600 rounded">Delete</button>
-            </form>
-          </div>
-        </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
+  <div class="flex gap-2">
+    <a href="../people.php" target="_blank" class="rarl-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i> View public page</a>
+    <?php if ($edit): ?><a href="people.php" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-plus"></i> Add person</a><?php endif; ?>
   </div>
-
 </div>
+
+<div class="grid xl:grid-cols-[400px_minmax(0,1fr)] gap-6 items-start">
+  <!-- Editor -->
+  <form method="POST" enctype="multipart/form-data" class="rarl-card p-6 space-y-4 xl:sticky xl:top-6" data-no-autolabel>
+    <?= acsrfField() ?>
+    <input type="hidden" name="action" value="<?= $edit ? 'update_person' : 'add_person' ?>">
+    <?php if ($edit): ?><input type="hidden" name="person_id" value="<?= (int)$edit['id'] ?>"><?php endif; ?>
+    <div>
+      <h2 class="rarl-card-title"><?= $edit ? 'Edit ' . ex($edit['name']) : 'Add a person' ?></h2>
+      <p class="text-xs text-[color:var(--muted-fg)] mt-0.5"><?= $edit ? 'Changes go live on the public page as soon as you save.' : 'New people are added to the end of the list. Drag to reorder.' ?></p>
+    </div>
+
+    <div>
+      <span class="rarl-label">Photo</span>
+      <?= adminImageDrop('photo', $edit ? $photoUrl($edit) : null, 'Square headshot works best · JPG, PNG or WebP · up to 3 MB') ?>
+    </div>
+    <div>
+      <label class="rarl-label" for="p-name">Full name <span class="text-rarl-red">*</span></label>
+      <input id="p-name" name="name" required class="rarl-input" value="<?= ex($edit['name'] ?? '') ?>" placeholder="Dr. Jane Smith" data-live="name"/>
+    </div>
+    <div>
+      <label class="rarl-label" for="p-role">Role or title</label>
+      <input id="p-role" name="designation" class="rarl-input" value="<?= ex($edit['designation'] ?? '') ?>" placeholder="RARL President" data-live="role"/>
+    </div>
+    <div>
+      <label class="rarl-label" for="p-email">Public email</label>
+      <input id="p-email" name="email" type="email" class="rarl-input" value="<?= ex($edit['email'] ?? '') ?>" placeholder="name@rarl-lab.com" data-live="email"/>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+      <div><label class="rarl-label" for="p-li"><i class="fa-brands fa-linkedin text-[#0a66c2]"></i> LinkedIn</label><input id="p-li" name="linkedin_url" type="url" class="rarl-input" value="<?= ex($edit['linkedin_url'] ?? '') ?>" placeholder="linkedin.com/in/…" data-live="li"/></div>
+      <div><label class="rarl-label" for="p-gs"><i class="fa-solid fa-graduation-cap"></i> Google Scholar</label><input id="p-gs" name="google_scholar_url" type="url" class="rarl-input" value="<?= ex($edit['google_scholar_url'] ?? '') ?>" placeholder="scholar.google.com/…" data-live="gs"/></div>
+    </div>
+    <label class="flex items-center justify-between gap-3 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer">
+      <span><span class="block text-sm font-semibold">Show on the public page</span><span class="block text-xs text-[color:var(--muted-fg)]">Turn off to keep someone here without showing them.</span></span>
+      <input type="checkbox" name="is_published" value="1" <?= ($edit['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-5 h-5">
+    </label>
+
+    <div>
+      <span class="rarl-label">Preview</span>
+      <div class="rounded-[calc(var(--radius)+4px)] border border-[color:var(--border)] p-5 text-center bg-[color:var(--bg)]">
+        <div id="pv-photo" class="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden bg-rarl-red text-white flex items-center justify-center text-2xl font-bold"><?php if ($edit && $photoUrl($edit)): ?><img src="<?= ex($photoUrl($edit)) ?>" alt="" class="w-full h-full object-cover"><?php else: ?><?= ex(mb_strtoupper(mb_substr($edit['name'] ?? '?', 0, 1))) ?><?php endif; ?></div>
+        <p id="pv-name" class="font-heading font-bold"><?= ex($edit['name'] ?? 'Full name') ?></p>
+        <p id="pv-role" class="text-sm text-[color:var(--muted-fg)]"><?= ex($edit['designation'] ?? 'Role or title') ?></p>
+        <div id="pv-links" class="flex justify-center gap-2 mt-3 text-[color:var(--muted-fg)] text-sm"></div>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-2 pt-2 border-t border-[color:var(--border)]">
+      <?php if ($edit): ?>
+      <button type="submit" form="del-person" class="rarl-btn text-red-600"><i class="fa-solid fa-trash"></i> Remove</button>
+      <?php else: ?><span></span><?php endif; ?>
+      <div class="flex gap-2">
+        <?php if ($edit): ?><a href="people.php" class="rarl-btn">Cancel</a><?php endif; ?>
+        <button type="submit" class="rarl-btn rarl-btn-primary"><?= $edit ? 'Save changes' : '<i class="fa-solid fa-plus"></i> Add person' ?></button>
+      </div>
+    </div>
+  </form>
+  <?php if ($edit): ?>
+  <form id="del-person" method="POST" class="hidden" data-confirm="Remove <?= ex($edit['name']) ?> from the leadership page?"><?= acsrfField() ?><input type="hidden" name="action" value="delete_person"><input type="hidden" name="person_id" value="<?= (int)$edit['id'] ?>"></form>
+  <?php endif; ?>
+
+  <!-- List -->
+  <div class="rarl-card overflow-hidden">
+    <div class="px-5 py-4 border-b border-[color:var(--border)] flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="rarl-card-title">On the leadership page <span class="font-normal text-[color:var(--muted-fg)]"><?= $published ?> shown · <?= count($people) - $published ?> hidden</span></h2>
+        <?php if (count($people) > 1): ?><p class="text-xs text-[color:var(--muted-fg)] mt-0.5"><i class="fa-solid fa-grip-vertical"></i> Drag to change the order on the public page.</p><?php endif; ?>
+      </div>
+      <?php if ($people): ?><label class="flex items-center gap-1.5 text-xs text-[color:var(--muted-fg)]"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
+    </div>
+    <?php if (!$people): ?>
+    <div class="rarl-empty"><i class="fa-solid fa-people-group text-3xl mb-3 block"></i><p class="font-semibold text-[color:var(--fg)]">No one here yet</p><p class="mt-1">Add RARL's president and officers using the form. They appear on the public page in the order you set here.</p></div>
+    <?php else: ?>
+    <?= bulkFormOpen() ?>
+    <?= bulkBar([
+        ['label' => 'Show', 'op' => 'publish', 'class' => 'bg-green-600 hover:bg-green-500'],
+        ['label' => 'Hide', 'op' => 'unpublish', 'class' => 'bg-gray-600 hover:bg-gray-500'],
+        ['label' => 'Remove', 'op' => 'delete', 'class' => 'bg-red-600 hover:bg-red-500', 'confirm' => 'Remove all selected people?'],
+    ]) ?>
+    <ul id="people-list" class="divide-y divide-[color:var(--border)]">
+      <?php foreach ($people as $p): $url = $photoUrl($p); ?>
+      <li draggable="true" data-id="<?= (int)$p['id'] ?>" class="flex items-center gap-3 px-4 py-3 bg-white <?= $edit && (int)$edit['id'] === (int)$p['id'] ? 'bg-red-50/50' : '' ?> <?= $p['is_published'] ? '' : 'opacity-60' ?>">
+        <span class="cursor-grab text-[color:var(--muted-fg)] px-1" title="Drag to reorder" aria-hidden="true"><i class="fa-solid fa-grip-vertical"></i></span>
+        <?= bulkRowCheckbox((int)$p['id']) ?>
+        <?php if ($url): ?><img src="<?= ex($url) ?>" alt="" class="w-11 h-11 rounded-full object-cover flex-shrink-0"/>
+        <?php else: ?><span class="w-11 h-11 rounded-full bg-rarl-red text-white flex items-center justify-center font-bold flex-shrink-0"><?= ex(mb_strtoupper(mb_substr($p['name'], 0, 1))) ?></span><?php endif; ?>
+        <a href="people.php?edit=<?= (int)$p['id'] ?>" class="flex-1 min-w-0">
+          <span class="block font-semibold text-sm truncate"><?= ex($p['name']) ?></span>
+          <span class="block text-xs text-[color:var(--muted-fg)] truncate"><?= ex($p['designation'] ?: 'No role set') ?></span>
+        </a>
+        <span class="hidden sm:flex gap-1.5 text-[color:var(--muted-fg)] text-sm">
+          <?php if ($p['email']): ?><i class="fa-solid fa-envelope" title="Email"></i><?php endif; ?>
+          <?php if ($p['linkedin_url']): ?><i class="fa-brands fa-linkedin" title="LinkedIn"></i><?php endif; ?>
+          <?php if ($p['google_scholar_url']): ?><i class="fa-solid fa-graduation-cap" title="Google Scholar"></i><?php endif; ?>
+          <?php if (!$url): ?><span class="rarl-badge rarl-badge-amber">No photo</span><?php endif; ?>
+        </span>
+        <span class="rarl-badge <?= $p['is_published'] ? 'rarl-badge-green' : 'rarl-badge-gray' ?>"><?= $p['is_published'] ? 'Shown' : 'Hidden' ?></span>
+        <a href="people.php?edit=<?= (int)$p['id'] ?>" class="rarl-icon-btn" title="Edit"><i class="fa-solid fa-pen"></i></a>
+        <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="person_id" value="<?= (int)$p['id'] ?>"><button class="rarl-icon-btn" title="<?= $p['is_published'] ? 'Hide from public page' : 'Show on public page' ?>" data-no-loading><i class="fa-solid <?= $p['is_published'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
+      </li>
+      <?php endforeach; ?>
+    </ul>
+    <?php endif; ?>
+  </div>
+</div>
+
+<script>
+(function () {
+  // Live preview of the public card.
+  var $ = function (s) { return document.querySelector(s); };
+  var name = $('[data-live=name]'), role = $('[data-live=role]'), photo = $('#pv-photo'), links = $('#pv-links');
+  function sync() {
+    $('#pv-name').textContent = name.value.trim() || 'Full name';
+    $('#pv-role').textContent = role.value.trim() || 'Role or title';
+    if (!photo.querySelector('img')) photo.textContent = (name.value.trim()[0] || '?').toUpperCase();
+    links.innerHTML = ($('[data-live=email]').value ? '<i class="fa-solid fa-envelope"></i>' : '') + ($('[data-live=li]').value ? '<i class="fa-brands fa-linkedin"></i>' : '') + ($('[data-live=gs]').value ? '<i class="fa-solid fa-graduation-cap"></i>' : '');
+  }
+  document.querySelectorAll('[data-live]').forEach(function (el) { el.addEventListener('input', sync); });
+  var file = document.querySelector('input[name=photo]');
+  if (file) file.addEventListener('change', function () { if (file.files[0]) photo.innerHTML = '<img src="' + URL.createObjectURL(file.files[0]) + '" alt="" class="w-full h-full object-cover">'; });
+  sync();
+
+  // Drag to reorder; saves immediately.
+  var list = document.getElementById('people-list'); if (!list) return;
+  var dragging = null;
+  list.addEventListener('dragstart', function (e) { dragging = e.target.closest('li'); dragging.classList.add('opacity-40'); e.dataTransfer.effectAllowed = 'move'; });
+  list.addEventListener('dragover', function (e) {
+    e.preventDefault(); var over = e.target.closest('li'); if (!over || over === dragging) return;
+    var r = over.getBoundingClientRect(); list.insertBefore(dragging, e.clientY > r.top + r.height / 2 ? over.nextSibling : over);
+  });
+  list.addEventListener('dragend', function () {
+    dragging.classList.remove('opacity-40'); dragging = null;
+    var fd = new FormData(); fd.append('action', 'reorder'); fd.append('acsrf', <?= json_encode($GLOBALS['acsrf']) ?>);
+    list.querySelectorAll('li[data-id]').forEach(function (li) { fd.append('ids[]', li.dataset.id); });
+    fetch('people.php', {method: 'POST', body: fd}).then(function (r) { return r.json(); })
+      .then(function () { window.rarlToast && rarlToast('Order saved', 'success'); })
+      .catch(function () { window.rarlToast && rarlToast('Could not save the new order — refresh and try again', 'error'); });
+  });
+})();
+</script>
 <?= bulkBarScript() ?>
 <?php }, 'people', 'People & Leadership');

@@ -120,25 +120,25 @@ adminWrap(function() use ($sections, $plans, $events, $result, $in) {
         <?php endforeach; ?>
       </div>
       <div class="mt-3 space-y-2">
-        <textarea name="raw_emails" data-for="raw" rows="2" class="rarl-input" placeholder="jane@uni.edu, john@lab.org — commas, spaces or new lines"><?= htmlspecialchars($in['raw_emails']) ?></textarea>
-        <select name="section_id" data-for="section" class="rarl-input"><option value="">— Select chapter —</option><?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= $in['section_id'] == $s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option><?php endforeach; ?></select>
-        <select name="plan_id" data-for="plan" class="rarl-input"><option value="">— Select plan —</option><?php foreach ($plans as $p): ?><option value="<?= $p['id'] ?>" <?= $in['plan_id'] == $p['id'] ? 'selected' : '' ?>><?= htmlspecialchars($p['name']) ?></option><?php endforeach; ?></select>
+        <textarea name="raw_emails" data-for="raw" rows="2" class="rarl-input" placeholder="jane@uni.edu, john@lab.org — commas, spaces or new lines"><?= ex($in['raw_emails']) ?></textarea>
+        <select name="section_id" data-for="section" class="rarl-input"><option value="">— Select chapter —</option><?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= $in['section_id'] == $s['id'] ? 'selected' : '' ?>><?= ex($s['name']) ?></option><?php endforeach; ?></select>
+        <select name="plan_id" data-for="plan" class="rarl-input"><option value="">— Select plan —</option><?php foreach ($plans as $p): ?><option value="<?= $p['id'] ?>" <?= $in['plan_id'] == $p['id'] ? 'selected' : '' ?>><?= ex($p['name']) ?></option><?php endforeach; ?></select>
         <div data-for="event" class="grid grid-cols-[1fr_auto] gap-2">
-          <select name="event_id" class="rarl-input"><option value="">— Select event —</option><?php foreach ($events as $e): ?><option value="<?= $e['id'] ?>" <?= $in['event_id'] == $e['id'] ? 'selected' : '' ?>><?= htmlspecialchars($e['title']) ?><?= $e['event_date'] ? ' · ' . date('d M Y', strtotime($e['event_date'])) : '' ?></option><?php endforeach; ?></select>
+          <select name="event_id" class="rarl-input"><option value="">— Select event —</option><?php foreach ($events as $e): ?><option value="<?= $e['id'] ?>" <?= $in['event_id'] == $e['id'] ? 'selected' : '' ?>><?= ex($e['title']) ?><?= $e['event_date'] ? ' · ' . date('d M Y', strtotime($e['event_date'])) : '' ?></option><?php endforeach; ?></select>
           <select name="event_status" class="rarl-input !w-auto"><option value="all">Everyone registered</option><option value="registered" <?= $in['event_status'] === 'registered' ? 'selected' : '' ?>>Not yet checked in</option><option value="attended" <?= $in['event_status'] === 'attended' ? 'selected' : '' ?>>Attended</option></select>
         </div>
       </div>
       <p class="text-xs text-gray-500 mt-2" id="rcpt"><i class="fa-solid fa-users"></i> <span>—</span></p>
     </div>
-    <div><label class="rarl-label">Subject</label><input name="subject" required class="rarl-input" value="<?= htmlspecialchars($in['subject']) ?>"/></div>
+    <div><label class="rarl-label">Subject</label><input name="subject" required class="rarl-input" value="<?= ex($in['subject']) ?>"/></div>
     <div>
       <div class="flex items-center justify-between"><label class="rarl-label">Message <span class="font-normal text-gray-400">— Markdown: **bold**, _italic_, [link](https://…), - lists</span></label></div>
-      <textarea name="body" required rows="14" class="rarl-input font-mono text-[13px] leading-relaxed"><?= htmlspecialchars($in['body']) ?></textarea>
+      <textarea name="body" required rows="14" class="rarl-input font-mono text-[13px] leading-relaxed"><?= ex($in['body']) ?></textarea>
       <p class="text-[11px] text-gray-400 mt-1">Each email is greeted by the recipient's name automatically.</p>
     </div>
     <div class="flex flex-wrap gap-2 pt-1">
       <button name="submit_action" value="preview" class="rarl-btn rarl-btn-dark"><i class="fa-solid fa-eye"></i> Preview</button>
-      <button name="submit_action" value="test" class="rarl-btn" data-no-loading><i class="fa-solid fa-flask"></i> Send test to <?= htmlspecialchars(ADMIN_EMAIL) ?></button>
+      <button name="submit_action" value="test" class="rarl-btn" data-no-loading><i class="fa-solid fa-flask"></i> Send test to <?= ex(ADMIN_EMAIL) ?></button>
     </div>
   </div>
 
@@ -146,10 +146,10 @@ adminWrap(function() use ($sections, $plans, $events, $result, $in) {
     <?php if (!empty($result['preview'])): ?>
     <div class="flex items-center justify-between mb-3">
       <h2 class="rarl-card-title"><i class="fa-solid fa-eye"></i> Preview</h2>
-      <span class="text-xs text-gray-500">as <?= htmlspecialchars($result['names'][0] ?? '') ?> sees it</span>
+      <span class="text-xs text-gray-500">as <?= ex($result['names'][0] ?? '') ?> sees it</span>
     </div>
     <div class="border border-gray-200 rounded-xl bg-gray-50 max-h-[60vh] overflow-y-auto p-4"><?= $result['preview'] ?></div>
-    <div class="mt-4 p-3 rounded-xl bg-gray-50 text-xs text-gray-600"><strong><?= (int)$result['count'] ?> recipient<?= $result['count'] == 1 ? '' : 's' ?></strong>: <?= htmlspecialchars(implode(', ', $result['names'])) ?><?= $result['count'] > 5 ? ' and ' . ($result['count'] - 5) . ' more' : '' ?></div>
+    <div class="mt-4 p-3 rounded-xl bg-gray-50 text-xs text-gray-600"><strong><?= (int)$result['count'] ?> recipient<?= $result['count'] == 1 ? '' : 's' ?></strong>: <?= ex(implode(', ', $result['names'])) ?><?= $result['count'] > 5 ? ' and ' . ($result['count'] - 5) . ' more' : '' ?></div>
     <button name="submit_action" value="send" data-confirm="Send this email to <?= (int)$result['count'] ?> recipient(s) now?" data-confirm-ok="Send now" class="rarl-btn rarl-btn-primary w-full mt-4 !h-11"><i class="fa-solid fa-paper-plane"></i> Send to <?= (int)$result['count'] ?> recipient<?= $result['count'] == 1 ? '' : 's' ?></button>
     <p class="text-[11px] text-gray-400 mt-2 text-center">Edit on the left and preview again any time — nothing is lost.</p>
     <?php else: ?>

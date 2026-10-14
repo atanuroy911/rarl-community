@@ -36,8 +36,8 @@ echo htmlHead('Verify Linked Email');
 <div class="min-h-screen bg-gray-50 dark:bg-gray-950 flex items-center justify-center py-16 px-4">
   <div class="w-full max-w-sm">
     <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1 text-center">Verify Linked Email</h1>
-    <p class="text-gray-500 text-sm text-center mb-6">Enter the code sent to <?= htmlspecialchars($email) ?></p>
-    <?php if ($error): ?><div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+    <p class="text-gray-500 text-sm text-center mb-6">Enter the code sent to <?= ex($email) ?></p>
+    <?php if ($error): ?><div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm text-center"><?= ex($error) ?></div><?php endif; ?>
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
       <form method="POST" class="space-y-4">
         <?= csrfField() ?>

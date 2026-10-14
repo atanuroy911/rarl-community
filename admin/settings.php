@@ -113,7 +113,7 @@ adminWrap(function() use ($set) {
       <?php $cardHead('fa-award', 'Certificate Generation'); ?>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Certificate ID Counter</label>
-        <input type="number" name="settings[cert_id_counter]" value="<?= htmlspecialchars($set['cert_id_counter']??'0') ?>"
+        <input type="number" name="settings[cert_id_counter]" value="<?= ex($set['cert_id_counter']??'0') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <p class="text-[10px] text-gray-400 mt-1">The numeric counter for the next certificate. e.g., 42 becomes RARL-2025-0043.</p>
       </div>
@@ -131,7 +131,37 @@ adminWrap(function() use ($set) {
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Paused Message</label>
           <textarea name="settings[membership_paused_message]" rows="2"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['membership_paused_message']??'') ?></textarea>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($set['membership_paused_message']??'') ?></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Portal -->
+    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+      <?php $cardHead('fa-house-user', 'Member Portal', 'A notice pinned to the top of every member Home page — for things every member should see first. <a href="../dashboard.php" target="_blank" class="underline">Open member Home</a>'); ?>
+      <div class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="member_notice_text">Home notice</label>
+          <textarea id="member_notice_text" name="settings[member_notice_text]" rows="2" maxlength="400" placeholder="Leave empty to show no notice"
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none" data-no-autolabel><?= ex($set['member_notice_text']??'') ?></textarea>
+        </div>
+        <div class="grid sm:grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="member_notice_tone">Style</label>
+            <select id="member_notice_tone" name="settings[member_notice_tone]" class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+              <?php foreach (['info' => 'Information (blue)', 'success' => 'Good news (green)', 'warning' => 'Important (amber)'] as $tv => $tl): ?>
+              <option value="<?= $tv ?>" <?= ($set['member_notice_tone'] ?? 'info') === $tv ? 'selected' : '' ?>><?= $tl ?></option>
+              <?php endforeach; ?>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="member_notice_link">Link (optional)</label>
+            <input id="member_notice_link" type="url" name="settings[member_notice_link]" value="<?= ex($set['member_notice_link']??'') ?>" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm" data-no-autolabel/>
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-600 mb-1.5" for="member_notice_link_label">Link text</label>
+            <input id="member_notice_link_label" name="settings[member_notice_link_label]" maxlength="40" value="<?= ex($set['member_notice_link_label']??'') ?>" placeholder="Learn more" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm" data-no-autolabel/>
+          </div>
         </div>
       </div>
     </div>
@@ -144,7 +174,7 @@ adminWrap(function() use ($set) {
         <div class="flex items-center gap-3 p-3.5 bg-green-50 border border-green-200 rounded-xl">
           <div class="w-9 h-9 flex-shrink-0 flex items-center justify-center rounded-lg bg-green-100 text-green-700"><i class="fa-solid fa-file-pdf"></i></div>
           <div class="min-w-0 flex-1">
-            <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="block text-sm font-semibold text-green-700 hover:underline truncate"><?= htmlspecialchars($set['custom_roster_pdf_path']) ?></a>
+            <a href="../uploads/roster/<?= urlencode($set['custom_roster_pdf_path']) ?>" target="_blank" class="block text-sm font-semibold text-green-700 hover:underline truncate"><?= ex($set['custom_roster_pdf_path']) ?></a>
             <span class="text-[10px] text-green-600/80">Live on the public roster page</span>
           </div>
           <label class="flex-shrink-0 flex items-center gap-1.5 text-xs text-red-600 font-medium cursor-pointer hover:text-red-700">
@@ -179,7 +209,7 @@ adminWrap(function() use ($set) {
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Closed Message</label>
           <textarea name="settings[registrations_closed_message]" rows="2"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['registrations_closed_message']??'') ?></textarea>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($set['registrations_closed_message']??'') ?></textarea>
         </div>
       </div>
     </div>
@@ -190,14 +220,14 @@ adminWrap(function() use ($set) {
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Free Membership Deadline</label>
-          <input type="date" name="settings[free_membership_deadline]" value="<?= htmlspecialchars($set['free_membership_deadline']??'') ?>"
+          <input type="date" name="settings[free_membership_deadline]" value="<?= ex($set['free_membership_deadline']??'') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
           <p class="text-[10px] text-gray-400 mt-1">Shows a countdown banner site-wide until this date. Leave blank to hide the banner.</p>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Auto-Approve Email Domains</label>
           <textarea name="settings[auto_approve_domains]" rows="2" placeholder="ulab.edu.bd, leicester.ac.uk"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['auto_approve_domains']??'') ?></textarea>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($set['auto_approve_domains']??'') ?></textarea>
           <p class="text-[10px] text-gray-400 mt-1">Comma-separated email domains (e.g. a partner university). New individual registrations from these domains skip manual review and are activated immediately — ID card and membership certificate issue right away. Leave blank to keep every signup manual.</p>
         </div>
       </div>
@@ -209,23 +239,23 @@ adminWrap(function() use ($set) {
       <div class="space-y-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Badge</label>
-          <input type="text" name="settings[home_hero_badge]" value="<?= htmlspecialchars($set['home_hero_badge']??'') ?>" placeholder="Now Open for Membership"
+          <input type="text" name="settings[home_hero_badge]" value="<?= ex($set['home_hero_badge']??'') ?>" placeholder="Now Open for Membership"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Title</label>
-          <input type="text" name="settings[home_hero_title]" value="<?= htmlspecialchars($set['home_hero_title']??'') ?>" placeholder="Join the Global RARL Research Community"
+          <input type="text" name="settings[home_hero_title]" value="<?= ex($set['home_hero_title']??'') ?>" placeholder="Join the Global RARL Research Community"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Homepage Hero Subtitle</label>
           <textarea name="settings[home_hero_subtitle]" rows="3"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['home_hero_subtitle']??'') ?></textarea>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($set['home_hero_subtitle']??'') ?></textarea>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Community Feed Intro</label>
           <textarea name="settings[community_feed_intro]" rows="2"
-            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($set['community_feed_intro']??'') ?></textarea>
+            class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($set['community_feed_intro']??'') ?></textarea>
         </div>
       </div>
     </div>
@@ -236,22 +266,22 @@ adminWrap(function() use ($set) {
       <div class="grid grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Members Override</label>
-          <input type="text" name="settings[stat_members_override]" value="<?= htmlspecialchars($set['stat_members_override']??'') ?>" placeholder="Blank = live count"
+          <input type="text" name="settings[stat_members_override]" value="<?= ex($set['stat_members_override']??'') ?>" placeholder="Blank = live count"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Labs Override</label>
-          <input type="text" name="settings[stat_labs_override]" value="<?= htmlspecialchars($set['stat_labs_override']??'') ?>" placeholder="Blank = live count"
+          <input type="text" name="settings[stat_labs_override]" value="<?= ex($set['stat_labs_override']??'') ?>" placeholder="Blank = live count"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Certificates Override</label>
-          <input type="text" name="settings[stat_certs_override]" value="<?= htmlspecialchars($set['stat_certs_override']??'') ?>" placeholder="Blank = live count"
+          <input type="text" name="settings[stat_certs_override]" value="<?= ex($set['stat_certs_override']??'') ?>" placeholder="Blank = live count"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Countries</label>
-          <input type="text" name="settings[stat_countries]" value="<?= htmlspecialchars($set['stat_countries']??'5') ?>"
+          <input type="text" name="settings[stat_countries]" value="<?= ex($set['stat_countries']??'5') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
       </div>
@@ -268,7 +298,7 @@ adminWrap(function() use ($set) {
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Image</label>
           <?php if (!empty($set['popup_image_path'])): ?>
-          <img src="<?= UPLOADS_URL ?>/popups/<?= htmlspecialchars($set['popup_image_path']) ?>" alt="Current popup image" class="h-20 rounded-lg border border-gray-200 mb-2"/>
+          <img src="<?= UPLOADS_URL ?>/popups/<?= ex($set['popup_image_path']) ?>" alt="Current popup image" class="h-20 rounded-lg border border-gray-200 mb-2"/>
           <?php endif; ?>
           <input type="file" name="popup_image" accept=".jpg,.jpeg,.png,.webp"
             class="w-full text-xs file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-gray-900 file:text-white file:text-xs file:font-semibold file:cursor-pointer hover:file:bg-black"/>
@@ -276,12 +306,12 @@ adminWrap(function() use ($set) {
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Link URL</label>
-          <input type="url" name="settings[popup_link_url]" value="<?= htmlspecialchars($set['popup_link_url']??'') ?>" placeholder="https://…"
+          <input type="url" name="settings[popup_link_url]" value="<?= ex($set['popup_link_url']??'') ?>" placeholder="https://…"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Popup Alt Text</label>
-          <input type="text" name="settings[popup_alt_text]" value="<?= htmlspecialchars($set['popup_alt_text']??'') ?>"
+          <input type="text" name="settings[popup_alt_text]" value="<?= ex($set['popup_alt_text']??'') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
       </div>

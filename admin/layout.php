@@ -159,6 +159,18 @@ function htmlAdminHead(string $title): void {
   /* Dialogs + toasts follow the same radius */
   .rarl-dialog{border-radius:calc(var(--radius) + 6px)}
   .rarl-toast{border-radius:var(--radius)}
+  /* Image drop zone (adminImageDrop) */
+  .rarl-drop{position:relative;display:flex;align-items:center;gap:1rem;padding:1rem;border:1.5px dashed #c4c4ca;border-radius:calc(var(--radius) + 2px);background:#fcfcfd;cursor:pointer;transition:border-color .15s,background-color .15s}
+  .rarl-drop:hover,.rarl-drop.rarl-drop-active{border-color:var(--primary);background:rgba(204,7,3,.03)}
+  .rarl-drop input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+  .rarl-drop-thumb{flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--muted);color:var(--muted-fg);font-size:1.25rem}
+  .rarl-drop-thumb img{width:100%;height:100%;object-fit:cover}
+  .rarl-drop[data-shape=round] .rarl-drop-thumb{width:4.5rem;height:4.5rem;border-radius:999px}
+  .rarl-drop[data-shape=wide] .rarl-drop-thumb{width:7rem;height:4.5rem;border-radius:var(--radius)}
+  .rarl-drop .rarl-file-chip{position:absolute;right:.75rem;bottom:.6rem;margin:0}
+  /* Labels generated for legacy placeholder-only inputs */
+  .rarl-auto-label{display:block;font-size:.8125rem;font-weight:500;color:var(--fg);margin:.25rem 0 .35rem}
+  .rarl-nav-count{margin-left:auto;min-width:1.25rem;height:1.25rem;padding:0 .35rem;border-radius:999px;background:var(--primary);color:#fff;font-size:.6875rem;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
 </style>
 </head><body class="bg-gray-100 text-gray-900 min-h-screen">
 <script>
@@ -268,6 +280,22 @@ function htmlAdminHead(string $title): void {
   });
 
   document.addEventListener("DOMContentLoaded", function() {
+    // ── Legacy forms: placeholder-only inputs get a real, always-visible label
+    // (a placeholder disappears once the field has a value, e.g. an order "0") ──
+    document.querySelectorAll(".rarl-admin-content form input[placeholder], .rarl-admin-content form textarea[placeholder], .rarl-admin-content form select[data-label]").forEach(function(el) {
+      if (el.type === "hidden" || el.type === "search" || el.closest("label") || el.closest("[data-no-autolabel]")) return;
+      if (el.id && document.querySelector("label[for=\"" + el.id + "\"]")) return;
+      var prev = el.previousElementSibling;
+      if (prev && (prev.tagName === "LABEL" || prev.classList.contains("rarl-label"))) return;
+      var parentPrev = el.parentElement && el.parentElement.previousElementSibling;
+      if (el.parentElement && el.parentElement.children.length === 1 && parentPrev && parentPrev.tagName === "LABEL") return;
+      var text = (el.dataset.label || el.getAttribute("placeholder") || "").replace(/\s*(\(e\.g\.[^)]*\)|e\.g\..*|…)$/i, "").trim();
+      if (!text || text.length > 48) return;
+      if (!el.id) el.id = "f-" + Math.random().toString(36).slice(2, 9);
+      var lab = document.createElement("label"); lab.className = "rarl-auto-label"; lab.htmlFor = el.id; lab.textContent = text;
+      el.parentNode.insertBefore(lab, el);
+    });
+
     // ── File pickers: show the chosen file name + size, highlight on drag ──
     document.querySelectorAll("input[type=file]:not([data-no-chip])").forEach(function(input) {
       var zone = input.parentElement;
@@ -430,10 +458,15 @@ function adminSidebar(string $active = ''): void {
     </div>
     <div class="px-3 pb-2"><button type="button" onclick="rarlPalette()" class="app-nav-search"><i class="fa-solid fa-magnifying-glass"></i><span class="flex-1 text-left">Jump to…</span><span class="rarl-kbd">Ctrl K</span></button></div>
     <nav class="flex-1 px-3 pb-3 flex flex-col overflow-y-auto" aria-label="Admin">';
+    // Work waiting on an admin shows as a count next to its page.
+    $counts = [];
+    try { $counts['members'] = (int)db()->query("SELECT COUNT(*) FROM members WHERE status = 'pending' AND email_verified_at IS NOT NULL")->fetchColumn(); } catch (Throwable $e) {}
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
         foreach ($items as $key => [$href, $icon, $label]) {
-            echo '<a href="' . $href . '" class="app-nav-item"' . ($key === $active ? ' aria-current="page"' : '') . '>' . $icon . '<span class="truncate">' . $label . '</span></a>';
+            $n = $counts[$key] ?? 0;
+            echo '<a href="' . $href . ($key === 'members' && $n ? '?status=pending' : '') . '" class="app-nav-item"' . ($key === $active ? ' aria-current="page"' : '') . '>' . $icon . '<span class="truncate">' . $label . '</span>'
+               . ($n ? '<span class="rarl-nav-count" title="' . $n . ' awaiting approval">' . $n . '</span>' : '') . '</a>';
         }
     }
     echo '</nav>
@@ -584,3 +617,20 @@ fetch("email-queue.php",{method:"POST",body:fd,headers:{"X-Requested-With":"fetc
 var was=pending;pending=d.pending;if(t){total=t;sent=s;}else{sent=total;}draw();if(pending>0)setTimeout(tick,800);else if(was>0&&window.rarlToast)rarlToast("All queued emails have been processed","success");}).catch(function(){busy=false;setTimeout(tick,5000);});}
 window.rarlQueueKick=function(){pending=Math.max(pending,1);tick();};draw();if(pending>0)setTimeout(tick,600);})();</script>';
 }
+
+// ── Form helpers for rebuilt pages ─────────────────────────
+// Image field with a drop zone and live preview (replaces a bare
+// "Choose file" input). $currentUrl shows the existing image when editing.
+function adminImageDrop(string $name, ?string $currentUrl, string $hint, string $shape = 'round'): string {
+    $thumb = $currentUrl
+        ? '<img src="' . htmlspecialchars($currentUrl) . '" alt="">'
+        : '<i class="fa-regular fa-image"></i>';
+    $title = $currentUrl ? 'Drop a new image to replace it' : 'Drop an image here, or click to choose';
+    return '<label class="rarl-drop" data-shape="' . $shape . '">'
+         . '<input type="file" name="' . htmlspecialchars($name) . '" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" onchange="rarlDropPreview(this)">'
+         . '<span class="rarl-drop-thumb">' . $thumb . '</span>'
+         . '<span class="min-w-0"><span class="block text-sm font-semibold">' . $title . '</span>'
+         . '<span class="block text-xs text-[color:var(--muted-fg)] mt-0.5">' . htmlspecialchars($hint) . '</span></span></label>'
+         . '<script>window.rarlDropPreview=window.rarlDropPreview||function(i){var t=i.parentNode.querySelector(".rarl-drop-thumb");if(i.files&&i.files[0]){t.innerHTML="";var im=new Image();im.alt="";im.src=URL.createObjectURL(i.files[0]);t.appendChild(im);}};</script>';
+}
+

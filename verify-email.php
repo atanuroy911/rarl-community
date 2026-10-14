@@ -79,11 +79,11 @@ echo htmlHead($verified ? 'Application received' : 'Verify your email');
     <?php if ($verified): $name = $verified['type'] === 'lab' ? $verified['lab_name'] : $verified['full_name']; ?>
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-3xl p-8 shadow-sm text-center">
       <div class="w-16 h-16 mx-auto rounded-2xl bg-green-100 text-green-600 flex items-center justify-center text-2xl mb-4"><i class="fa-solid fa-check"></i></div>
-      <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white">Thanks, <?= htmlspecialchars(explode(' ', preg_replace('/^(dr|prof)\.?\s+/i', '', (string)$name))[0]) ?> — you're verified</h1>
+      <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white">Thanks, <?= ex(explode(' ', preg_replace('/^(dr|prof)\.?\s+/i', '', (string)$name))[0]) ?> — you're verified</h1>
       <p class="text-gray-500 text-sm mt-2">Your application is now with the RARL team.</p>
       <div class="text-left mt-7 space-y-4">
         <div class="flex gap-3"><span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xs font-bold flex-shrink-0">1</span><div><p class="text-sm font-semibold text-gray-900 dark:text-white">We review your profile</p><p class="text-xs text-gray-500">Usually within a few working days.</p></div></div>
-        <div class="flex gap-3"><span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><div><p class="text-sm font-semibold text-gray-900 dark:text-white">You get an approval email</p><p class="text-xs text-gray-500">Sent to <strong><?= htmlspecialchars($verified['email']) ?></strong>, with your membership certificate.</p></div></div>
+        <div class="flex gap-3"><span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xs font-bold flex-shrink-0">2</span><div><p class="text-sm font-semibold text-gray-900 dark:text-white">You get an approval email</p><p class="text-xs text-gray-500">Sent to <strong><?= ex($verified['email']) ?></strong>, with your membership certificate.</p></div></div>
         <div class="flex gap-3"><span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xs font-bold flex-shrink-0">3</span><div><p class="text-sm font-semibold text-gray-900 dark:text-white">Sign in and add a photo</p><p class="text-xs text-gray-500">Your verifiable member ID card is created from it instantly.</p></div></div>
       </div>
       <div class="mt-8 flex flex-col sm:flex-row gap-2 justify-center">
@@ -96,20 +96,20 @@ echo htmlHead($verified ? 'Application received' : 'Verify your email');
       <div class="text-center">
         <div class="w-14 h-14 mx-auto rounded-2xl bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xl mb-4"><i class="fa-solid fa-envelope-open-text"></i></div>
         <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white">Check your inbox</h1>
-        <p class="text-gray-500 text-sm mt-1.5"><?= $email ? 'We sent a 6-digit code to <strong class="text-gray-800 dark:text-gray-200">' . htmlspecialchars($email) . '</strong>.' : 'Enter your email and the 6-digit code we sent you.' ?></p>
+        <p class="text-gray-500 text-sm mt-1.5"><?= $email ? 'We sent a 6-digit code to <strong class="text-gray-800 dark:text-gray-200">' . ex($email) . '</strong>.' : 'Enter your email and the 6-digit code we sent you.' ?></p>
       </div>
 
       <div class="mt-6"><?= renderFlash() ?></div>
       <?php if ($error): ?>
-      <div class="mb-4 flex items-start gap-3 p-3.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" role="alert"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> <?= htmlspecialchars($error) ?></div>
+      <div class="mb-4 flex items-start gap-3 p-3.5 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" role="alert"><i class="fa-solid fa-triangle-exclamation mt-0.5"></i> <?= ex($error) ?></div>
       <?php endif; ?>
       <?php if ($resendMsg): ?>
-      <div class="mb-4 flex items-start gap-3 p-3.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-700 dark:text-blue-300 text-sm"><i class="fa-solid fa-paper-plane mt-0.5"></i> <?= htmlspecialchars($resendMsg) ?></div>
+      <div class="mb-4 flex items-start gap-3 p-3.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl text-blue-700 dark:text-blue-300 text-sm"><i class="fa-solid fa-paper-plane mt-0.5"></i> <?= ex($resendMsg) ?></div>
       <?php endif; ?>
 
       <form method="POST" id="otp-form" class="space-y-5">
         <?= csrfField() ?>
-        <?php if ($email): ?><input type="hidden" name="email" value="<?= htmlspecialchars($email) ?>"/>
+        <?php if ($email): ?><input type="hidden" name="email" value="<?= ex($email) ?>"/>
         <?php else: ?><div><label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email address</label><input type="email" name="email" required class="w-full h-12 px-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red"/></div><?php endif; ?>
         <input type="hidden" name="code" id="code"/>
         <div class="flex justify-center gap-2" id="otp-boxes">
@@ -122,7 +122,7 @@ echo htmlHead($verified ? 'Application received' : 'Verify your email');
       </form>
 
       <form method="POST" class="mt-5 text-center" id="resend-form">
-        <?= csrfField() ?><input type="hidden" name="email" value="<?= htmlspecialchars($email) ?>"/><input type="hidden" name="resend" value="1"/>
+        <?= csrfField() ?><input type="hidden" name="email" value="<?= ex($email) ?>"/><input type="hidden" name="resend" value="1"/>
         <p class="text-xs text-gray-500">Didn't get it? <button type="submit" id="resend-btn" class="text-rarl-red font-semibold hover:underline disabled:text-gray-400 disabled:no-underline" <?= $cooldown > 0 ? 'disabled' : '' ?>>Resend code<span id="resend-wait"><?= $cooldown > 0 ? ' in ' . (int)$cooldown . 's' : '' ?></span></button></p>
         <p class="text-[11px] text-gray-400 mt-1">Check spam or promotions. Codes expire after a while — always use the newest one.</p>
       </form>

@@ -66,14 +66,14 @@ $chapterAnnouncements = $chapterAnnouncements->fetchAll();
 
 echo htmlHead('Chapter Portal');
 ?>
-<?= publicNav('dashboard') ?>
+<?= publicNav('membership') ?>
 
 <div class="bg-gray-50 dark:bg-gray-950 min-h-screen">
-  <div class="bg-rarl-navy border-b border-rarl-mid">
-    <div class="max-w-5xl mx-auto px-6 py-8">
-      <p class="text-white/50 text-xs uppercase tracking-wider mb-1"><i class="fa-solid fa-compass"></i> Chapter Chair Portal</p>
-      <h1 class="font-heading font-black text-2xl text-white"><?= htmlspecialchars($section['name'] ?? 'Your Chapter') ?></h1>
-      <p class="text-white/50 text-sm mt-1"><?= count($members) ?> members · <?= $pendingCount ?> pending approval</p>
+  <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-5xl mx-auto px-6 py-7">
+      <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red"><i class="fa-solid fa-compass"></i> Chapter chair portal</p>
+      <h1 class="font-heading font-bold text-2xl text-gray-900 dark:text-white"><?= ex($section['name'] ?? 'Your Chapter') ?></h1>
+      <p class="text-sm text-gray-500 mt-1"><?= count($members) ?> members · <?= $pendingCount ?> pending approval</p>
     </div>
   </div>
 
@@ -100,10 +100,10 @@ echo htmlHead('Chapter Portal');
             <div class="p-4 flex items-center justify-between gap-3">
               <div class="min-w-0">
                 <div class="flex items-center gap-2 mb-0.5">
-                  <p class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= htmlspecialchars($name ?: '(unnamed)') ?></p>
+                  <p class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= ex($name ?: '(unnamed)') ?></p>
                   <span class="text-[10px] font-bold px-2 py-0.5 rounded-full <?= $sc ?>"><?= ucfirst($mem['status']) ?></span>
                 </div>
-                <p class="text-xs text-gray-400 truncate"><?= htmlspecialchars($mem['email']) ?> · joined <?= date('d M Y', strtotime($mem['created_at'])) ?></p>
+                <p class="text-xs text-gray-400 truncate"><?= ex($mem['email']) ?> · joined <?= date('d M Y', strtotime($mem['created_at'])) ?></p>
               </div>
               <?php if ($mem['status'] === 'pending'): ?>
               <form method="POST" class="flex-shrink-0"><?= csrfField() ?><input type="hidden" name="action" value="approve_member"><input type="hidden" name="target_id" value="<?= $mem['id'] ?>">
@@ -141,7 +141,7 @@ echo htmlHead('Chapter Portal');
           <div class="divide-y divide-gray-100 dark:divide-gray-800">
             <?php foreach ($chapterAnnouncements as $ann): ?>
             <div class="p-4">
-              <p class="font-semibold text-xs text-gray-800 dark:text-white"><?= htmlspecialchars($ann['title']) ?></p>
+              <p class="font-semibold text-xs text-gray-800 dark:text-white"><?= ex($ann['title']) ?></p>
               <p class="text-[11px] text-gray-400 mt-0.5"><?= date('d M Y', strtotime($ann['created_at'])) ?></p>
             </div>
             <?php endforeach; ?>

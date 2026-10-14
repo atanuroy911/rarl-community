@@ -32,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             sleep(1); $error = 'Invalid email or password.';
         } elseif (empty($member['email_verified_at'])) {
             $notice = ['icon' => 'fa-envelope-circle-check', 'tone' => 'blue', 'title' => 'One step left: verify your email',
-                'body' => 'We sent a 6-digit code to <strong>' . htmlspecialchars($email) . '</strong>. Enter it to activate your sign-in.',
+                'body' => 'We sent a 6-digit code to <strong>' . ex($email) . '</strong>. Enter it to activate your sign-in.',
                 'cta' => ['verify-email.php?email=' . urlencode($email), 'Enter verification code']];
         } elseif ($member['status'] === 'pending') {
             $notice = ['icon' => 'fa-hourglass-half', 'tone' => 'amber', 'title' => 'Your application is being reviewed',
@@ -71,8 +71,8 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
       <h2 class="font-heading font-black text-4xl leading-tight">A global community of robotics researchers.</h2>
       <ul class="mt-8 space-y-4 text-white/80">
         <li class="flex gap-3"><i class="fa-solid fa-id-card mt-1 text-rarl-red"></i><span>Your verifiable member ID card and certificates, always one click away</span></li>
-        <li class="flex gap-3"><i class="fa-solid fa-calendar-check mt-1 text-rarl-red"></i><span>Workshops, webinars and chapter events &mdash; register in one tap</span></li>
-        <li class="flex gap-3"><i class="fa-solid fa-comments mt-1 text-rarl-red"></i><span>Share work and find collaborators in the member community</span></li>
+        <li class="flex gap-3"><i class="fa-solid fa-calendar-check mt-1 text-rarl-red"></i><span>Workshops, webinars and hackathons &mdash; register in one tap</span></li>
+        <li class="flex gap-3"><i class="fa-solid fa-newspaper mt-1 text-rarl-red"></i><span>Every announcement, opportunity and learning resource from RARL in one feed</span></li>
       </ul>
     </div>
     <p class="relative text-xs text-white/40">&copy; <?= date('Y') ?> RARL</p>
@@ -91,7 +91,7 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
       <div class="mb-6 p-4 rounded-2xl border <?= $tones[$notice['tone']] ?>">
         <p class="font-semibold flex items-center gap-2"><i class="fa-solid <?= $notice['icon'] ?>"></i> <?= $notice['title'] ?></p>
         <p class="text-sm mt-1 opacity-90"><?= $notice['body'] ?></p>
-        <?php if ($notice['cta']): ?><a href="<?= htmlspecialchars($notice['cta'][0]) ?>" class="inline-block mt-3 px-4 py-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-xs font-semibold rounded-lg"><?= $notice['cta'][1] ?> &rarr;</a><?php endif; ?>
+        <?php if ($notice['cta']): ?><a href="<?= ex($notice['cta'][0]) ?>" class="inline-block mt-3 px-4 py-2 bg-gray-900 text-white dark:bg-white dark:text-gray-900 text-xs font-semibold rounded-lg"><?= $notice['cta'][1] ?> &rarr;</a><?php endif; ?>
       </div>
       <?php elseif ($error): ?>
       <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm" role="alert">
@@ -100,10 +100,10 @@ $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/2
       <?php endif; ?>
 
       <form method="POST" class="space-y-4" id="login-form">
-        <?= csrfField() ?><input type="hidden" name="next" value="<?= htmlspecialchars($next) ?>"/>
+        <?= csrfField() ?><input type="hidden" name="next" value="<?= ex($next) ?>"/>
         <div>
           <label for="email" class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email address</label>
-          <input id="email" type="email" name="email" required autocomplete="username" value="<?= htmlspecialchars($email) ?>" <?= $email ? '' : 'autofocus' ?>
+          <input id="email" type="email" name="email" required autocomplete="username" value="<?= ex($email) ?>" <?= $email ? '' : 'autofocus' ?>
             class="w-full h-12 px-4 bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-700 rounded-xl text-sm focus:outline-none focus:ring-4 focus:ring-rarl-red/15 focus:border-rarl-red transition" />
           <p class="text-[11px] text-gray-400 mt-1">Any verified email linked to your account works.</p>
         </div>

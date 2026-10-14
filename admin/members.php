@@ -144,18 +144,18 @@ if (isset($_GET['panel'])) {
     $name = $displayName($m);
     $row = function (string $label, $value, bool $html = false) {
         if ($value === null || $value === '') return;
-        echo '<div class="grid grid-cols-[120px_1fr] gap-3 py-2 border-b border-gray-100 last:border-0"><dt class="text-xs text-gray-500">' . $label . '</dt><dd class="text-sm text-gray-900 break-words">' . ($html ? $value : nl2br(htmlspecialchars((string)$value))) . '</dd></div>';
+        echo '<div class="grid grid-cols-[120px_1fr] gap-3 py-2 border-b border-gray-100 last:border-0"><dt class="text-xs text-gray-500">' . $label . '</dt><dd class="text-sm text-gray-900 break-words">' . ($html ? $value : nl2br(ex((string)$value))) . '</dd></div>';
     };
-    $link = fn(?string $url, string $label) => $url ? '<a href="' . htmlspecialchars($url) . '" target="_blank" rel="noopener" class="text-blue-600 hover:underline">' . $label . ' <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>' : null;
+    $link = fn(?string $url, string $label) => $url ? '<a href="' . ex($url) . '" target="_blank" rel="noopener" class="text-blue-600 hover:underline">' . $label . ' <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i></a>' : null;
     $badge = ['active' => 'rarl-badge-green', 'pending' => 'rarl-badge-amber', 'inactive' => 'rarl-badge-gray'][$m['status']] ?? 'rarl-badge-gray';
     ?>
-<div data-member="<?= (int)$m['id'] ?>" data-status="<?= htmlspecialchars($m['status']) ?>" class="flex flex-col h-full">
+<div data-member="<?= (int)$m['id'] ?>" data-status="<?= ex($m['status']) ?>" class="flex flex-col h-full">
   <div class="p-6 border-b border-gray-100">
     <div class="flex items-start gap-4">
       <?= memberAvatarHtml($m['avatar_path'] ?? null, $name, 'w-16 h-16 text-xl') ?>
       <div class="min-w-0 flex-1">
-        <h2 class="font-heading font-black text-xl text-gray-900 leading-tight"><?= htmlspecialchars($name) ?></h2>
-        <p class="text-sm text-gray-500 truncate"><?= htmlspecialchars($m['email']) ?> <button type="button" class="rarl-icon-btn !w-6 !h-6 align-middle" data-copy="<?= htmlspecialchars($m['email']) ?>" title="Copy email"><i class="fa-solid fa-copy text-xs"></i></button></p>
+        <h2 class="font-heading font-black text-xl text-gray-900 leading-tight"><?= ex($name) ?></h2>
+        <p class="text-sm text-gray-500 truncate"><?= ex($m['email']) ?> <button type="button" class="rarl-icon-btn !w-6 !h-6 align-middle" data-copy="<?= ex($m['email']) ?>" title="Copy email"><i class="fa-solid fa-copy text-xs"></i></button></p>
         <div class="flex flex-wrap gap-1.5 mt-2">
           <span class="rarl-badge <?= $badge ?>"><?= ucfirst($m['status']) ?></span>
           <span class="rarl-badge <?= $m['type'] === 'lab' ? 'rarl-badge-blue' : 'rarl-badge-purple' ?>"><?= $m['type'] === 'lab' ? 'Research lab' : 'Individual' ?></span>
@@ -200,12 +200,12 @@ if (isset($_GET['panel'])) {
         <input type="hidden" name="action" value="set_section"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>">
         <select name="section_id" class="rarl-input" onchange="this.form.requestSubmit()">
           <option value="">— No chapter —</option>
-          <?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= (int)($m['section_id'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option><?php endforeach; ?>
+          <?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= (int)($m['section_id'] ?? 0) === (int)$s['id'] ? 'selected' : '' ?>><?= ex($s['name']) ?></option><?php endforeach; ?>
         </select>
       </form>
       <?php if ($suggest): ?>
       <form class="mt-2" data-ajax data-reload-panel><input type="hidden" name="action" value="set_section"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><input type="hidden" name="section_id" value="<?= (int)$suggest['id'] ?>">
-        <button class="text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-wand-magic-sparkles"></i> Suggested from country: <?= htmlspecialchars($suggest['name']) ?> — assign</button></form>
+        <button class="text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-wand-magic-sparkles"></i> Suggested from country: <?= ex($suggest['name']) ?> — assign</button></form>
       <?php endif; ?>
     </section>
 
@@ -215,7 +215,7 @@ if (isset($_GET['panel'])) {
         <div class="rounded-xl border border-gray-200 p-3">
           <p class="text-xs text-gray-500"><i class="fa-solid fa-id-card"></i> ID card</p>
           <?php if (!empty($m['id_card_path'])): ?>
-          <p class="text-sm font-semibold mt-1"><a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="hover:text-rarl-red"><?= htmlspecialchars($m['member_code'] ?? 'View card') ?></a></p>
+          <p class="text-sm font-semibold mt-1"><a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="hover:text-rarl-red"><?= ex($m['member_code'] ?? 'View card') ?></a></p>
           <p class="text-[11px] text-gray-400"><?= $m['id_card_expires_at'] ? 'Expires ' . date('d M Y', strtotime($m['id_card_expires_at'])) : '' ?></p>
           <?php else: ?><p class="text-sm text-gray-400 mt-1"><?= empty($m['avatar_path']) ? 'Needs a profile photo' : 'Not issued yet' ?></p><?php endif; ?>
           <form data-ajax data-reload-panel class="mt-2"><input type="hidden" name="action" value="regenerate_card"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>">
@@ -245,7 +245,7 @@ if (isset($_GET['panel'])) {
       <h3 class="rarl-label uppercase tracking-wider !text-[10px]">Private admin note</h3>
       <form data-ajax>
         <input type="hidden" name="action" value="save_note"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>">
-        <textarea name="notes" rows="3" class="rarl-input" placeholder="Only admins see this…" onblur="this.form.requestSubmit()"><?= htmlspecialchars($m['notes'] ?? '') ?></textarea>
+        <textarea name="notes" rows="3" class="rarl-input" placeholder="Only admins see this…" onblur="this.form.requestSubmit()"><?= ex($m['notes'] ?? '') ?></textarea>
       </form>
     </section>
   </div>
@@ -261,7 +261,7 @@ if (isset($_GET['panel'])) {
       <form data-ajax data-reload-panel><input type="hidden" name="action" value="activate"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-user-check"></i> Reactivate</button></form>
     <?php endif; ?>
     <a href="member-edit.php?id=<?= (int)$m['id'] ?>" class="rarl-btn"><i class="fa-solid fa-pen"></i> Edit everything</a>
-    <form data-ajax data-next class="ml-auto" data-confirm="Permanently delete <?= htmlspecialchars($name) ?> and all their posts, certificates, registrations and files?" data-confirm-ok="Delete forever"><input type="hidden" name="action" value="delete"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-icon-btn danger" title="Delete member"><i class="fa-solid fa-trash-can"></i></button></form>
+    <form data-ajax data-next class="ml-auto" data-confirm="Permanently delete <?= ex($name) ?> and all their posts, certificates, registrations and files?" data-confirm-ok="Delete forever"><input type="hidden" name="action" value="delete"><input type="hidden" name="mid" value="<?= (int)$m['id'] ?>"><button class="rarl-icon-btn danger" title="Delete member"><i class="fa-solid fa-trash-can"></i></button></form>
   </div>
 </div>
 <?php
@@ -330,29 +330,29 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
 <div class="flex flex-wrap items-center gap-3 mb-4">
   <nav class="rarl-tabs">
     <?php foreach (['all' => 'All', 'pending' => 'Pending', 'active' => 'Active', 'attention' => 'Needs attention', 'inactive' => 'Inactive', 'chairs' => 'Chairs'] as $k => $l): ?>
-    <a href="<?= htmlspecialchars($url(['tab' => $k !== 'all' ? $k : null, 'page' => null])) ?>" class="<?= $tab === $k ? 'on' : '' ?>" <?= $k === 'attention' ? 'title="Active members missing a photo, ID card or chapter, or with a card expiring within 60 days"' : '' ?>><?= $l ?> <span class="count <?= $k === 'pending' && $counts[$k] ? 'hot' : '' ?>"><?= number_format($counts[$k]) ?></span></a>
+    <a href="<?= ex($url(['tab' => $k !== 'all' ? $k : null, 'page' => null])) ?>" class="<?= $tab === $k ? 'on' : '' ?>" <?= $k === 'attention' ? 'title="Active members missing a photo, ID card or chapter, or with a card expiring within 60 days"' : '' ?>><?= $l ?> <span class="count <?= $k === 'pending' && $counts[$k] ? 'hot' : '' ?>"><?= number_format($counts[$k]) ?></span></a>
     <?php endforeach; ?>
   </nav>
 </div>
 
 <div class="rarl-card">
   <form method="GET" class="p-3 flex flex-wrap gap-2 items-center border-b border-gray-100">
-    <?php if ($tab !== 'all'): ?><input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>"><?php endif; ?>
+    <?php if ($tab !== 'all'): ?><input type="hidden" name="tab" value="<?= ex($tab) ?>"><?php endif; ?>
     <div class="relative flex-1 min-w-[220px]">
       <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-      <input type="search" name="q" value="<?= htmlspecialchars($fq) ?>" placeholder="Search name, email, institution, country, member ID…   /" class="rarl-input !pl-8"/>
+      <input type="search" name="q" value="<?= ex($fq) ?>" placeholder="Search name, email, institution, country, member ID…   /" class="rarl-input !pl-8"/>
     </div>
     <select name="type" onchange="this.form.submit()" class="rarl-input !w-auto">
       <option value="">All types</option><option value="individual" <?= $ft === 'individual' ? 'selected' : '' ?>>Individuals</option><option value="lab" <?= $ft === 'lab' ? 'selected' : '' ?>>Research labs</option>
     </select>
     <select name="chapter" onchange="this.form.submit()" class="rarl-input !w-auto max-w-[220px]">
       <option value="">All chapters</option><option value="none" <?= $fsec === 'none' ? 'selected' : '' ?>>No chapter yet</option>
-      <?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= (string)$fsec === (string)$s['id'] ? 'selected' : '' ?>><?= htmlspecialchars($s['name']) ?></option><?php endforeach; ?>
+      <?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>" <?= (string)$fsec === (string)$s['id'] ? 'selected' : '' ?>><?= ex($s['name']) ?></option><?php endforeach; ?>
     </select>
     <select name="sort" onchange="this.form.submit()" class="rarl-input !w-auto">
       <?php foreach (['newest' => 'Newest first', 'oldest' => 'Oldest first', 'name' => 'Name A–Z', 'login' => 'Recently active'] as $k => $l): ?><option value="<?= $k ?>" <?= $sort === $k ? 'selected' : '' ?>><?= $l ?></option><?php endforeach; ?>
     </select>
-    <?php if ($fq || $ft || $fsec): ?><a href="<?= htmlspecialchars($url(['q' => null, 'type' => null, 'chapter' => null])) ?>" class="text-xs text-gray-500 hover:text-rarl-red px-2">Clear filters</a><?php endif; ?>
+    <?php if ($fq || $ft || $fsec): ?><a href="<?= ex($url(['q' => null, 'type' => null, 'chapter' => null])) ?>" class="text-xs text-gray-500 hover:text-rarl-red px-2">Clear filters</a><?php endif; ?>
   </form>
 
   <?= bulkFormOpen('', ['return_qs' => $qs]) ?>
@@ -366,7 +366,7 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
   ]) ?></div>
   <div id="bulk-chapter-wrap" class="hidden px-3 pb-3 -mt-2"><div class="flex items-center gap-2 text-xs">
     <span class="text-gray-500">Move selected to</span>
-    <select id="bulk-section-select" class="rarl-input !w-auto !h-8"><option value="">No chapter</option><?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>"><?= htmlspecialchars($s['name']) ?></option><?php endforeach; ?></select>
+    <select id="bulk-section-select" class="rarl-input !w-auto !h-8"><option value="">No chapter</option><?php foreach ($sections as $s): ?><option value="<?= $s['id'] ?>"><?= ex($s['name']) ?></option><?php endforeach; ?></select>
     <button type="submit" form="bulk-form" id="bulk-move" class="rarl-btn rarl-btn-sm rarl-btn-dark">Move</button>
   </div></div>
 
@@ -383,29 +383,29 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
         $badge = ['active' => ['rarl-badge-green', 'Active'], 'pending' => ['rarl-badge-amber', 'Pending'], 'inactive' => ['rarl-badge-gray', 'Inactive']][$m['status']] ?? ['rarl-badge-gray', $m['status']];
         $expSoon = !empty($m['id_card_expires_at']) && strtotime($m['id_card_expires_at']) < strtotime('+60 days');
       ?>
-        <tr class="cursor-pointer" data-open="<?= (int)$m['id'] ?>" data-status="<?= htmlspecialchars($m['status']) ?>">
+        <tr class="cursor-pointer" data-open="<?= (int)$m['id'] ?>" data-status="<?= ex($m['status']) ?>">
           <td onclick="event.stopPropagation()"><?= bulkRowCheckbox((int)$m['id']) ?></td>
           <td>
             <div class="flex items-center gap-3 min-w-0">
               <?= memberAvatarHtml($m['avatar_path'] ?? null, $name, 'w-9 h-9 text-sm') ?>
               <div class="min-w-0">
-                <p class="font-semibold text-gray-900 truncate max-w-[220px]"><?= htmlspecialchars($name) ?><?= !empty($m['is_chair']) ? ' <i class="fa-solid fa-crown text-indigo-500 text-[10px]" title="Chapter chair"></i>' : '' ?></p>
-                <p class="text-[11px] text-gray-400 truncate max-w-[220px]"><?= htmlspecialchars($m['email']) ?></p>
+                <p class="font-semibold text-gray-900 truncate max-w-[220px]"><?= ex($name) ?><?= !empty($m['is_chair']) ? ' <i class="fa-solid fa-crown text-indigo-500 text-[10px]" title="Chapter chair"></i>' : '' ?></p>
+                <p class="text-[11px] text-gray-400 truncate max-w-[220px]"><?= ex($m['email']) ?></p>
               </div>
             </div>
           </td>
           <td>
-            <p class="text-gray-700 truncate max-w-[200px]"><?= htmlspecialchars($m['institution'] ?: ($m['type'] === 'lab' ? 'Research lab' : 'Independent')) ?></p>
-            <p class="text-[11px] text-gray-400"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Lab' : '<i class="fa-solid fa-user"></i> Individual' ?><?= $m['country'] ? ' · ' . htmlspecialchars($m['country']) : '' ?></p>
+            <p class="text-gray-700 truncate max-w-[200px]"><?= ex($m['institution'] ?: ($m['type'] === 'lab' ? 'Research lab' : 'Independent')) ?></p>
+            <p class="text-[11px] text-gray-400"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Lab' : '<i class="fa-solid fa-user"></i> Individual' ?><?= $m['country'] ? ' · ' . ex($m['country']) : '' ?></p>
           </td>
-          <td><?= !empty($m['section_id']) && isset($sectionName[$m['section_id']]) ? '<span class="text-gray-700 text-xs">' . htmlspecialchars($sectionName[$m['section_id']]) . '</span>' : '<span class="text-[11px] text-gray-400 italic">Unassigned</span>' ?></td>
+          <td><?= !empty($m['section_id']) && isset($sectionName[$m['section_id']]) ? '<span class="text-gray-700 text-xs">' . ex($sectionName[$m['section_id']]) . '</span>' : '<span class="text-[11px] text-gray-400 italic">Unassigned</span>' ?></td>
           <td>
             <span class="rarl-badge <?= $badge[0] ?>"><?= $badge[1] ?></span>
             <?php if (!$m['email_verified_at'] && $m['status'] === 'pending'): ?><p class="text-[10px] text-red-600 mt-1">Email not verified</p><?php endif; ?>
           </td>
           <td>
             <?php if (!empty($m['id_card_path'])): ?>
-              <span class="font-mono text-[11px] text-gray-700"><?= htmlspecialchars($m['member_code'] ?? '') ?></span>
+              <span class="font-mono text-[11px] text-gray-700"><?= ex($m['member_code'] ?? '') ?></span>
               <p class="text-[10px] <?= $expSoon ? 'text-amber-600 font-semibold' : 'text-gray-400' ?>"><?= $m['id_card_expires_at'] ? ($expSoon ? 'Expires ' : 'Until ') . date('M Y', strtotime($m['id_card_expires_at'])) : '' ?></p>
             <?php elseif ($m['status'] === 'active'): ?>
               <span class="text-[11px] text-amber-600"><?= empty($m['avatar_path']) ? 'Needs photo' : 'Not issued' ?></span>
@@ -414,7 +414,7 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
           <td class="text-[11px] text-gray-500 whitespace-nowrap"><?= date('d M Y', strtotime($m['created_at'])) ?></td>
           <td class="text-right whitespace-nowrap" onclick="event.stopPropagation()">
             <?php if ($m['status'] === 'pending'): ?>
-            <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="activate"><input type="hidden" name="mid" value="<?= $m['id'] ?>"><input type="hidden" name="return_qs" value="<?= htmlspecialchars($qs) ?>">
+            <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="activate"><input type="hidden" name="mid" value="<?= $m['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
               <button class="rarl-btn rarl-btn-sm rarl-btn-primary" title="Approve"><i class="fa-solid fa-check"></i> Approve</button></form>
             <?php endif; ?>
             <button type="button" class="rarl-icon-btn" data-open-btn="<?= (int)$m['id'] ?>" title="Details"><i class="fa-solid fa-chevron-right"></i></button>
@@ -428,9 +428,9 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
     <span><?= $total ? 'Showing ' . number_format(($page - 1) * MEMBERS_PER_PAGE + 1) . '–' . number_format(min($total, $page * MEMBERS_PER_PAGE)) . ' of ' . number_format($total) : '0 members' ?> · click a row for details</span>
     <?php if ($pages > 1): ?>
     <div class="flex items-center gap-1">
-      <a href="<?= htmlspecialchars($url(['page' => $page - 1])) ?>" class="rarl-icon-btn border border-gray-200 <?= $page <= 1 ? 'pointer-events-none opacity-40' : '' ?>"><i class="fa-solid fa-chevron-left"></i></a>
+      <a href="<?= ex($url(['page' => $page - 1])) ?>" class="rarl-icon-btn border border-gray-200 <?= $page <= 1 ? 'pointer-events-none opacity-40' : '' ?>"><i class="fa-solid fa-chevron-left"></i></a>
       <span class="px-2">Page <?= $page ?> of <?= $pages ?></span>
-      <a href="<?= htmlspecialchars($url(['page' => $page + 1])) ?>" class="rarl-icon-btn border border-gray-200 <?= $page >= $pages ? 'pointer-events-none opacity-40' : '' ?>"><i class="fa-solid fa-chevron-right"></i></a>
+      <a href="<?= ex($url(['page' => $page + 1])) ?>" class="rarl-icon-btn border border-gray-200 <?= $page >= $pages ? 'pointer-events-none opacity-40' : '' ?>"><i class="fa-solid fa-chevron-right"></i></a>
     </div>
     <?php endif; ?>
   </div>

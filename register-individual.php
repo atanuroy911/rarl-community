@@ -160,13 +160,13 @@ echo htmlHead('Individual Researcher Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Full Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="full_name" value="<?= htmlspecialchars($vals['full_name'] ?? '') ?>" required
+          <input type="text" name="full_name" value="<?= ex($vals['full_name'] ?? '') ?>" required
             placeholder="Dr. Jane Smith"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email <span class="text-rarl-red">*</span></label>
-          <input type="email" name="email" value="<?= htmlspecialchars($vals['email'] ?? '') ?>" required
+          <input type="email" name="email" value="<?= ex($vals['email'] ?? '') ?>" required
             placeholder="you@university.edu"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
@@ -184,13 +184,13 @@ echo htmlHead('Individual Researcher Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Institution <span class="text-rarl-red">*</span></label>
-          <input type="text" name="institution" value="<?= htmlspecialchars($vals['institution'] ?? '') ?>" required
+          <input type="text" name="institution" value="<?= ex($vals['institution'] ?? '') ?>" required
             placeholder="University or Organisation"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Department <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input type="text" name="department" value="<?= htmlspecialchars($vals['department'] ?? '') ?>"
+          <input type="text" name="department" value="<?= ex($vals['department'] ?? '') ?>"
             placeholder="e.g. Computer Science"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
@@ -214,13 +214,13 @@ echo htmlHead('Individual Researcher Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">City &amp; State/Province <span class="text-rarl-red">*</span></label>
-          <input type="text" name="city_state" value="<?= htmlspecialchars($vals['city_state'] ?? '') ?>" required
+          <input type="text" name="city_state" value="<?= ex($vals['city_state'] ?? '') ?>" required
             placeholder="e.g. Boston, MA"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Primary Lab Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="primary_lab_name" value="<?= htmlspecialchars($vals['primary_lab_name'] ?? '') ?>" required
+          <input type="text" name="primary_lab_name" value="<?= ex($vals['primary_lab_name'] ?? '') ?>" required
             placeholder="e.g. Robotics & Automation Lab"
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
@@ -247,7 +247,7 @@ echo htmlHead('Individual Researcher Registration');
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">CV / Resume <span class="text-rarl-red">*</span></label>
         <?php if ($keptCv): ?>
         <label class="flex items-center gap-2 mb-2 p-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-xs text-green-800 dark:text-green-200">
-          <input type="checkbox" name="keep_cv" value="1" checked class="accent-rarl-red"/> <i class="fa-solid fa-paperclip"></i> Keep <strong><?= htmlspecialchars($_SESSION['reg_cv_name'] ?? 'your uploaded CV') ?></strong> — or choose a different file below
+          <input type="checkbox" name="keep_cv" value="1" checked class="accent-rarl-red"/> <i class="fa-solid fa-paperclip"></i> Keep <strong><?= ex($_SESSION['reg_cv_name'] ?? 'your uploaded CV') ?></strong> — or choose a different file below
         </label>
         <?php endif; ?>
         <input type="file" name="cv_file" accept=".pdf,.doc,.docx"
@@ -258,7 +258,7 @@ echo htmlHead('Individual Researcher Registration');
       <!-- CV Link (optional alternative to uploading a file) -->
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Or, link to your CV / Resume <span class="text-gray-400 font-normal">(e.g. Google Drive)</span></label>
-        <input type="url" name="cv_url" value="<?= htmlspecialchars($vals['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
+        <input type="url" name="cv_url" value="<?= ex($vals['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <p class="text-[11px] text-gray-400 mt-1">Make sure link sharing is turned on so we can access it. Either the upload above or this link is required.</p>
       </div>
@@ -267,7 +267,7 @@ echo htmlHead('Individual Researcher Registration');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Interests <span class="text-rarl-red">*</span></label>
         <textarea name="research_interests" required rows="2" placeholder="e.g. Service Robotics, Computer Vision, Path Planning, Autonomous Systems"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= htmlspecialchars($vals['research_interests'] ?? '') ?></textarea>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= ex($vals['research_interests'] ?? '') ?></textarea>
       </div>
 
       <!-- Academic links -->
@@ -276,19 +276,19 @@ echo htmlHead('Individual Researcher Registration');
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div>
             <label class="block text-xs text-gray-500 mb-1">Google Scholar URL <span class="text-gray-400 font-normal">(optional)</span></label>
-            <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($vals['google_scholar_url'] ?? '') ?>"
+            <input type="url" name="google_scholar_url" value="<?= ex($vals['google_scholar_url'] ?? '') ?>"
               placeholder="scholar.google.com/…"
               class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">ORCID ID <span class="text-gray-400 font-normal">(optional)</span></label>
-            <input type="text" name="orcid_id" value="<?= htmlspecialchars($vals['orcid_id'] ?? '') ?>"
+            <input type="text" name="orcid_id" value="<?= ex($vals['orcid_id'] ?? '') ?>"
               placeholder="0000-0000-0000-0000"
               class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>
           <div>
             <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
-            <input type="url" name="linkedin_url" value="<?= htmlspecialchars($vals['linkedin_url'] ?? '') ?>"
+            <input type="url" name="linkedin_url" value="<?= ex($vals['linkedin_url'] ?? '') ?>"
               placeholder="linkedin.com/in/…"
               class="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
           </div>

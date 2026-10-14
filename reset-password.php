@@ -57,7 +57,7 @@ echo htmlHead('Reset Password');
         <span class="font-heading font-black text-gray-900 dark:text-white">Robotics & Automation Research Lab (RARL)</span>
       </div>
       <h1 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-1">Reset your password</h1>
-      <p class="text-gray-500 text-sm">Enter the 6-digit code we emailed<?= $email ? ' to <strong>' . htmlspecialchars($email) . '</strong>' : '' ?> and choose a new password.</p>
+      <p class="text-gray-500 text-sm">Enter the 6-digit code we emailed<?= $email ? ' to <strong>' . ex($email) . '</strong>' : '' ?> and choose a new password.</p>
     </div>
 
     <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 shadow-sm">
@@ -71,14 +71,14 @@ echo htmlHead('Reset Password');
       <?php else: ?>
       <?php if ($error): ?>
       <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-        <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
+        <i class="fa-solid fa-triangle-exclamation"></i> <?= ex($error) ?>
       </div>
       <?php endif; ?>
       <form method="POST" class="space-y-4" id="reset-form">
         <?= csrfField() ?>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Email Address</label>
-          <input type="email" name="email" value="<?= htmlspecialchars($email) ?>" required
+          <input type="email" name="email" value="<?= ex($email) ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition" />
         </div>
         <div>

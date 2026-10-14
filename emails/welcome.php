@@ -22,12 +22,12 @@
     <p>We are thrilled to have you join our global network of researchers, labs, and students.</p>
 
     <div style="text-align: center; margin: 30px 0;">
-      <a href="<?= SITE_URL ?>/community.php" style="background: <?= BRAND_INK ?>; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Visit the Community Feed</a>
+      <a href="<?= SITE_URL ?>/dashboard.php" style="background: <?= BRAND_INK ?>; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Open your member portal</a>
     </div>
 
     <p><strong>What's next?</strong></p>
     <ol>
-      <li><strong>Join the Conversation:</strong> Click the button above to post updates, share papers, and find collaborators.</li>
+      <li><strong>Stay up to date:</strong> Your member Home shows every RARL announcement, opportunity, event and new learning resource in one feed.</li>
       <li><strong>Access Resources:</strong> Log in to the platform to explore our curated learning hub.</li>
       <li><strong>Earn Certificates:</strong> Attend our upcoming workshops and webinars to automatically receive verifiable PDF certificates.</li>
     </ol>

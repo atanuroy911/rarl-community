@@ -31,8 +31,8 @@ adminWrap(function() use ($results) {
   <ul class="text-xs text-gray-600 space-y-2 mb-5">
     <?php foreach (RARL_MIGRATIONS as $file => $desc): ?>
     <li class="flex items-center gap-2">
-      <span class="font-mono font-semibold text-gray-800"><?= htmlspecialchars($file) ?></span>
-      <span class="text-gray-400">— <?= htmlspecialchars($desc) ?></span>
+      <span class="font-mono font-semibold text-gray-800"><?= ex($file) ?></span>
+      <span class="text-gray-400">— <?= ex($desc) ?></span>
     </li>
     <?php endforeach; ?>
   </ul>
@@ -50,11 +50,11 @@ adminWrap(function() use ($results) {
     <div class="flex items-start gap-2 text-xs">
       <span><?= $r['ok'] ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-circle-xmark"></i>' ?></span>
       <div>
-        <span class="font-mono font-semibold text-gray-800"><?= htmlspecialchars($file) ?></span>
+        <span class="font-mono font-semibold text-gray-800"><?= ex($file) ?></span>
         <?php if ($r['ok']): ?>
           <span class="text-gray-400"> — <?= (int)$r['statements'] ?> statements executed</span>
         <?php else: ?>
-          <div class="text-red-600 mt-1"><?= htmlspecialchars($r['error']) ?></div>
+          <div class="text-red-600 mt-1"><?= ex($r['error']) ?></div>
         <?php endif; ?>
       </div>
     </div>

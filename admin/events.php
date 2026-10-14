@@ -133,9 +133,9 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
     <?php endforeach; ?>
   </nav>
   <form method="GET" class="relative">
-    <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
+    <input type="hidden" name="tab" value="<?= ex($tab) ?>">
     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-    <input type="search" name="q" value="<?= htmlspecialchars($q) ?>" placeholder="Search events…" class="rarl-input !pl-8 !w-64"/>
+    <input type="search" name="q" value="<?= ex($q) ?>" placeholder="Search events…" class="rarl-input !pl-8 !w-64"/>
   </form>
 </div>
 
@@ -162,7 +162,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
   ?>
   <article class="rarl-card overflow-hidden flex flex-col group">
     <div class="relative h-36 bg-gradient-to-br from-gray-800 to-gray-950">
-      <?php if (!empty($e['cover_image'])): ?><img src="../uploads/events/<?= htmlspecialchars(rawurlencode($e['cover_image'])) ?>" alt="" class="absolute inset-0 w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/70 to-black/0"></div>
+      <?php if (!empty($e['cover_image'])): ?><img src="../uploads/events/<?= ex(rawurlencode($e['cover_image'])) ?>" alt="" class="absolute inset-0 w-full h-full object-cover"/><div class="absolute inset-0 bg-gradient-to-t from-black/70 to-black/0"></div>
       <?php else: ?><div class="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_30%_20%,#CC0703,transparent_55%)]"></div><?php endif; ?>
       <label class="absolute top-3 left-3 bg-white/90 rounded-md p-1 leading-none" onclick="event.stopPropagation()"><?= bulkRowCheckbox((int)$e['id']) ?></label>
       <div class="absolute top-3 right-3 flex gap-1.5">
@@ -178,7 +178,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
         <?php endif; ?>
         <div class="min-w-0">
           <p class="text-[10px] font-bold uppercase tracking-wider text-white/70"><?= ucfirst($e['type']) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?></p>
-          <h3 class="font-heading font-bold text-base leading-snug line-clamp-2"><?= htmlspecialchars($e['title']) ?></h3>
+          <h3 class="font-heading font-bold text-base leading-snug line-clamp-2"><?= ex($e['title']) ?></h3>
         </div>
       </div>
     </div>
@@ -187,8 +187,8 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
         <?php if ($isToday): ?><span class="text-rarl-red font-bold"><i class="fa-solid fa-circle text-[7px] align-middle animate-pulse [animation-iteration-count:3]"></i> Today</span>
         <?php elseif ($days !== null && $days > 0): ?><span class="font-semibold text-gray-700">in <?= $days ?> day<?= $days === 1 ? '' : 's' ?></span>
         <?php elseif (!$e['event_date']): ?><span class="text-amber-600 font-semibold">No date set</span><?php endif; ?>
-        <?php if ($e['speaker_name']): ?><span><i class="fa-solid fa-microphone"></i> <?= htmlspecialchars($e['speaker_name']) ?></span><?php endif; ?>
-        <?php if ($e['location']): ?><span class="truncate max-w-[180px]"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($e['location']) ?></span><?php endif; ?>
+        <?php if ($e['speaker_name']): ?><span><i class="fa-solid fa-microphone"></i> <?= ex($e['speaker_name']) ?></span><?php endif; ?>
+        <?php if ($e['location']): ?><span class="truncate max-w-[180px]"><i class="fa-solid fa-location-dot"></i> <?= ex($e['location']) ?></span><?php endif; ?>
         <?php if ($e['online_url']): ?><span><i class="fa-solid fa-video"></i> Online</span><?php endif; ?>
       </div>
       <div>
@@ -205,10 +205,10 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
         <a href="event-registrations.php?event=<?= $e['id'] ?>" class="rarl-btn rarl-btn-sm rarl-btn-dark"><i class="fa-solid fa-users"></i> Attendees</a>
         <button type="button" class="rarl-btn rarl-btn-sm" data-edit-event="<?= (int)$e['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</button>
         <div class="ml-auto flex">
-          <button type="button" class="rarl-icon-btn" data-copy="<?= htmlspecialchars(SITE_URL . '/events.php') ?>" title="Copy public events link"><i class="fa-solid fa-link"></i></button>
+          <button type="button" class="rarl-icon-btn" data-copy="<?= ex(SITE_URL . '/events.php') ?>" title="Copy public events link"><i class="fa-solid fa-link"></i></button>
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="duplicate_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><button class="rarl-icon-btn" title="Duplicate" data-no-loading><i class="fa-solid fa-copy"></i></button></form>
-          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn" title="<?= $e['is_active'] ? 'Hide from members' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $e['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
-          <form method="POST" data-confirm="Delete “<?= htmlspecialchars($e['title']) ?>”? This removes its <?= (int)$e['reg_count'] ?> registration(s) too. Issued certificates stay valid."><?= acsrfField() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
+          <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= ex($tab) ?>"><button class="rarl-icon-btn" title="<?= $e['is_active'] ? 'Hide from members' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $e['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
+          <form method="POST" data-confirm="Delete “<?= ex($e['title']) ?>”? This removes its <?= (int)$e['reg_count'] ?> registration(s) too. Issued certificates stay valid."><?= acsrfField() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= ex($tab) ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>
         </div>
       </div>
     </div>
@@ -220,7 +220,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
 <div class="rarl-drawer-backdrop" id="ev-bg"></div>
 <aside class="rarl-drawer" id="ev-drawer">
   <form method="POST" enctype="multipart/form-data" class="flex flex-col h-full" id="ev-form">
-    <?= acsrfField() ?><input type="hidden" name="action" value="save_event"><input type="hidden" name="ev_id" value=""><input type="hidden" name="return_tab" value="<?= htmlspecialchars($tab) ?>">
+    <?= acsrfField() ?><input type="hidden" name="action" value="save_event"><input type="hidden" name="ev_id" value=""><input type="hidden" name="return_tab" value="<?= ex($tab) ?>">
     <div class="p-5 border-b border-gray-100 flex items-center justify-between">
       <h2 class="font-heading font-black text-lg" id="ev-form-title">New event</h2>
       <button type="button" class="rarl-icon-btn" data-ev-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>

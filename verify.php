@@ -38,7 +38,7 @@ echo htmlHead('Verify Certificate');
     <form method="GET" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm mb-8">
       <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Certificate ID or Verification URL</label>
       <div class="flex gap-3">
-        <input type="text" name="id" value="<?= htmlspecialchars($uuid) ?>" required
+        <input type="text" name="id" value="<?= ex($uuid) ?>" required
           placeholder="e.g. RARL-2025-0042 or paste UUID from QR code"
           class="flex-1 px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         <button type="submit" class="px-6 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors flex-shrink-0">Verify</button>
@@ -71,24 +71,24 @@ echo htmlHead('Verify Certificate');
           <img src="<?= BRAND_MARK_PATH ?>" alt="RARL" class="w-16 h-16 rounded-2xl object-contain mx-auto mb-4 shadow-lg"/>
           <p class="text-xs font-bold text-rarl-red uppercase tracking-widest mb-2"><?= $isMembershipCert ? 'Certificate of Membership' : 'Certificate of Participation' ?></p>
           <p class="text-gray-500 text-sm mb-3">This is to certify that</p>
-          <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-3"><?= htmlspecialchars($cert['recipient_name']) ?></h2>
+          <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white mb-3"><?= ex($cert['recipient_name']) ?></h2>
           <?php if ($isMembershipCert): ?>
           <p class="text-gray-500 text-sm mb-1">is a certified member of the</p>
           <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100">Robotics & Automation Research Lab (RARL)</h3>
           <?php else: ?>
           <p class="text-gray-500 text-sm mb-1">has successfully participated in</p>
-          <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100"><?= htmlspecialchars($cert['event_title'] ?? 'Event') ?></h3>
+          <h3 class="font-heading font-bold text-lg text-gray-800 dark:text-gray-100"><?= ex($cert['event_title'] ?? 'Event') ?></h3>
           <?php endif; ?>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Certificate ID</p>
-            <p class="font-mono font-bold text-gray-800 dark:text-white"><?= htmlspecialchars($cert['certificate_no']) ?></p>
+            <p class="font-mono font-bold text-gray-800 dark:text-white"><?= ex($cert['certificate_no']) ?></p>
           </div>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
             <p class="text-xs text-gray-400 uppercase tracking-wider mb-1"><?= $isMembershipCert ? 'Certificate Type' : 'Event Type' ?></p>
-            <p class="font-semibold text-gray-800 dark:text-white capitalize"><?= $isMembershipCert ? 'Membership' : htmlspecialchars($cert['event_type'] ?? '—') ?></p>
+            <p class="font-semibold text-gray-800 dark:text-white capitalize"><?= $isMembershipCert ? 'Membership' : ex($cert['event_type'] ?? '—') ?></p>
           </div>
           <?php if (!$isMembershipCert): ?>
           <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">

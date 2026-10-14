@@ -94,17 +94,17 @@ adminWrap(function() use ($plans, $editPlan) {
         <?php if ($editPlan): ?><input type="hidden" name="plan_id" value="<?= $editPlan['id'] ?>"><?php endif; ?>
 
         <div class="grid grid-cols-2 gap-2">
-          <input type="text" name="name" required value="<?= htmlspecialchars($editPlan['name'] ?? '') ?>" placeholder="Plan Name"
+          <input type="text" name="name" required value="<?= ex($editPlan['name'] ?? '') ?>" placeholder="Plan Name"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-          <input type="text" name="slug" required value="<?= htmlspecialchars($editPlan['slug'] ?? '') ?>" placeholder="slug"
+          <input type="text" name="slug" required value="<?= ex($editPlan['slug'] ?? '') ?>" placeholder="slug"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
-        <input type="text" name="tagline" value="<?= htmlspecialchars($editPlan['tagline'] ?? '') ?>" placeholder="Tagline"
+        <input type="text" name="tagline" value="<?= ex($editPlan['tagline'] ?? '') ?>" placeholder="Tagline"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <textarea name="description" rows="2" placeholder="Description"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($editPlan['description'] ?? '') ?></textarea>
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editPlan['description'] ?? '') ?></textarea>
         <textarea name="features" rows="3" placeholder="Features — one per line"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= htmlspecialchars($editPlan['features'] ?? '') ?></textarea>
+          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editPlan['features'] ?? '') ?></textarea>
 
         <select name="audience" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
           <?php foreach (['individual'=>'Individual','lab'=>'Lab','both'=>'Both'] as $v=>$l): ?>
@@ -113,19 +113,19 @@ adminWrap(function() use ($plans, $editPlan) {
         </select>
 
         <div class="grid grid-cols-3 gap-2">
-          <input type="number" step="0.01" name="regular_price" value="<?= htmlspecialchars($editPlan['regular_price'] ?? '') ?>" placeholder="Price"
+          <input type="number" step="0.01" name="regular_price" value="<?= ex($editPlan['regular_price'] ?? '') ?>" placeholder="Price"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="currency" value="<?= htmlspecialchars($editPlan['currency'] ?? 'EUR') ?>" placeholder="EUR"
+          <input type="text" name="currency" value="<?= ex($editPlan['currency'] ?? 'EUR') ?>" placeholder="EUR"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="billing_period" value="<?= htmlspecialchars($editPlan['billing_period'] ?? 'year') ?>" placeholder="year"
+          <input type="text" name="billing_period" value="<?= ex($editPlan['billing_period'] ?? 'year') ?>" placeholder="year"
             class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
         </div>
         <p class="text-[10px] text-gray-400">Regular price is stored for future reference only — not shown publicly while free.</p>
 
-        <input type="text" name="free_note" value="<?= htmlspecialchars($editPlan['free_note'] ?? 'Free for a limited time') ?>" placeholder="Free note"
+        <input type="text" name="free_note" value="<?= ex($editPlan['free_note'] ?? 'Free for a limited time') ?>" placeholder="Free note"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
 
-        <input type="number" name="display_order" value="<?= htmlspecialchars($editPlan['display_order'] ?? 0) ?>" placeholder="Order"
+        <input type="number" name="display_order" value="<?= ex($editPlan['display_order'] ?? 0) ?>" placeholder="Order"
           class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
 
         <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
@@ -171,10 +171,10 @@ adminWrap(function() use ($plans, $editPlan) {
               <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($p['audience']) ?></span>
               <?php if (!$p['is_published']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span><?php endif; ?>
               <?php if ($p['is_free_now']): ?><span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Free now</span><?php endif; ?>
-              <?php if ($p['regular_price'] !== null): ?><span class="text-[10px] font-bold text-gray-400"><?= number_format((float)$p['regular_price'], 0) ?> <?= htmlspecialchars($p['currency']) ?>/<?= htmlspecialchars($p['billing_period']) ?></span><?php endif; ?>
+              <?php if ($p['regular_price'] !== null): ?><span class="text-[10px] font-bold text-gray-400"><?= number_format((float)$p['regular_price'], 0) ?> <?= ex($p['currency']) ?>/<?= ex($p['billing_period']) ?></span><?php endif; ?>
             </div>
-            <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($p['name']) ?> <span class="text-gray-400 font-normal text-xs">(<?= htmlspecialchars($p['slug']) ?>)</span></p>
-            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($p['tagline']) ?></p>
+            <p class="font-semibold text-sm text-gray-900"><?= ex($p['name']) ?> <span class="text-gray-400 font-normal text-xs">(<?= ex($p['slug']) ?>)</span></p>
+            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= ex($p['tagline']) ?></p>
           </div>
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
             <a href="plans.php?edit=<?= $p['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded text-center">Edit</a>

@@ -38,15 +38,15 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
 <?= publicNav('resources') ?>
 
 <!-- Hero -->
-<section class="bg-rarl-navy text-white py-14 px-6 text-center">
-  <div class="max-w-3xl mx-auto">
-    <div class="text-4xl mb-4"><i class="fa-solid fa-book"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl mb-3">Learning Hub</h1>
-    <p class="text-white/60 text-sm max-w-lg mx-auto">Curated YouTube playlists, free books, articles, and tools for researchers — organised by topic. All free, all external.</p>
+<section class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+  <div class="max-w-6xl mx-auto px-6 py-7">
+    <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">Learning</p>
+    <h1 class="font-heading font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">Learning Hub</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">Courses, talks, books and tools curated by RARL, organised by topic. Some collections are for members only.</p>
   </div>
 </section>
 
-<div class="max-w-6xl mx-auto px-6 py-12">
+<div class="max-w-6xl mx-auto px-6 py-8">
 
   <?php if (!$activecat): ?>
   <!-- Category grid -->
@@ -59,8 +59,8 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
       <span class="absolute top-3 right-3 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"><i class="fa-solid fa-lock"></i> Premium</span>
       <?php endif; ?>
       <div class="text-3xl mb-3"><?= $cat['icon_emoji'] ?></div>
-      <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1"><?= htmlspecialchars($cat['name']) ?></h3>
-      <p class="text-gray-400 text-xs leading-relaxed mb-3"><?= htmlspecialchars(mb_strimwidth($cat['description'] ?? '', 0, 70, '…')) ?></p>
+      <h3 class="font-heading font-bold text-sm text-gray-900 dark:text-white mb-1"><?= ex($cat['name']) ?></h3>
+      <p class="text-gray-400 text-xs leading-relaxed mb-3"><?= ex(mb_strimwidth($cat['description'] ?? '', 0, 70, '…')) ?></p>
       <span class="text-[10px] font-bold text-rarl-red uppercase tracking-wider">View Resources →</span>
     </a>
     <?php endforeach; ?>
@@ -73,8 +73,8 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
     <div class="flex items-center gap-3 mt-3">
       <div class="text-3xl"><?= $activecat['icon_emoji'] ?></div>
       <div>
-        <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white"><?= htmlspecialchars($activecat['name']) ?></h2>
-        <p class="text-gray-500 text-sm mt-0.5"><?= htmlspecialchars($activecat['description'] ?? '') ?></p>
+        <h2 class="font-heading font-black text-2xl text-gray-900 dark:text-white"><?= ex($activecat['name']) ?></h2>
+        <p class="text-gray-500 text-sm mt-0.5"><?= ex($activecat['description'] ?? '') ?></p>
       </div>
     </div>
   </div>
@@ -95,7 +95,7 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
       $isLocked  = $isPremium && !$isActiveMember;
       $tag = $isLocked ? 'div' : 'a';
     ?>
-    <<?= $tag ?> <?= $isLocked ? '' : 'href="' . htmlspecialchars($r['url']) . '" target="_blank" rel="noopener"' ?>
+    <<?= $tag ?> <?= $isLocked ? '' : 'href="' . ex($r['url']) . '" target="_blank" rel="noopener"' ?>
       class="group flex gap-4 bg-white dark:bg-gray-900 border rounded-2xl p-5 transition <?= $isLocked ? 'border-amber-200 dark:border-amber-800 bg-amber-50/30 dark:bg-amber-900/10' : 'border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 hover:-translate-y-0.5 hover:shadow-md' ?>">
       <div class="w-12 h-12 rounded-xl <?= $isLocked ? 'bg-amber-100 dark:bg-amber-900/30' : ($isYT ? 'bg-red-100 dark:bg-red-900/30' : 'bg-gray-100 dark:bg-gray-800') ?> flex items-center justify-center text-xl flex-shrink-0">
         <?= $isLocked ? '<i class="fa-solid fa-lock"></i>' : $icon ?>
@@ -104,9 +104,9 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
         <?php if ($isPremium): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider"><i class="fa-solid fa-lock"></i> Premium · </span><?php endif; ?>
         <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider"><i class="fa-solid fa-star"></i> Featured · </span><?php endif; ?>
         <span class="text-[10px] font-bold text-gray-400 uppercase tracking-wider"><?= $label ?></span>
-        <h3 class="font-semibold text-sm text-gray-900 dark:text-white mt-1 mb-1 leading-snug <?= $isLocked ? '' : 'group-hover:text-rarl-red transition-colors' ?>"><?= htmlspecialchars($r['title']) ?></h3>
+        <h3 class="font-semibold text-sm text-gray-900 dark:text-white mt-1 mb-1 leading-snug <?= $isLocked ? '' : 'group-hover:text-rarl-red transition-colors' ?>"><?= ex($r['title']) ?></h3>
         <?php if ($r['description']): ?>
-        <p class="text-xs text-gray-400 leading-relaxed line-clamp-2"><?= htmlspecialchars($r['description']) ?></p>
+        <p class="text-xs text-gray-400 leading-relaxed line-clamp-2"><?= ex($r['description']) ?></p>
         <?php endif; ?>
         <?php if ($isLocked): ?>
         <a href="register.php" class="inline-flex items-center gap-1 mt-2 text-xs text-amber-600 font-bold hover:underline">Join free to unlock →</a>

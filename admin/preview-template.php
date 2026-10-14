@@ -42,7 +42,7 @@ adminWrap(function() use ($template, $sampleData, $back, $id) { ?>
   <div class="flex flex-wrap items-center gap-3 mb-5">
     <a href="<?= $back ?>" class="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:text-rarl-red" aria-label="Back"><i class="fa-solid fa-arrow-left"></i></a>
     <div class="flex-1 min-w-0">
-      <h1 class="text-xl font-black text-gray-900 truncate"><?= htmlspecialchars($template['name']) ?></h1>
+      <h1 class="text-xl font-black text-gray-900 truncate"><?= ex($template['name']) ?></h1>
       <p class="text-xs text-gray-500">Sample preview — this is the exact PDF that will be generated.</p>
     </div>
     <a href="templates.php?edit=<?= $id ?>" class="px-4 py-2 bg-white border border-gray-200 hover:border-rarl-red text-sm font-semibold rounded-xl"><i class="fa-solid fa-pen-ruler"></i> Open in designer</a>

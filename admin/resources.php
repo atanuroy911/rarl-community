@@ -120,7 +120,7 @@ adminWrap(function() use ($categories, $resources) {
         <div class="grid grid-cols-2 gap-2">
           <select name="cat_id" required class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
             <option value="">— Category —</option>
-            <?php foreach ($categories as $c): ?><option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?></option><?php endforeach; ?>
+            <?php foreach ($categories as $c): ?><option value="<?= $c['id'] ?>"><?= ex($c['name']) ?></option><?php endforeach; ?>
           </select>
           <select name="res_type" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
             <?php foreach (['youtube_playlist','youtube_video','article','book','tool','course','other'] as $t): ?>
@@ -165,7 +165,7 @@ adminWrap(function() use ($categories, $resources) {
         <div class="flex items-center justify-between p-2 bg-gray-50 border border-gray-100 rounded-lg group">
           <div class="flex items-center gap-2">
             <span class="text-base"><?= $c['icon_emoji'] ?></span>
-            <span class="text-xs font-semibold text-gray-700"><?= htmlspecialchars($c['name']) ?></span>
+            <span class="text-xs font-semibold text-gray-700"><?= ex($c['name']) ?></span>
             <?php if (($c['access_level'] ?? 'public') === 'member'): ?><span class="text-[9px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded"><i class="fa-solid fa-lock"></i></span><?php endif; ?>
           </div>
           <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -212,11 +212,11 @@ adminWrap(function() use ($categories, $resources) {
             <div class="flex items-center gap-2 mb-1">
               <?php if ($r['is_featured']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded"><i class="fa-solid fa-star"></i> Featured</span><?php endif; ?>
               <?php if (($r['access_level']??'public')==='member'): ?><span class="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded"><i class="fa-solid fa-lock"></i> Premium</span><?php endif; ?>
-              <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= htmlspecialchars($r['cat_name']??'Unknown') ?></span>
-              <a href="<?= htmlspecialchars($r['url']) ?>" target="_blank" class="text-[10px] text-blue-500 hover:underline truncate max-w-[150px]"><?= htmlspecialchars($r['url']) ?></a>
+              <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ex($r['cat_name']??'Unknown') ?></span>
+              <a href="<?= ex($r['url']) ?>" target="_blank" class="text-[10px] text-blue-500 hover:underline truncate max-w-[150px]"><?= ex($r['url']) ?></a>
             </div>
-            <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($r['title']) ?></p>
-            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= htmlspecialchars($r['description']) ?></p>
+            <p class="font-semibold text-sm text-gray-900"><?= ex($r['title']) ?></p>
+            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= ex($r['description']) ?></p>
           </div>
           <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
             <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_feat"><input type="hidden" name="res_id" value="<?= $r['id'] ?>">

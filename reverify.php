@@ -69,7 +69,7 @@ echo htmlHead('Reverify ID Card');
 
     <?php if ($errors): ?>
     <div class="mb-5 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm space-y-1">
-      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+      <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= ex($e) ?></span></div><?php endforeach; ?>
     </div>
     <?php endif; ?>
 
@@ -79,30 +79,30 @@ echo htmlHead('Reverify ID Card');
       <?php if ($m['type'] === 'lab'): ?>
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Name <span class="text-rarl-red">*</span></label>
-        <input type="text" name="lab_name" value="<?= htmlspecialchars($m['lab_name'] ?? '') ?>" required
+        <input type="text" name="lab_name" value="<?= ex($m['lab_name'] ?? '') ?>" required
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm"/>
       </div>
       <?php else: ?>
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Institution <span class="text-rarl-red">*</span></label>
-        <input type="text" name="institution" value="<?= htmlspecialchars($m['institution'] ?? '') ?>" required
+        <input type="text" name="institution" value="<?= ex($m['institution'] ?? '') ?>" required
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm"/>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Position</label>
-        <input type="text" name="position" value="<?= htmlspecialchars($m['position'] ?? '') ?>"
+        <input type="text" name="position" value="<?= ex($m['position'] ?? '') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm"/>
       </div>
       <?php endif; ?>
 
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Country <span class="text-rarl-red">*</span></label>
-        <input type="text" name="country" value="<?= htmlspecialchars($m['country'] ?? '') ?>" required
+        <input type="text" name="country" value="<?= ex($m['country'] ?? '') ?>" required
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm"/>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Interests</label>
-        <textarea name="research_interests" rows="2" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['research_interests'] ?? '') ?></textarea>
+        <textarea name="research_interests" rows="2" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm resize-none"><?= ex($m['research_interests'] ?? '') ?></textarea>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Update Photo <span class="text-gray-400 font-normal">(optional — required if you've never uploaded one)</span></label>

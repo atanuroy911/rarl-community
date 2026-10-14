@@ -50,7 +50,7 @@ echo htmlHead('Forgot Password');
 
     <?php if ($error): ?>
     <div class="mb-5 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 text-sm">
-      <i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?>
+      <i class="fa-solid fa-triangle-exclamation"></i> <?= ex($error) ?>
     </div>
     <?php endif; ?>
 

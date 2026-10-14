@@ -225,7 +225,7 @@ adminWrap(function() use ($report, $errorMsg, $mapping, $pending, $FIELDS, $gues
 <p class="text-gray-500 text-sm mb-7">Bulk-create or merge accounts from a CSV or Excel file — you'll map its columns to system fields and review any matches before anything is saved.</p>
 
 <?php if ($errorMsg): ?>
-<div class="max-w-2xl mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($errorMsg) ?></div>
+<div class="max-w-2xl mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= ex($errorMsg) ?></div>
 <?php endif; ?>
 
 <?php if ($report): ?>
@@ -249,12 +249,12 @@ adminWrap(function() use ($report, $errorMsg, $mapping, $pending, $FIELDS, $gues
     <?php foreach ($mapping['header'] as $i => $colName): $guess = $guessField($colName); ?>
     <div class="flex items-center gap-3 p-3 bg-gray-50 border border-gray-200 rounded-xl">
       <div class="flex-1 min-w-0">
-        <p class="text-sm font-semibold text-gray-800 truncate"><?= htmlspecialchars($colName ?: '(blank header)') ?></p>
+        <p class="text-sm font-semibold text-gray-800 truncate"><?= ex($colName ?: '(blank header)') ?></p>
         <p class="text-[10px] text-gray-400">Column <?= $i + 1 ?></p>
       </div>
       <select name="map[<?= $i ?>]" class="px-3 py-2 border border-gray-300 rounded-lg text-xs bg-white flex-shrink-0 w-56">
         <?php foreach ($FIELDS as $field => [$label, $keywords]): ?>
-        <option value="<?= $field ?>" <?= $guess === $field ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+        <option value="<?= $field ?>" <?= $guess === $field ? 'selected' : '' ?>><?= ex($label) ?></option>
         <?php endforeach; ?>
       </select>
     </div>
@@ -287,15 +287,15 @@ adminWrap(function() use ($report, $errorMsg, $mapping, $pending, $FIELDS, $gues
       <div class="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
         <div class="p-4">
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Existing Member</p>
-          <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($ex['full_name'] ?: '(unnamed)') ?></p>
-          <p class="text-xs text-gray-500"><?= htmlspecialchars($ex['email']) ?><?= $ex['member_code'] ? ' · #' . htmlspecialchars($ex['member_code']) : '' ?></p>
-          <p class="text-xs text-gray-400 mt-1"><?= htmlspecialchars($ex['institution'] ?: '—') ?> · <?= htmlspecialchars($ex['country'] ?: '—') ?></p>
+          <p class="font-semibold text-sm text-gray-900"><?= ex($ex['full_name'] ?: '(unnamed)') ?></p>
+          <p class="text-xs text-gray-500"><?= ex($ex['email']) ?><?= $ex['member_code'] ? ' · #' . ex($ex['member_code']) : '' ?></p>
+          <p class="text-xs text-gray-400 mt-1"><?= ex($ex['institution'] ?: '—') ?> · <?= ex($ex['country'] ?: '—') ?></p>
         </div>
         <div class="p-4">
           <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Incoming Row</p>
-          <p class="font-semibold text-sm text-gray-900"><?= htmlspecialchars($inc['full_name']) ?></p>
-          <p class="text-xs text-gray-500"><?= htmlspecialchars($inc['email']) ?><?= $inc['member_code'] ? ' · #' . htmlspecialchars($inc['member_code']) : '' ?></p>
-          <p class="text-xs text-gray-400 mt-1"><?= htmlspecialchars($inc['institution'] ?: '—') ?> · <?= htmlspecialchars($inc['country'] ?: '—') ?></p>
+          <p class="font-semibold text-sm text-gray-900"><?= ex($inc['full_name']) ?></p>
+          <p class="text-xs text-gray-500"><?= ex($inc['email']) ?><?= $inc['member_code'] ? ' · #' . ex($inc['member_code']) : '' ?></p>
+          <p class="text-xs text-gray-400 mt-1"><?= ex($inc['institution'] ?: '—') ?> · <?= ex($inc['country'] ?: '—') ?></p>
         </div>
       </div>
       <div class="px-5 py-3 bg-gray-50 border-t border-gray-100 flex items-center gap-4">

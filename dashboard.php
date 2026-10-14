@@ -1,41 +1,37 @@
 <?php
 /**
- * RARL — Member Dashboard
- * Everything a member comes back for in one place: their ID card, upcoming
- * events (one-click RSVP), certificates, chapter, and what to do next.
+ * RARL — Member Home
+ * The member portal's front page: an identity card (left), everything RARL
+ * has published lately in one feed (centre), and what's coming up (right).
+ * Members don't post here — RARL does; members follow, RSVP and learn.
  */
 require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
-if (!membershipEnabled()) renderMembershipPausedPageAndExit('Dashboard');
-if (empty($_SESSION['member_id'])) { flash('error', 'Please sign in to access your dashboard.'); redirect('login.php?next=dashboard.php'); }
+if (!membershipEnabled()) renderMembershipPausedPageAndExit('Home');
+if (empty($_SESSION['member_id'])) { flash('error', 'Please sign in to access your member home.'); redirect('login.php?next=dashboard.php'); }
 
 $pdo      = db();
 $memberId = (int)$_SESSION['member_id'];
-$member   = $pdo->prepare('SELECT * FROM members WHERE id = ?');
-$member->execute([$memberId]);
-$m = $member->fetch();
+$st = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+$st->execute([$memberId]);
+$m = $st->fetch();
 if (!$m) { session_destroy(); redirect('login.php'); }
 
-$displayName = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
-$firstName = $m['type'] === 'lab' ? $displayName : (preg_split('/\s+/', preg_replace('/^(dr|prof|mr|mrs|ms|engr)\.?\s+/i', '', trim((string)$displayName)))[0] ?? $displayName);
+$isLab       = $m['type'] === 'lab';
+$displayName = $isLab ? $m['lab_name'] : $m['full_name'];
+$firstName   = $isLab ? $displayName : (preg_split('/\s+/', preg_replace('/^(dr|prof|mr|mrs|ms|engr)\.?\s+/i', '', trim((string)$displayName)))[0] ?? $displayName);
+$headline    = $isLab ? trim(($m['pi_name'] ? 'PI: ' . $m['pi_name'] : 'Research lab')) : trim(implode(' · ', array_filter([$m['position'] ?? '', $m['institution'] ?? ''])));
+$isActive    = $m['status'] === 'active';
 
-$certs = $pdo->prepare("
-    SELECT c.*, e.title as event_title, e.type as event_type, e.event_date
-    FROM certificates c LEFT JOIN events e ON c.event_id = e.id
-    WHERE c.member_id = ? OR c.recipient_email = ?
-    ORDER BY c.issued_at DESC");
-$certs->execute([$memberId, $m['email']]);
-$certificates = $certs->fetchAll();
+$leaders = chapterLeaders();
 
-$annStmt = $pdo->prepare("SELECT * FROM announcements WHERE is_published = 1 AND (section_id IS NULL OR section_id = ?) ORDER BY is_pinned DESC, created_at DESC LIMIT 4");
-$annStmt->execute([$m['section_id'] ?: null]);
-$announcements = $annStmt->fetchAll();
+$certCount = $pdo->prepare('SELECT COUNT(*) FROM certificates WHERE member_id = ? OR recipient_email = ?');
+$certCount->execute([$memberId, $m['email']]);
+$certCount = (int)$certCount->fetchColumn();
 
-$chapter = null;
-if ($m['section_id']) {
-    $s = $pdo->prepare('SELECT * FROM regional_sections WHERE id = ?'); $s->execute([$m['section_id']]);
-    $chapter = $s->fetch() ?: null;
-}
+$goingCount = $pdo->prepare("SELECT COUNT(*) FROM event_registrations r JOIN events e ON e.id = r.event_id WHERE r.member_id = ? AND r.status IN ('registered','attended') AND (e.event_date IS NULL OR e.event_date >= CURDATE())");
+$goingCount->execute([$memberId]);
+$goingCount = (int)$goingCount->fetchColumn();
 
 $evStmt = $pdo->prepare("SELECT e.*, r.status AS my_status,
         (SELECT COUNT(*) FROM event_registrations x WHERE x.event_id = e.id AND x.status != 'cancelled') AS reg_count
@@ -45,246 +41,214 @@ $evStmt = $pdo->prepare("SELECT e.*, r.status AS my_status,
 $evStmt->execute([$memberId]);
 $upcoming = $evStmt->fetchAll();
 
-// Live preview of their card from the designed template (the PDF is the official copy).
-$cardHtml = null;
-$cardTemplate = getDefaultTemplate('id_card');
-if ($cardTemplate && !empty($m['id_card_path'])) {
-    $cardHtml = renderTemplateHtml($cardTemplate, [
-        'name' => $displayName, 'member_code' => '#' . $m['member_code'], 'section' => $chapter['name'] ?? '—',
-        'since_date' => date('Y/m/d', strtotime($m['created_at'])),
-        'signer1' => setting('idcard_signer1_name', 'RARL President'),
-        'signer2' => ($chapter['chair_name'] ?? '') ?: setting('idcard_signer2_name', 'Chapter Chair'),
-        'avatar_url' => UPLOADS_URL . '/avatars/' . $m['avatar_path'],
-    ]);
-}
-$cardExpired = !empty($m['id_card_expires_at']) && strtotime($m['id_card_expires_at']) < time();
+$feed  = rarlFeedItems($m['section_id'] ? (int)$m['section_id'] : null, true, 30);
+$kinds = array_count_values(array_column($feed, 'kind'));
 
-$hasPostedStmt = $pdo->prepare('SELECT 1 FROM community_posts WHERE member_id = ? LIMIT 1');
-$hasPostedStmt->execute([$memberId]);
-$checklist = [
-    ['done' => !empty($m['avatar_path']), 'label' => 'Add a profile photo', 'sub' => 'Your ID card is created from it automatically', 'href' => 'profile.php#photo', 'icon' => 'fa-camera'],
-    ['done' => (bool)(($m['institution'] ?? '') ?: ($m['lab_website'] ?? '')), 'label' => 'Complete your profile', 'sub' => 'Institution and research interests help others find you', 'href' => 'profile.php', 'icon' => 'fa-user-pen'],
-    ['done' => (bool)$chapter, 'label' => 'Join a chapter', 'sub' => 'Connect with members in your region', 'href' => 'chapter.php', 'icon' => 'fa-earth-americas'],
-    ['done' => (bool)$hasPostedStmt->fetch(), 'label' => 'Say hello in the community', 'sub' => 'Introduce yourself and your research', 'href' => 'community.php', 'icon' => 'fa-hand'],
+// Profile strength — what makes a complete RARL membership record (and a
+// correct ID card). Deliberately no "post something" step: members don't post.
+$strength = [
+    ['done' => !empty($m['avatar_path']), 'label' => 'Add a profile photo', 'sub' => 'Required for your member ID card', 'href' => 'profile.php#photo'],
+    ['done' => (bool)(($m['institution'] ?? '') ?: ($m['lab_website'] ?? '')), 'label' => $isLab ? 'Add your lab website' : 'Add your institution', 'sub' => 'Printed on your certificates and card', 'href' => 'profile.php'],
+    ['done' => (bool)(($m['research_interests'] ?? '') ?: ($m['research_areas'] ?? '')), 'label' => 'Add research interests', 'sub' => 'So RARL can send you relevant events', 'href' => 'profile.php'],
 ];
-$checklistDone = count(array_filter($checklist, fn($c) => $c['done']));
+$strengthDone = count(array_filter($strength, fn($c) => $c['done']));
+$strengthPct  = (int)round($strengthDone / count($strength) * 100);
+
+// Admin-controlled notice (Admin → Settings → Member portal).
+$notice = trim(setting('member_notice_text', ''));
+$noticeTone = setting('member_notice_tone', 'info');
+$noticeLink = setting('member_notice_link', '');
+$noticeLinkLabel = setting('member_notice_link_label', '') ?: 'Learn more';
+
 $hour = (int)date('G');
 $greeting = $hour < 12 ? 'Good morning' : ($hour < 18 ? 'Good afternoon' : 'Good evening');
+$h = fn($v) => ex($v);
 
-echo htmlHead('My Dashboard');
+echo htmlHead('Home');
 ?>
 <?= publicNav('dashboard') ?>
-<style>
-  .db-card{background:#fff;border:1px solid #e8eaee;border-radius:1.25rem;box-shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -16px rgba(15,23,42,.12)}
-  .dark .db-card{background:#0f172a;border-color:#1e293b}
-  .db-title{font-family:inherit;font-weight:800;font-size:1rem;letter-spacing:-.01em}
-</style>
+<div class="bg-[#f4f2ee] dark:bg-gray-950 min-h-screen">
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid grid-cols-1 md:grid-cols-[225px_minmax(0,1fr)] lg:grid-cols-[225px_minmax(0,1fr)_300px] gap-6 items-start">
 
-<div class="bg-gray-50 dark:bg-gray-950 min-h-screen pb-16">
-  <!-- Hero -->
-  <div class="relative overflow-hidden bg-rarl-navy">
-    <div class="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_85%_-10%,#CC0703,transparent_45%)]"></div>
-    <div class="relative max-w-6xl mx-auto px-5 sm:px-6 pt-8 pb-20">
-      <div class="flex flex-col sm:flex-row sm:items-center gap-5">
-        <a href="profile.php#photo" class="relative flex-shrink-0 group" title="Change photo">
-          <?php if (!empty($m['avatar_path'])): ?>
-          <img src="<?= UPLOADS_URL ?>/avatars/<?= htmlspecialchars($m['avatar_path']) ?>" alt="" class="w-20 h-20 rounded-2xl object-cover shadow-xl ring-4 ring-white/10"/>
-          <?php else: ?>
-          <div class="w-20 h-20 bg-rarl-red rounded-2xl flex items-center justify-center text-white font-heading font-black text-3xl shadow-xl ring-4 ring-white/10"><?= htmlspecialchars(mb_strtoupper(mb_substr($displayName, 0, 1))) ?></div>
-          <span class="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white text-rarl-red flex items-center justify-center text-xs shadow"><i class="fa-solid fa-camera"></i></span>
-          <?php endif; ?>
-        </a>
-        <div class="flex-1 min-w-0">
-          <p class="text-white/60 text-sm"><?= $greeting ?>,</p>
-          <h1 class="font-heading font-black text-2xl sm:text-3xl text-white leading-tight truncate"><?= htmlspecialchars($firstName) ?></h1>
-          <div class="flex flex-wrap items-center gap-2 mt-2 text-xs">
-            <?php if (!empty($m['member_code'])): ?><span class="px-2.5 py-1 rounded-full bg-white/10 text-white font-mono">#<?= htmlspecialchars($m['member_code']) ?></span><?php endif; ?>
-            <span class="px-2.5 py-1 rounded-full bg-white/10 text-white/80"><?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research lab' : '<i class="fa-solid fa-user"></i> Researcher' ?></span>
-            <?php if ($chapter): ?><a href="chapter.php" class="px-2.5 py-1 rounded-full bg-white/10 text-white/80 hover:bg-white/20"><i class="fa-solid fa-earth-americas"></i> <?= htmlspecialchars($chapter['name']) ?></a><?php endif; ?>
-            <span class="px-2.5 py-1 rounded-full bg-white/10 text-white/60">Member since <?= date('M Y', strtotime($m['created_at'])) ?></span>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <a href="profile.php" class="px-4 py-2.5 bg-white text-gray-900 text-sm font-semibold rounded-xl hover:bg-gray-100 shadow"><i class="fa-solid fa-pen"></i> Edit profile</a>
-          <a href="community.php" class="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-semibold rounded-xl border border-white/15"><i class="fa-solid fa-comments"></i> Community</a>
+  <!-- ── Left: identity ───────────────────────────────── -->
+  <aside class="order-2 md:order-none space-y-4 min-w-0 md:sticky md:top-[88px]">
+    <section class="rarl-panel overflow-hidden">
+      <div class="h-16 bg-rarl-navy relative"><div class="absolute inset-0 opacity-50 bg-[radial-gradient(circle_at_85%_0%,#CC0703,transparent_60%)]"></div></div>
+      <div class="relative px-4 pb-4 -mt-9 text-center">
+        <a href="profile.php#photo" class="inline-block rounded-full ring-4 ring-white dark:ring-gray-900" title="Change photo"><?= memberAvatarHtml($m['avatar_path'], (string)$displayName, 'w-[72px] h-[72px] text-2xl') ?></a>
+        <h1 class="mt-2 font-heading font-bold text-gray-900 dark:text-white leading-tight"><a href="profile.php" class="hover:underline"><?= $h($displayName) ?></a></h1>
+        <?php if ($headline): ?><p class="text-xs text-gray-500 mt-1 line-clamp-2"><?= $h($headline) ?></p><?php endif; ?>
+        <div class="flex flex-wrap justify-center gap-1.5 mt-3">
+          <?php if ($isActive): ?><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300"><i class="fa-solid fa-circle-check"></i> Active member</span>
+          <?php elseif ($m['status'] === 'pending'): ?><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Pending review</span>
+          <?php else: ?><span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300">Inactive</span><?php endif; ?>
+          <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300"><?= $isLab ? 'Lab' : 'Individual' ?></span>
         </div>
       </div>
-    </div>
-  </div>
+      <dl class="border-t border-gray-100 dark:border-gray-800 text-xs">
+        <?php foreach ([
+          ['Member no.', $m['member_code'] ? '#' . $m['member_code'] : '—', 'membership.php', true],
+          ['Member since', date('M Y', strtotime($m['created_at'])), 'membership.php', false],
+        ] as [$k, $v, $href, $mono]): ?>
+        <a href="<?= $href ?>" class="flex justify-between gap-3 px-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-800/60">
+          <dt class="text-gray-500"><?= $k ?></dt><dd class="font-semibold text-gray-900 dark:text-white truncate <?= $mono ? 'font-mono' : '' ?>"><?= $h($v) ?></dd>
+        </a>
+        <?php endforeach; ?>
+      </dl>
+      <div class="grid grid-cols-2 border-t border-gray-100 dark:border-gray-800 text-center">
+        <a href="membership.php#certificates" class="py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60 border-r border-gray-100 dark:border-gray-800"><span class="block font-heading font-bold text-lg text-gray-900 dark:text-white"><?= $certCount ?></span><span class="text-[11px] text-gray-500">Certificates</span></a>
+        <a href="events.php" class="py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60"><span class="block font-heading font-bold text-lg text-gray-900 dark:text-white"><?= $goingCount ?></span><span class="text-[11px] text-gray-500">Events going</span></a>
+      </div>
+    </section>
 
-  <div class="max-w-6xl mx-auto px-5 sm:px-6 -mt-12 relative">
+    <?php if ($strengthDone < count($strength)): ?>
+    <section class="rarl-panel p-4">
+      <div class="flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900 dark:text-white">Profile strength</h2><span class="text-xs font-semibold text-gray-500"><?= $strengthPct ?>%</span></div>
+      <div class="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full mt-2 overflow-hidden" role="progressbar" aria-valuenow="<?= $strengthPct ?>" aria-valuemin="0" aria-valuemax="100" aria-label="Profile strength"><div class="h-full bg-rarl-red rounded-full" style="width:<?= $strengthPct ?>%"></div></div>
+      <ul class="mt-3 space-y-1">
+        <?php foreach ($strength as $c): if ($c['done']) continue; ?>
+        <li><a href="<?= $c['href'] ?>" class="flex items-start gap-2.5 p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60">
+          <i class="fa-regular fa-circle text-gray-400 mt-1 text-xs"></i>
+          <span><span class="block text-sm font-semibold text-gray-800 dark:text-gray-100 leading-snug"><?= $h($c['label']) ?></span><span class="block text-xs text-gray-500"><?= $h($c['sub']) ?></span></span>
+        </a></li>
+        <?php endforeach; ?>
+      </ul>
+    </section>
+    <?php endif; ?>
+  </aside>
+
+  <!-- ── Centre: From RARL ─────────────────────────────── -->
+  <section class="order-1 md:order-none min-w-0 space-y-4" aria-labelledby="feed-title">
     <?= renderFlash() ?>
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <div class="lg:col-span-2 space-y-6">
-        <!-- ID card -->
-        <section class="db-card p-5 sm:p-6">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="db-title text-gray-900 dark:text-white"><i class="fa-solid fa-id-card text-rarl-red"></i> Member ID card</h2>
-            <?php if (!empty($m['id_card_path'])): ?><span class="text-xs <?= $cardExpired ? 'text-red-600 font-semibold' : 'text-gray-500' ?>"><?= $cardExpired ? 'Expired ' : 'Valid until ' ?><?= date('d M Y', strtotime($m['id_card_expires_at'])) ?></span><?php endif; ?>
-          </div>
-          <?php if (!empty($m['id_card_path'])): ?>
-          <div class="grid sm:grid-cols-[minmax(0,1fr)_200px] gap-5 items-center">
-            <div class="rounded-xl overflow-hidden [&>div]:!shadow-lg [&>div]:!rounded-xl">
-              <?= $cardHtml ?: '<div class="aspect-[86/54] rounded-xl bg-gradient-to-br from-gray-800 to-gray-950 text-white p-5 flex flex-col justify-between"><span class="font-heading font-black">RARL</span><span><span class="block font-bold text-lg">' . htmlspecialchars($displayName) . '</span><span class="font-mono text-sm text-white/70">#' . htmlspecialchars($m['member_code'] ?? '') . '</span></span></div>' ?>
-            </div>
-            <div class="space-y-2">
-              <a href="uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-sm font-semibold rounded-xl"><i class="fa-solid fa-download"></i> Download PDF</a>
-              <a href="id-card-verify.php?code=<?= urlencode($m['member_code']) ?>" target="_blank" class="flex items-center justify-center gap-2 w-full py-2.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-semibold rounded-xl"><i class="fa-solid fa-shield-halved"></i> Verification page</a>
-              <p class="text-[11px] text-gray-500 leading-relaxed">The QR code on your card links to this verification page, so anyone can confirm your membership.</p>
-            </div>
-          </div>
-          <?php elseif ($m['status'] === 'active'): ?>
-          <div class="flex flex-col sm:flex-row items-center gap-5 p-5 rounded-xl bg-gradient-to-br from-rarl-red/5 to-transparent border border-dashed border-rarl-red/30">
-            <div class="w-16 h-16 rounded-2xl bg-rarl-red/10 text-rarl-red flex items-center justify-center text-2xl flex-shrink-0"><i class="fa-solid fa-camera"></i></div>
-            <div class="flex-1 text-center sm:text-left">
-              <p class="font-semibold text-gray-900 dark:text-white">Add a photo to get your ID card</p>
-              <p class="text-sm text-gray-500 mt-0.5">Your card is generated instantly once you upload a clear headshot.</p>
-            </div>
-            <a href="profile.php#photo" class="px-5 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-sm font-semibold rounded-xl whitespace-nowrap">Upload photo</a>
-          </div>
-          <?php endif; ?>
-        </section>
+    <?php if ($m['status'] === 'pending'): ?>
+    <div class="rarl-panel p-5 flex gap-4 border-amber-300 dark:border-amber-800 bg-amber-50/60 dark:bg-amber-900/10">
+      <span class="w-11 h-11 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-user-clock"></i></span>
+      <div><p class="font-semibold text-gray-900 dark:text-white">Your membership is being reviewed</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">The RARL team checks every application, usually within a few working days. You'll get an email when you're approved, then your member number, ID card and membership certificate are issued automatically. Meanwhile you can browse everything below.</p></div>
+    </div>
+    <?php elseif ($m['status'] === 'inactive'): ?>
+    <div class="rarl-panel p-5 flex gap-4">
+      <span class="w-11 h-11 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-500 flex items-center justify-center flex-shrink-0"><i class="fa-solid fa-circle-pause"></i></span>
+      <div><p class="font-semibold text-gray-900 dark:text-white">Your membership is inactive</p>
+        <p class="text-sm text-gray-600 dark:text-gray-400 mt-0.5">Event registration and member-only learning are paused. <a class="text-rarl-red font-semibold hover:underline" href="mailto:<?= $h(MAIL_REPLY_TO) ?>">Contact the RARL team</a> to reactivate.</p></div>
+    </div>
+    <?php endif; ?>
 
-        <!-- Upcoming events -->
-        <section class="db-card overflow-hidden">
-          <div class="px-5 sm:px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-            <h2 class="db-title text-gray-900 dark:text-white"><i class="fa-solid fa-calendar-days text-rarl-red"></i> Upcoming events</h2>
-            <a href="events.php" class="text-xs font-semibold text-rarl-red hover:underline">All events →</a>
+    <?php if ($notice !== ''):
+      $tone = ['info' => 'border-blue-200 bg-blue-50/70 dark:border-blue-900 dark:bg-blue-900/15 [&_i]:text-blue-600', 'success' => 'border-green-200 bg-green-50/70 dark:border-green-900 dark:bg-green-900/15 [&_i]:text-green-600', 'warning' => 'border-amber-300 bg-amber-50/70 dark:border-amber-900 dark:bg-amber-900/15 [&_i]:text-amber-600'][$noticeTone] ?? ''; ?>
+    <div class="rarl-panel p-4 flex items-start gap-3 <?= $tone ?>">
+      <i class="fa-solid fa-circle-info mt-1"></i>
+      <p class="flex-1 text-sm text-gray-800 dark:text-gray-200"><?= $h($notice) ?></p>
+      <?php if ($noticeLink): ?><a href="<?= $h($noticeLink) ?>" class="text-sm font-semibold text-rarl-red whitespace-nowrap hover:underline"><?= $h($noticeLinkLabel) ?> →</a><?php endif; ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="rarl-panel px-5 py-4">
+      <p class="text-sm text-gray-500"><?= $greeting ?>, <span class="font-semibold text-gray-900 dark:text-white"><?= $h($firstName) ?></span></p>
+      <h2 id="feed-title" class="font-heading font-bold text-xl text-gray-900 dark:text-white mt-0.5">What's new from RARL</h2>
+      <div class="flex gap-2 mt-3 overflow-x-auto -mx-1 px-1 pb-1" role="tablist" aria-label="Filter updates">
+        <?php foreach (['' => 'All', 'announcement' => 'Announcements', 'event' => 'Events', 'resource' => 'Learning', 'post' => 'Team updates', 'newsletter' => 'Newsletters'] as $k => $label):
+          if ($k !== '' && empty($kinds[$k])) continue; ?>
+        <button type="button" role="tab" data-filter="<?= $k ?>" aria-selected="<?= $k === '' ? 'true' : 'false' ?>" class="feed-chip flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors"><?= $label ?><?php if ($k !== ''): ?> <span class="opacity-60"><?= $kinds[$k] ?></span><?php endif; ?></button>
+        <?php endforeach; ?>
+      </div>
+    </div>
+
+    <div id="feed" class="space-y-4">
+      <?php foreach ($feed as $it): ?><div data-kind="<?= $it['kind'] ?>"><?= renderFeedItem($it) ?></div><?php endforeach; ?>
+      <?php if (!$feed): ?>
+      <div class="rarl-panel p-12 text-center"><i class="fa-regular fa-newspaper text-3xl text-gray-300"></i><p class="font-semibold text-gray-700 dark:text-gray-200 mt-3">Nothing new yet</p><p class="text-sm text-gray-500 mt-1">Announcements, events and learning material from RARL will appear here.</p></div>
+      <?php endif; ?>
+    </div>
+    <?php if ($feed): ?><p class="text-center text-sm text-gray-500 py-4">You're all caught up · <a href="community.php" class="font-semibold text-rarl-red hover:underline">See all updates</a></p><?php endif; ?>
+  </section>
+
+  <!-- ── Right: coming up ──────────────────────────────── -->
+  <aside class="order-3 md:order-none space-y-4 min-w-0 md:col-start-2 lg:col-start-auto lg:sticky lg:top-[88px]">
+    <section class="rarl-panel overflow-hidden">
+      <div class="px-4 pt-4 pb-2 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900 dark:text-white">Upcoming events</h2><a href="events.php" class="text-xs font-semibold text-gray-500 hover:text-rarl-red">See all</a></div>
+      <?php if (!$upcoming): ?><p class="px-4 pb-4 text-sm text-gray-500">No events scheduled right now — new ones will show up in your feed.</p><?php endif; ?>
+      <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+        <?php foreach ($upcoming as $e):
+          $mine = in_array($e['my_status'], ['registered', 'attended'], true);
+          $full = $e['capacity'] && $e['reg_count'] >= $e['capacity'] && !$mine; ?>
+        <li class="px-4 py-3 flex gap-3">
+          <div class="w-11 text-center flex-shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 py-1 h-fit">
+            <?php if ($e['event_date']): ?><div class="text-[10px] font-bold uppercase text-rarl-red leading-tight"><?= date('M', strtotime($e['event_date'])) ?></div><div class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-none"><?= date('d', strtotime($e['event_date'])) ?></div>
+            <?php else: ?><div class="text-[10px] font-bold text-gray-500 py-1.5">TBA</div><?php endif; ?>
           </div>
-          <?php if (!$upcoming): ?>
-          <p class="p-8 text-center text-sm text-gray-500">No upcoming events right now — we'll announce the next one in the community.</p>
-          <?php endif; ?>
-          <div class="divide-y divide-gray-100 dark:divide-gray-800">
-            <?php foreach ($upcoming as $e):
-              $mine = in_array($e['my_status'], ['registered','attended'], true);
-              $full = $e['capacity'] && $e['reg_count'] >= $e['capacity'] && !$mine; ?>
-            <div class="p-4 sm:px-6 flex items-center gap-4">
-              <div class="w-14 text-center flex-shrink-0 rounded-xl border border-gray-200 dark:border-gray-700 py-1.5">
-                <?php if ($e['event_date']): ?><div class="text-[10px] font-bold uppercase text-rarl-red"><?= date('M', strtotime($e['event_date'])) ?></div><div class="font-heading font-black text-xl text-gray-900 dark:text-white leading-none"><?= date('d', strtotime($e['event_date'])) ?></div>
-                <?php else: ?><div class="text-[10px] font-bold text-gray-400 py-2">TBA</div><?php endif; ?>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= htmlspecialchars($e['title']) ?></p>
-                <p class="text-xs text-gray-500 truncate"><?= ucfirst($e['type']) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?><?= $e['location'] ? ' · ' . htmlspecialchars($e['location']) : ($e['online_url'] ? ' · Online' : '') ?></p>
-              </div>
-              <?php if ($m['status'] !== 'active'): ?>
-              <a href="events.php#event-<?= $e['id'] ?>" class="text-xs font-semibold text-gray-500 hover:text-rarl-red">Details</a>
+          <div class="min-w-0 flex-1">
+            <a href="events.php#event-<?= (int)$e['id'] ?>" class="block text-sm font-semibold text-gray-900 dark:text-white leading-snug hover:text-rarl-red line-clamp-2"><?= $h($e['title']) ?></a>
+            <p class="text-xs text-gray-500 truncate"><?= ucfirst($e['type']) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?><?= $e['location'] ? ' · ' . $h($e['location']) : ($e['online_url'] ? ' · Online' : '') ?></p>
+            <div class="mt-1.5">
+              <?php if (!$isActive): ?>
+              <a href="events.php#event-<?= (int)$e['id'] ?>" class="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-rarl-red">Details</a>
               <?php elseif ($mine): ?>
-              <span class="flex items-center gap-2">
-                <span class="text-xs font-semibold text-green-700 bg-green-50 dark:bg-green-900/30 dark:text-green-300 px-2.5 py-1 rounded-full"><i class="fa-solid fa-check"></i> Going</span>
-                <?php if ($e['online_url'] && $e['event_date'] === date('Y-m-d')): ?><a href="<?= htmlspecialchars($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs font-semibold text-white bg-rarl-red px-3 py-1.5 rounded-lg">Join</a><?php endif; ?>
-              </span>
+              <span class="text-xs font-semibold text-green-700 dark:text-green-400"><i class="fa-solid fa-check"></i> You're going</span>
+              <?php if ($e['online_url'] && $e['event_date'] === date('Y-m-d')): ?> · <a href="<?= $h($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs font-semibold text-rarl-red hover:underline">Join now</a><?php endif; ?>
               <?php elseif ($full): ?>
-              <span class="text-xs font-semibold text-gray-400">Full</span>
+              <span class="text-xs font-semibold text-gray-500">Fully booked</span>
               <?php else: ?>
-              <form method="POST" action="events.php"><?= csrfField() ?><input type="hidden" name="action" value="rsvp"><input type="hidden" name="event_id" value="<?= $e['id'] ?>"><input type="hidden" name="return" value="dashboard">
-                <button class="text-xs font-semibold text-white bg-gray-900 hover:bg-black dark:bg-white dark:text-gray-900 px-3.5 py-1.5 rounded-lg">Register</button></form>
+              <form method="POST" action="events.php"><?= csrfField() ?><input type="hidden" name="action" value="rsvp"><input type="hidden" name="event_id" value="<?= (int)$e['id'] ?>"><input type="hidden" name="return" value="dashboard">
+                <button class="text-xs font-semibold px-3 py-1 rounded-full border border-gray-400 dark:border-gray-600 text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red"><i class="fa-solid fa-plus"></i> Register</button></form>
               <?php endif; ?>
             </div>
-            <?php endforeach; ?>
           </div>
-        </section>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+    </section>
 
-        <!-- Certificates -->
-        <section class="db-card overflow-hidden">
-          <div class="px-5 sm:px-6 py-4 flex items-center justify-between border-b border-gray-100 dark:border-gray-800">
-            <h2 class="db-title text-gray-900 dark:text-white"><i class="fa-solid fa-trophy text-rarl-red"></i> My certificates</h2>
-            <span class="text-xs bg-rarl-red/10 text-rarl-red font-semibold px-2.5 py-1 rounded-full"><?= count($certificates) ?></span>
-          </div>
-          <?php if (!$certificates): ?>
-          <div class="p-8 text-center"><p class="font-semibold text-gray-700 dark:text-gray-200">No certificates yet</p><p class="text-sm text-gray-500 mt-1">Attend an event to earn your first one — it arrives by email and appears here.</p></div>
-          <?php endif; ?>
-          <div class="divide-y divide-gray-100 dark:divide-gray-800">
-            <?php foreach ($certificates as $cert): $isMembership = ($cert['cert_type'] ?? '') === 'membership'; ?>
-            <div class="p-4 sm:px-6 flex items-center gap-4">
-              <div class="w-11 h-11 <?= $isMembership ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30' : 'bg-amber-100 text-amber-600 dark:bg-amber-900/30' ?> rounded-xl flex items-center justify-center text-lg flex-shrink-0"><i class="fa-solid <?= $isMembership ? 'fa-award' : 'fa-trophy' ?>"></i></div>
-              <div class="flex-1 min-w-0">
-                <p class="font-semibold text-sm text-gray-900 dark:text-white truncate"><?= $isMembership ? 'Certificate of Membership' : htmlspecialchars($cert['event_title'] ?? 'Event') ?></p>
-                <p class="text-xs text-gray-500"><span class="font-mono"><?= htmlspecialchars($cert['certificate_no']) ?></span> · <?= date('d M Y', strtotime($cert['event_date'] ?: $cert['issued_at'])) ?></p>
-              </div>
-              <div class="flex items-center gap-1.5 flex-shrink-0">
-                <button type="button" class="w-9 h-9 rounded-lg text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" data-share="<?= htmlspecialchars(CERT_VERIFY_URL . '?id=' . $cert['uuid']) ?>" title="Copy verification link (great for LinkedIn)"><i class="fa-solid fa-share-nodes"></i></button>
-                <?php if ($cert['pdf_path'] && file_exists(UPLOADS_PATH . '/certificates/' . $cert['pdf_path'])): ?>
-                <a href="download-cert.php?id=<?= urlencode($cert['uuid']) ?>" class="px-3 py-2 text-xs font-semibold text-white bg-rarl-red hover:bg-rarl-dark rounded-lg"><i class="fa-solid fa-download"></i> PDF</a>
-                <?php endif; ?>
-              </div>
-            </div>
-            <?php endforeach; ?>
-          </div>
-        </section>
-      </div>
+    <?php if ($leaders): ?>
+    <section class="rarl-panel p-4">
+      <div class="flex items-center justify-between mb-2"><h2 class="text-sm font-bold text-gray-900 dark:text-white">Chapter leaders</h2><a href="people.php#chapters" class="text-xs font-semibold text-gray-500 hover:text-rarl-red">See all</a></div>
+      <ul class="space-y-2.5">
+        <?php foreach (array_slice($leaders, 0, 4) as $c): ?>
+        <li class="flex items-center gap-3">
+          <span class="w-9 h-9 rounded-full bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xs font-bold flex-shrink-0"><?= $h(mb_strtoupper(mb_substr((string)$c['chair_name'], 0, 1))) ?></span>
+          <span class="min-w-0 flex-1"><span class="block text-sm font-semibold text-gray-900 dark:text-white truncate"><?= $h($c['chair_name']) ?></span><span class="block text-xs text-gray-500 truncate"><?= $h($c['chair_title'] ?: 'Chapter Chair') ?> · <?= $h($c['name']) ?></span></span>
+          <?php if (!empty($c['chair_email'])): ?><a href="mailto:<?= $h($c['chair_email']) ?>" class="w-8 h-8 rounded-full text-gray-500 hover:text-rarl-red hover:bg-gray-100 dark:hover:bg-gray-800 flex items-center justify-center" aria-label="Email <?= $h($c['chair_name']) ?>"><i class="fa-solid fa-envelope text-sm"></i></a><?php endif; ?>
+        </li>
+        <?php endforeach; ?>
+      </ul>
+    </section>
+    <?php endif; ?>
 
-      <aside class="space-y-6">
-        <?php if ($m['status'] === 'active' && $checklistDone < count($checklist)): ?>
-        <section class="db-card p-5">
-          <div class="flex items-center justify-between mb-1">
-            <h3 class="db-title text-gray-900 dark:text-white">Finish setting up</h3>
-            <span class="text-xs font-bold text-gray-400"><?= $checklistDone ?>/<?= count($checklist) ?></span>
-          </div>
-          <div class="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full my-3 overflow-hidden"><div class="h-full bg-rarl-red rounded-full" style="width:<?= round($checklistDone / count($checklist) * 100) ?>%"></div></div>
-          <div class="space-y-1">
-            <?php foreach ($checklist as $item): ?>
-            <a href="<?= $item['done'] ? '#' : $item['href'] ?>" class="flex items-start gap-3 p-2 -mx-2 rounded-xl <?= $item['done'] ? 'pointer-events-none opacity-60' : 'hover:bg-gray-50 dark:hover:bg-gray-800' ?>">
-              <span class="w-8 h-8 rounded-lg flex items-center justify-center text-sm flex-shrink-0 <?= $item['done'] ? 'bg-green-100 text-green-600' : 'bg-gray-100 dark:bg-gray-800 text-gray-500' ?>"><i class="fa-solid <?= $item['done'] ? 'fa-check' : $item['icon'] ?>"></i></span>
-              <span class="min-w-0"><span class="block text-sm font-semibold <?= $item['done'] ? 'line-through text-gray-400' : 'text-gray-900 dark:text-white' ?>"><?= htmlspecialchars($item['label']) ?></span><?php if (!$item['done']): ?><span class="block text-xs text-gray-500"><?= htmlspecialchars($item['sub']) ?></span><?php endif; ?></span>
-            </a>
-            <?php endforeach; ?>
-          </div>
-        </section>
-        <?php endif; ?>
-
-        <section class="db-card p-5">
-          <h3 class="db-title text-gray-900 dark:text-white mb-3"><i class="fa-solid fa-earth-americas text-rarl-red"></i> My chapter</h3>
-          <?php if ($chapter): ?>
-          <p class="font-semibold text-gray-900 dark:text-white"><?= htmlspecialchars($chapter['name']) ?></p>
-          <?php if (!empty($chapter['chair_name'])): ?>
-          <p class="text-sm text-gray-500 mt-1"><?= htmlspecialchars($chapter['chair_title'] ?? 'Chapter Chair') ?>: <span class="text-gray-800 dark:text-gray-200"><?= htmlspecialchars($chapter['chair_name']) ?></span></p>
-          <?php if (!empty($chapter['chair_email'])): ?><a href="mailto:<?= htmlspecialchars($chapter['chair_email']) ?>" class="inline-flex items-center gap-1.5 mt-3 text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-envelope"></i> Contact your chair</a><?php endif; ?>
-          <?php endif; ?>
-          <a href="chapter.php" class="block mt-3 text-xs font-semibold text-gray-500 hover:text-rarl-red">Chapter page →</a>
-          <?php else: ?>
-          <p class="text-sm text-gray-500">You're not in a chapter yet. Chapters run local meetups and events.</p>
-          <a href="chapter.php" class="inline-block mt-3 px-4 py-2 bg-gray-900 dark:bg-white dark:text-gray-900 text-white text-xs font-semibold rounded-lg">Find my chapter</a>
-          <?php endif; ?>
-        </section>
-
-        <?php if ($announcements): ?>
-        <section class="db-card overflow-hidden">
-          <div class="px-5 py-4 border-b border-gray-100 dark:border-gray-800"><h3 class="db-title text-gray-900 dark:text-white"><i class="fa-solid fa-bullhorn text-rarl-red"></i> Announcements</h3></div>
-          <div class="divide-y divide-gray-100 dark:divide-gray-800">
-            <?php foreach ($announcements as $ann): ?>
-            <div class="p-4">
-              <?php if ($ann['is_pinned']): ?><span class="text-[10px] font-bold text-amber-600 uppercase tracking-wider"><i class="fa-solid fa-thumbtack"></i> Pinned</span><?php endif; ?>
-              <p class="font-semibold text-sm text-gray-900 dark:text-white leading-snug"><?= htmlspecialchars($ann['title']) ?></p>
-              <p class="text-xs text-gray-500 leading-relaxed mt-1"><?= htmlspecialchars(mb_strimwidth($ann['content'], 0, 140, '…')) ?></p>
-            </div>
-            <?php endforeach; ?>
-          </div>
-        </section>
-        <?php endif; ?>
-
-        <section class="grid grid-cols-2 gap-3">
-          <?php foreach ([
-            ['resources.php', 'fa-book', 'Learning hub'], ['directory.php', 'fa-magnifying-glass', 'Directory'],
-            ['assets/JOINRARL.pdf', 'fa-envelope-open-text', 'Welcome letter'], [MAIN_SITE_URL, 'fa-flask', 'RARL Lab'],
-          ] as [$url, $ic, $label]): ?>
-          <a href="<?= $url ?>" <?= str_starts_with($url, 'assets/') || str_starts_with($url, 'http') ? 'target="_blank" rel="noopener"' : '' ?> class="db-card p-4 hover:-translate-y-0.5 transition-transform">
-            <i class="fa-solid <?= $ic ?> text-rarl-red"></i>
-            <span class="block text-sm font-semibold text-gray-900 dark:text-white mt-2"><?= $label ?></span>
-          </a>
-          <?php endforeach; ?>
-          <a href="logout.php" class="col-span-2 text-center text-xs text-gray-500 hover:text-rarl-red py-2">Sign out</a>
-        </section>
-      </aside>
-    </div>
-  </div>
+    <section class="rarl-panel p-4">
+      <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-3">Explore RARL</h2>
+      <ul class="space-y-1 text-sm">
+        <?php foreach ([
+          ['resources.php', 'fa-graduation-cap', 'Learning hub', 'Courses, talks and reading lists', false],
+          ['people.php', 'fa-people-group', 'Leadership & chapters', 'Who runs RARL around the world', false],
+          ['assets/JOINRARL.pdf', 'fa-envelope-open-text', 'Welcome letter', 'Your membership, explained', true],
+          ['partners.php', 'fa-handshake', 'Partner with RARL', 'Labs, industry and sponsors', false],
+          [MAIN_SITE_URL, 'fa-flask', 'rarl-lab.com', 'Research, projects and news', true],
+        ] as [$url, $ic, $t, $sub, $ext]): ?>
+        <li><a href="<?= $url ?>" <?= $ext ? 'target="_blank" rel="noopener"' : '' ?> class="flex items-center gap-3 p-2 -mx-2 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/60 group">
+          <span class="w-8 h-8 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 flex items-center justify-center flex-shrink-0 group-hover:text-rarl-red"><i class="fa-solid <?= $ic ?> text-sm"></i></span>
+          <span class="min-w-0"><span class="block font-semibold text-gray-800 dark:text-gray-100 leading-tight"><?= $t ?><?= $ext ? ' <i class="fa-solid fa-arrow-up-right-from-square text-[10px] text-gray-400"></i>' : '' ?></span><span class="block text-xs text-gray-500 truncate"><?= $sub ?></span></span>
+        </a></li>
+        <?php endforeach; ?>
+      </ul>
+    </section>
+    <p class="text-[11px] text-gray-500 px-2 leading-relaxed"><a href="verify.php" class="hover:underline">Verify a certificate</a> · <a href="mailto:<?= $h(MAIL_REPLY_TO) ?>" class="hover:underline">Contact RARL</a> · © <?= date('Y') ?> RARL</p>
+  </aside>
+</main>
 </div>
+<style>
+  .feed-chip{border-color:#d1d5db;color:#374151;background:#fff}
+  .dark .feed-chip{border-color:#374151;color:#d1d5db;background:transparent}
+  .feed-chip[aria-selected=true]{background:#CC0703;border-color:#CC0703;color:#fff}
+</style>
 <script>
-  document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click', async () => {
-    const url = b.dataset.share;
-    try { if (navigator.share) await navigator.share({title: 'My RARL certificate', url}); else { await navigator.clipboard.writeText(url); b.innerHTML = '<i class="fa-solid fa-check text-green-600"></i>'; setTimeout(() => b.innerHTML = '<i class="fa-solid fa-share-nodes"></i>', 1500); } } catch (e) {}
-  }));
+  document.querySelectorAll('[data-filter]').forEach(function (chip) {
+    chip.addEventListener('click', function () {
+      var k = chip.dataset.filter;
+      document.querySelectorAll('[data-filter]').forEach(function (c) { c.setAttribute('aria-selected', c === chip ? 'true' : 'false'); });
+      document.querySelectorAll('#feed > [data-kind]').forEach(function (el) { el.hidden = !!k && el.dataset.kind !== k; });
+    });
+  });
 </script>
 <?= publicFooter() ?>
 </body></html>

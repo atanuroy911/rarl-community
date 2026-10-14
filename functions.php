@@ -15,6 +15,37 @@ if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
     unset($rarlLife);
 }
 
+// Security response headers (OWASP A05). Sent once for every normal page load,
+// before any output. Clickjacking is blocked with frame-ancestors + the legacy
+// X-Frame-Options; nosniff stops MIME confusion; the CSP is a defence-in-depth
+// layer behind the HTML sanitizer. The CSP allows the exact CDNs the pages load
+// (Tailwind Play, Font Awesome, Google Fonts, jsDelivr/unpkg, YouTube embeds)
+// and keeps 'unsafe-inline'/'unsafe-eval' because the app uses inline handlers
+// and the Tailwind Play CDN — tightening those needs a build step, tracked
+// separately. HSTS is sent only over HTTPS so local http dev still works.
+if (PHP_SAPI !== 'cli' && !headers_sent()) {
+    $rarlHttps = ($_SERVER['HTTPS'] ?? '') !== '' && $_SERVER['HTTPS'] !== 'off';
+    header('X-Frame-Options: SAMEORIGIN');
+    header('X-Content-Type-Options: nosniff');
+    header('Referrer-Policy: strict-origin-when-cross-origin');
+    header('Cross-Origin-Opener-Policy: same-origin');
+    header("Content-Security-Policy: "
+        . "default-src 'self'; "
+        . "base-uri 'self'; "
+        . "object-src 'none'; "
+        . "frame-ancestors 'self'; "
+        . "form-action 'self'; "
+        . "img-src 'self' data: https:; "
+        . "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
+        . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; "
+        . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
+        . "connect-src 'self'; "
+        . "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://zoom.us"
+        . ($rarlHttps ? '; upgrade-insecure-requests' : ''));
+    if ($rarlHttps) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
+    unset($rarlHttps);
+}
+
 // ── PDO Singleton ──────────────────────────────────────────
 function db(): PDO {
     static $pdo = null;
@@ -50,6 +81,13 @@ function setting(string $key, string $default = ''): string {
 function clean(string $v): string {
     return htmlspecialchars(strip_tags(trim($v)), ENT_QUOTES, 'UTF-8');
 }
+// Escapes text for HTML output exactly once. Values saved through clean()
+// are already entity-encoded in the database, so plain htmlspecialchars()
+// would show "R&amp;D" (and every admin edit round-trip would encode again).
+// Decoding first makes the output correct for both encoded and raw values.
+function ex($v, ...$flagsIgnored): string {
+    return htmlspecialchars(html_entity_decode((string)$v, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+}
 function cleanEmail(string $v): string {
     return filter_var(trim($v), FILTER_SANITIZE_EMAIL);
 }
@@ -70,6 +108,7 @@ function csrfToken(): string {
     return $_SESSION['csrf'];
 }
 function csrfCheck(): bool {
+    if (viewAsActive()) { flash('info', 'Read-only preview: you are viewing the portal as this member, so nothing was changed.'); return false; }
     $tok = $_POST['csrf_token'] ?? '';
     return !empty($_SESSION['csrf']) && hash_equals($_SESSION['csrf'], $tok);
 }
@@ -380,8 +419,9 @@ function renderFlash(): string {
             ? 'bg-red-50 border-red-200 text-red-700'
             : 'bg-blue-50 border-blue-200 text-blue-700');
     $icon = $f['type'] === 'success' ? '<i class="fa-solid fa-circle-check"></i>' : ($f['type'] === 'error' ? '<i class="fa-solid fa-triangle-exclamation"></i>' : '<i class="fa-solid fa-circle-info"></i>');
-    return '<div class="flex items-center gap-3 p-4 rounded-xl border mb-5 text-sm ' . $classes . '">'
-         . '<span>' . $icon . '</span><span>' . htmlspecialchars($f['msg']) . '</span></div>';
+    return '<div role="' . ($f['type'] === 'error' ? 'alert' : 'status') . '" class="flex items-center gap-3 p-4 rounded-xl border mb-5 text-sm ' . $classes . '">'
+         . '<span>' . $icon . '</span><span class="flex-1">' . htmlspecialchars($f['msg']) . '</span>'
+         . '<button type="button" onclick="this.parentNode.remove()" class="opacity-60 hover:opacity-100 text-lg leading-none px-1" aria-label="Dismiss">&times;</button></div>';
 }
 
 // ── Redirect helper ────────────────────────────────────────
@@ -503,6 +543,17 @@ function htmlHead(string $title, bool $isAdmin = false): string {
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{$fullTitle}</title>
+  <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
+  <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)"/>
+  <link rel="icon" href="assets/mark.png"/>
+  <script>
+    (function(){ try { var t = localStorage.getItem('rarl-theme'); if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches && localStorage.getItem('rarl-theme-follow') === '1')) document.documentElement.classList.add('dark'); } catch (e) {} })();
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest && e.target.closest('[data-theme-toggle]'); if (!b) return;
+      var dark = document.documentElement.classList.toggle('dark');
+      try { localStorage.setItem('rarl-theme', dark ? 'dark' : 'light'); } catch (err) {}
+    });
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -550,6 +601,13 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     .md-content a { text-decoration: underline; color: #CC0703; }
     .md-content strong { font-weight: 700; }
     .md-content blockquote { border-left: 3px solid #CC0703; padding-left: 0.75em; color: inherit; opacity: .8; margin: 0.5em 0; }
+    html.dark { color-scheme: dark; }
+    .dark .md-content a { color: #f87171; }
+    /* Portal surface — shared card look for member pages */
+    .rarl-panel { background:#fff; border:1px solid #e5e7eb; border-radius:1rem; }
+    .dark .rarl-panel { background:#111827; border-color:#1f2937; }
+    .rarl-feed-card { transition: box-shadow .15s ease, border-color .15s ease; }
+    .rarl-feed-card:hover { box-shadow: 0 8px 24px -16px rgba(15,23,42,.25); }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 min-h-screen">
@@ -712,6 +770,7 @@ const RARL_MIGRATIONS = [
     '009_admin_only_posts.sql'          => 'Seeds the "Robotics & Automation Research Lab (RARL) Team" system account admin posts are authored as',
     '010_cv_url.sql'                    => 'Optional external CV/Resume link (e.g. Google Drive) alongside the local upload',
     '012_email_queue.sql'               => 'Background email queue for bulk sends (certificates, newsletters, approvals)',
+    '013_announcement_controls.sql'     => 'Announcement call-to-action link and expiry date',
 ];
 
 function dbTablesExist(): bool {
@@ -1014,6 +1073,13 @@ function systemPosterMemberId(): ?int {
 // Shared by the initial community.php page load and the lazy-load AJAX
 // endpoint (?ajax=posts) — one post's full HTML (content, image, like/comment
 // counts, comments, reply form, and edit/delete controls if $myMemberId owns it).
+// Members follow RARL rather than post, so replies under team posts are off
+// unless an admin turns them on (Admin → Community → Member replies). Off
+// also hides existing replies, since they show other members' names.
+function communityCommentsEnabled(): bool {
+    return setting('community_comments_enabled', '0') === '1';
+}
+
 function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
     $likeCountStmt = $pdo->prepare('SELECT COUNT(*) FROM community_likes WHERE post_id=?');
     $likeCountStmt->execute([$post['id']]);
@@ -1110,9 +1176,10 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
             <?= $likedByMe ? '<i class="fa-solid fa-heart"></i>' : '<i class="fa-regular fa-heart"></i>' ?> <?= $likeCount ?>
           </button>
         </form>
-        <span class="text-xs text-gray-400 py-2"><i class="fa-solid fa-comment"></i> <?= count($comments) ?></span>
+        <?php if (communityCommentsEnabled()): ?><span class="text-xs text-gray-400 py-2"><i class="fa-solid fa-comment"></i> <?= count($comments) ?></span><?php endif; ?>
       </div>
 
+      <?php if (communityCommentsEnabled()): ?>
       <?php if (!empty($comments)): ?>
       <div class="space-y-3 pt-1 mb-4">
         <?php foreach ($comments as $c):
@@ -1162,6 +1229,7 @@ function renderCommunityPost(PDO $pdo, array $post, int $myMemberId): string {
           class="md-editor flex-1 min-w-0 px-3 py-2.5 sm:py-2 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-lg text-sm sm:text-xs focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         <button type="submit" class="px-4 py-2.5 sm:py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-white font-semibold text-xs rounded-lg transition-colors flex-shrink-0">Reply</button>
       </form>
+      <?php endif; ?>
     </div>
     <?php
     return ob_get_clean();
@@ -1997,154 +2065,295 @@ function completeApproval(int $memberId): void {
 }
 
 // ── Shared nav ─────────────────────────────────────────────
-function publicNav(string $active = ''): string {
-    // Icon-based primary nav (LinkedIn-style: icon + tiny label, underline on active)
-    $icons = [
-        'home'      => ['index.php',     '<i class="fa-solid fa-house"></i>', 'Home'],
-        'community' => ['community.php', '<i class="fa-solid fa-comments"></i>', 'Community'],
-        'events'    => ['events.php',    '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
-        'resources' => ['resources.php', '<i class="fa-solid fa-book"></i>', 'Learning'],
-        'directory' => ['directory.php', '<i class="fa-solid fa-magnifying-glass"></i>', 'Directory'],
+// Signed-in members get a portal bar (icon tabs + "Me" menu, like LinkedIn,
+// with an IEEE-style "Membership" area); visitors get the public nav. One
+// function, so every page picks the right chrome with no per-page changes.
+// The portal promotes RARL itself: tabs lead to what RARL offers, never to
+// other members.
+function memberNavItems(bool $isMember): array {
+    return $isMember ? [
+        'dashboard'  => ['dashboard.php',  'fa-house',          'Home'],
+        'community'  => ['community.php',  'fa-newspaper',      'Updates'],
+        'events'     => ['events.php',     'fa-calendar-days',  'Events'],
+        'resources'  => ['resources.php',  'fa-graduation-cap', 'Learning'],
+        'membership' => ['membership.php', 'fa-id-card',        'Membership'],
+    ] : [
+        'home'       => ['index.php',      'fa-house',          'Home'],
+        'community'  => ['community.php',  'fa-newspaper',      'Updates'],
+        'events'     => ['events.php',     'fa-calendar-days',  'Events'],
+        'resources'  => ['resources.php',  'fa-graduation-cap', 'Learning'],
+        'directory'  => ['directory.php',  'fa-earth-americas', 'Roster'],
     ];
-    // Secondary links tucked into the "Me" account menu rather than the top bar
-    $moreLinks = [
-        'people'   => ['people.php',   '<i class="fa-solid fa-people-group"></i> Leadership'],
-        'partners' => ['partners.php', '<i class="fa-solid fa-handshake"></i> Partner With Us'],
-    ];
+}
 
+function publicNav(string $active = ''): string {
     $isLoggedIn = isset($_SESSION['member_id']);
     $me = null;
     if ($isLoggedIn) {
-        $ms = db()->prepare('SELECT full_name, lab_name, type, avatar_path, is_chair, status, id_card_path, institution, lab_website FROM members WHERE id = ?');
+        $ms = db()->prepare('SELECT full_name, lab_name, type, avatar_path, is_chair, status, id_card_path, institution, lab_website, member_code FROM members WHERE id = ?');
         $ms->execute([(int)$_SESSION['member_id']]);
-        $me = $ms->fetch();
+        $me = $ms->fetch() ?: null;
+        if (!$me) $isLoggedIn = false;
     }
-    $myName = $me ? ($me['type'] === 'lab' ? $me['lab_name'] : $me['full_name']) : '';
-    $myAvatar = $me ? memberAvatarHtml($me['avatar_path'], $myName ?: '?', 'w-8 h-8 text-xs', memberNeedsAttention($me)) : '';
+    // Pages that sit under another tab light that tab up.
+    $active = ['profile' => 'membership'][$active] ?? $active;
+    $items = memberNavItems($isLoggedIn);
+    $homeHref = $items[array_key_first($items)][0];
 
-    $nav = ''; $mobileNav = '';
-    foreach ($icons as $key => [$href, $icon, $label]) {
-        $cls = $key === $active
-            ? 'text-rarl-red border-rarl-red'
-            : 'text-gray-500 dark:text-gray-400 border-transparent hover:text-rarl-red';
-        $nav .= '<a href="' . $href . '" class="flex flex-col items-center justify-center gap-0.5 px-2 sm:px-3 h-16 border-b-2 ' . $cls . ' transition-colors">
-                    <span class="text-lg leading-none">' . $icon . '</span>
-                    <span class="text-[10px] font-medium leading-none">' . $label . '</span>
-                  </a>';
-        $mobileNav .= '<a href="' . $href . '" class="block px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800 ' . ($key === $active ? 'text-rarl-red font-semibold' : 'text-gray-600 dark:text-gray-300') . '">' . $icon . ' ' . $label . '</a>';
-    }
-
-    $moreMobile = '';
-    foreach ($moreLinks as [$href2, $label2]) {
-        $moreMobile .= '<a href="' . $href2 . '" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">' . $label2 . '</a>';
-    }
-    $mobileNav .= $moreMobile;
-    $mobileNav .= '<a href="' . MAIN_SITE_URL . '" target="_blank" rel="noopener" class="block px-4 py-3 text-sm text-gray-400 hover:text-rarl-red transition-colors">rarl-lab.com ↗</a>';
-
-    $moreMenuItems = '';
-    foreach ($moreLinks as [$href3, $label3]) {
-        $moreMenuItems .= '<a href="' . $href3 . '" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">' . $label3 . '</a>';
+    $nav = ''; $tabBar = ''; $mobileNav = '';
+    foreach ($items as $key => [$href, $icon, $label]) {
+        $on  = $key === $active;
+        $cur = $on ? ' aria-current="page"' : '';
+        $nav .= '<a href="' . $href . '"' . $cur . ' class="relative flex flex-col items-center justify-center gap-1 px-3 lg:px-4 h-16 ' . ($on ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white') . '">'
+              . '<i class="fa-solid ' . $icon . ' text-[17px] leading-none"></i><span class="text-[11px] font-medium leading-none">' . $label . '</span>'
+              . ($on ? '<span class="absolute bottom-0 inset-x-2 h-0.5 rounded-full bg-rarl-red"></span>' : '') . '</a>';
+        $tabBar .= '<a href="' . $href . '"' . $cur . ' class="flex-1 flex flex-col items-center justify-center gap-1 py-2 ' . ($on ? 'text-rarl-red' : 'text-gray-500 dark:text-gray-400') . '"><i class="fa-solid ' . $icon . ' text-lg leading-none"></i><span class="text-[10px] font-medium leading-none">' . $label . '</span></a>';
+        $mobileNav .= '<a href="' . $href . '" class="flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800 ' . ($on ? 'text-rarl-red font-semibold' : 'text-gray-700 dark:text-gray-300') . '"><i class="fa-solid ' . $icon . ' w-5 text-center"></i>' . $label . '</a>';
     }
 
-    $chairMenuItem = ($isLoggedIn && !empty($me['is_chair']))
-        ? '<a href="chapter.php" class="block px-4 py-2 text-xs text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20"><i class="fa-solid fa-compass"></i> Chapter Portal</a>'
-        : '';
+    $mainUrl  = MAIN_SITE_URL;
+    $mark     = BRAND_MARK_PATH;
+    $searchQ  = htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES);
+    $themeBtn = '<button type="button" data-theme-toggle class="w-10 h-10 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Switch light/dark theme" title="Switch light/dark theme"><i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i></button>';
+    $menuItem = 'flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 [&>i]:w-4 [&>i]:text-center [&>i]:text-gray-400';
 
     if ($isLoggedIn) {
-        $accountMenu = <<<HTML
-<div class="relative flex-shrink-0" id="me-menu-wrap">
-  <button type="button" onclick="document.getElementById('me-menu').classList.toggle('hidden')" class="flex flex-col items-center justify-center gap-0.5 px-2 h-16 text-gray-500 dark:text-gray-400 hover:text-rarl-red transition-colors">
-    {$myAvatar}
-    <span class="text-[10px] font-medium leading-none flex items-center gap-0.5">Me ▾</span>
+        $myName   = htmlspecialchars($me['type'] === 'lab' ? (string)$me['lab_name'] : (string)$me['full_name']);
+        $avatarS  = memberAvatarHtml($me['avatar_path'], $myName ?: '?', 'w-7 h-7 text-xs', memberNeedsAttention($me));
+        $avatarL  = memberAvatarHtml($me['avatar_path'], $myName ?: '?', 'w-12 h-12 text-lg');
+        $headline = htmlspecialchars($me['type'] === 'lab' ? 'Research lab member' : ((string)$me['institution'] ?: 'RARL member'));
+        $code     = $me['member_code'] ? '<span class="font-mono">#' . htmlspecialchars($me['member_code']) . '</span> · ' : '';
+        $status   = ['active' => '<span class="text-green-700 dark:text-green-400">Active</span>', 'pending' => '<span class="text-amber-700 dark:text-amber-400">Pending review</span>', 'inactive' => '<span class="text-gray-500">Inactive</span>'][$me['status']] ?? '';
+        $chair    = !empty($me['is_chair']) ? '<a href="chapter.php" role="menuitem" class="' . $menuItem . '"><i class="fa-solid fa-compass"></i> Chapter portal</a>' : '';
+        $right = <<<HTML
+<div class="relative">
+  <button type="button" id="me-menu-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="me-menu" class="flex flex-col items-center justify-center gap-1 px-2 lg:px-3 h-16 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+    {$avatarS}<span class="hidden md:flex text-[11px] font-medium leading-none items-center gap-1">Me <i class="fa-solid fa-caret-down text-[10px]"></i></span>
   </button>
-  <div id="me-menu" class="hidden absolute right-0 top-16 w-56 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl overflow-hidden z-50">
-    <div class="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-      <p class="text-sm font-bold text-gray-900 dark:text-white truncate">{$myName}</p>
+  <div id="me-menu" role="menu" hidden class="absolute right-0 top-[calc(100%-4px)] w-72 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl overflow-hidden z-50">
+    <div class="p-4 flex items-center gap-3">{$avatarL}<div class="min-w-0"><p class="font-semibold text-gray-900 dark:text-white truncate">{$myName}</p><p class="text-xs text-gray-500 truncate">{$headline}</p><p class="text-xs text-gray-500 mt-0.5">{$code}{$status}</p></div></div>
+    <div class="px-4 pb-3"><a href="profile.php" class="block text-center text-sm font-semibold text-rarl-red border border-rarl-red/60 rounded-full py-1.5 hover:bg-rarl-red/5">View &amp; edit profile</a></div>
+    <div class="border-t border-gray-100 dark:border-gray-800 py-1.5">
+      <p class="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">Membership</p>
+      <a href="membership.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-id-card"></i> Membership &amp; ID card</a>
+      <a href="membership.php#certificates" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-award"></i> Certificates</a>
+      {$chair}
     </div>
-    <a href="profile.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-user"></i> View Profile</a>
-    <a href="dashboard.php" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
-    {$chairMenuItem}
-    <a href="profile.php#account" class="block px-4 py-2 text-xs text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-gear"></i> Account Settings</a>
-    {$moreMenuItems}
-    <div class="border-t border-gray-100 dark:border-gray-800">
-      <a href="logout.php" class="block px-4 py-2 text-xs text-rarl-red font-semibold hover:bg-gray-50 dark:hover:bg-gray-800"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a>
+    <div class="border-t border-gray-100 dark:border-gray-800 py-1.5">
+      <p class="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">About RARL</p>
+      <a href="people.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-people-group"></i> Leadership &amp; chapters</a>
+      <a href="partners.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-handshake"></i> Partner with us</a>
+      <a href="{$mainUrl}" target="_blank" rel="noopener" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-arrow-up-right-from-square"></i> rarl-lab.com</a>
+    </div>
+    <div class="border-t border-gray-100 dark:border-gray-800 py-1.5">
+      <a href="profile.php#account" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-gear"></i> Settings &amp; privacy</a>
+      <a href="logout.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-right-from-bracket"></i> Sign out</a>
     </div>
   </div>
 </div>
-<script>
-  document.addEventListener('click', function(e) {
-    const wrap = document.getElementById('me-menu-wrap');
-    if (wrap && !wrap.contains(e.target)) document.getElementById('me-menu')?.classList.add('hidden');
-  });
-</script>
 HTML;
-        $mobileMemberLinks = '<a href="profile.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-user"></i> Profile &amp; Account Settings</a>
-                               <a href="dashboard.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
-                               <a href="logout.php" class="block px-4 py-3 text-sm text-rarl-red"><i class="fa-solid fa-right-from-bracket"></i> Sign Out</a>';
+        $mobileExtra = '<a href="profile.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-user w-5 text-center"></i>Profile &amp; settings</a>'
+                     . '<a href="people.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-people-group w-5 text-center"></i>Leadership</a>'
+                     . '<a href="logout.php" class="flex items-center gap-3 px-4 py-3 text-sm text-rarl-red"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i>Sign out</a>';
     } else {
-        $accountMenu = '<div class="flex items-center gap-2 flex-shrink-0">
-            <a href="login.php" class="text-sm text-gray-600 hover:text-rarl-red transition-colors hidden sm:inline">Sign In</a>
-            <a href="register.php" class="text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark px-3 sm:px-4 py-2 rounded-xl transition-colors">Join</a>
+        $right = '<div class="flex items-center gap-2 pl-1">
+            <a href="login.php" class="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">Sign in</a>
+            <a href="register.php" class="inline-flex px-4 py-2 text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark rounded-full">Join RARL</a>
           </div>';
-        $mobileMemberLinks = '<a href="login.php" class="block px-4 py-3 text-sm text-gray-600 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800">Sign In</a>
-                               <a href="register.php" class="block px-4 py-3 text-sm font-semibold text-rarl-red">Join Free</a>';
+        $mobileExtra = '<a href="people.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-people-group w-5 text-center"></i>Leadership</a>'
+                     . '<a href="partners.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-handshake w-5 text-center"></i>Partner with us</a>'
+                     . '<a href="login.php" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rarl-red"><i class="fa-solid fa-right-to-bracket w-5 text-center"></i>Sign in</a>';
     }
 
-    $mark = BRAND_MARK_PATH;
-    $tagline = SITE_TAGLINE;
-    $mainUrl = MAIN_SITE_URL;
-    $replyTo = MAIL_REPLY_TO;
-    $searchQ = htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES);
-    $banner = freeMembershipBannerHtml();
+    // The "free membership ends soon — join now" urgency banner is a sales
+    // message; members already joined, so they never see it.
+    $banner = $isLoggedIn ? '' : freeMembershipBannerHtml();
+    $viewAs = viewAsBannerHtml();
+    $tabBarHtml = $isLoggedIn
+        ? '<nav class="md:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 pb-[env(safe-area-inset-bottom)]" aria-label="Primary">' . $tabBar . '</nav>'
+          . '<style>@media(max-width:767px){body{padding-bottom:calc(64px + env(safe-area-inset-bottom))}}</style>'
+        : '';
+
     return <<<HTML
-{$banner}
-<div class="bg-rarl-navy text-white/60 text-xs py-2 hidden sm:block">
-  <div class="w-full px-6 flex justify-between items-center">
-    <span><i class="fa-solid fa-flask"></i> {$tagline}</span>
-    <div class="flex gap-5">
-      <a href="{$mainUrl}" class="hover:text-white transition-colors">rarl-lab.com</a>
-      <a href="mailto:{$replyTo}" class="hover:text-white transition-colors">{$replyTo}</a>
-    </div>
-  </div>
-</div>
-<header class="sticky top-0 z-50 bg-white/95 dark:bg-gray-900/95 backdrop-blur-md border-b border-gray-200 dark:border-gray-800 shadow-sm">
-  <div class="w-full px-4 sm:px-6 h-16 flex items-center gap-3 sm:gap-5">
-    <a href="index.php" class="flex items-center gap-2 flex-shrink-0">
-      <img src="{$mark}" alt="RARL" class="w-8 h-8 rounded-lg object-contain shadow flex-shrink-0"/>
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[100] focus:px-4 focus:py-2 focus:bg-white focus:text-gray-900 focus:rounded-lg focus:shadow">Skip to content</a>
+{$viewAs}{$banner}
+<header class="sticky top-0 z-40 bg-white/90 dark:bg-gray-950/90 backdrop-blur-xl border-b border-gray-200/80 dark:border-gray-800">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
+    <a href="{$homeHref}" class="flex items-center gap-2.5 flex-shrink-0" aria-label="RARL home">
+      <img src="{$mark}" alt="" class="w-9 h-9 rounded-xl object-contain"/>
+      <span class="hidden xl:block font-heading font-bold text-sm text-gray-900 dark:text-white leading-tight">RARL<span class="block text-[11px] font-medium text-gray-500">Community</span></span>
     </a>
-    <form action="directory.php" method="GET" class="hidden sm:flex items-center flex-1 max-w-xs">
-      <div class="relative w-full">
-        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"><i class="fa-solid fa-magnifying-glass"></i></span>
-        <input type="text" name="q" value="{$searchQ}" placeholder="Search members, labs, research…"
-          class="w-full pl-9 pr-3 py-2 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-rarl-red/40 focus:bg-white dark:focus:bg-gray-900 rounded-lg text-xs outline-none transition-colors"/>
-      </div>
+    <form action="search.php" method="GET" role="search" class="hidden sm:block flex-1 max-w-xs">
+      <label class="relative block"><span class="sr-only">Search RARL</span>
+        <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm"></i>
+        <input type="search" name="q" value="{$searchQ}" placeholder="Search events, learning, updates…" class="w-full h-10 pl-10 pr-3 bg-gray-100 dark:bg-gray-800/80 border border-transparent focus:border-rarl-red/40 focus:bg-white dark:focus:bg-gray-900 rounded-full text-sm outline-none"/>
+      </label>
     </form>
-    <nav class="hidden md:flex items-center ml-auto">{$nav}</nav>
-    <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-auto md:ml-0">
-      <a href="{$mainUrl}" target="_blank" rel="noopener" title="Go to rarl-lab.com — Main RARL Site"
-        class="hidden sm:flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 hover:text-rarl-red border border-gray-200 dark:border-gray-700 hover:border-rarl-red/40 rounded-xl transition-colors flex-shrink-0">
-        <i class="fa-solid fa-arrow-up-right-from-square"></i> Main Site
-      </a>
-      <a href="{$mainUrl}" target="_blank" rel="noopener" title="Go to rarl-lab.com — Main RARL Site" aria-label="Go to Main RARL Site"
-        class="sm:hidden flex items-center justify-center w-9 h-9 text-gray-500 dark:text-gray-400 hover:text-rarl-red rounded-lg transition-colors flex-shrink-0">
-        <i class="fa-solid fa-arrow-up-right-from-square"></i>
-      </a>
-      {$accountMenu}
-      <button type="button" onclick="document.getElementById('mobile-nav-panel').classList.toggle('hidden')" class="md:hidden w-9 h-9 flex items-center justify-center rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors flex-shrink-0" aria-label="Menu">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-      </button>
+    <nav class="hidden md:flex items-stretch ml-auto" aria-label="Primary">{$nav}</nav>
+    <div class="flex items-center ml-auto md:ml-2 md:pl-2 md:border-l border-gray-200 dark:border-gray-800">
+      <a href="search.php" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-full text-gray-500" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></a>
+      {$themeBtn}
+      {$right}
+      <button type="button" id="mobile-nav-btn" aria-expanded="false" aria-controls="mobile-nav-panel" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
     </div>
   </div>
-  <div id="mobile-nav-panel" class="hidden md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg">
-    <form action="directory.php" method="GET" class="p-3 border-b border-gray-100 dark:border-gray-800">
-      <input type="text" name="q" value="{$searchQ}" placeholder="Search members, labs, research…"
-        class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-800 rounded-lg text-sm outline-none"/>
-    </form>
-    {$mobileNav}
-    {$mobileMemberLinks}
+  <div id="mobile-nav-panel" hidden class="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg max-h-[70vh] overflow-y-auto">
+    {$mobileNav}{$mobileExtra}
   </div>
 </header>
+{$tabBarHtml}
+<script>
+(function(){
+  function wire(btnId, panelId, isMenu){
+    var b = document.getElementById(btnId), p = document.getElementById(panelId); if (!b || !p) return;
+    function set(open){ p.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); }
+    b.addEventListener('click', function(e){ e.stopPropagation(); set(p.hidden); if (isMenu && !p.hidden) { var f = p.querySelector('a,button'); if (f) f.focus(); } });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !p.hidden) { set(false); b.focus(); } });
+    if (isMenu) document.addEventListener('click', function(e){ if (!p.hidden && !p.contains(e.target)) set(false); });
+  }
+  wire('me-menu-btn', 'me-menu', true); wire('mobile-nav-btn', 'mobile-nav-panel', false);
+})();
+</script>
+<span id="main" tabindex="-1"></span>
 HTML;
+}
+
+// "View as member" — an admin sees the portal exactly as one member does
+// (started from admin/member-edit.php via impersonate.php). It is read-only:
+// while it is on, csrfCheck() refuses every member write, and it expires on
+// its own after 30 minutes.
+function viewAsActive(): bool {
+    $v = $_SESSION['view_as'] ?? null;
+    if (!$v) return false;
+    if (($v['exp'] ?? 0) < time()) {
+        unset($_SESSION['view_as'], $_SESSION['member_id'], $_SESSION['member_type'], $_SESSION['member_name']);
+        return false;
+    }
+    return true;
+}
+function viewAsBannerHtml(): string {
+    if (!viewAsActive()) return '';
+    $name = htmlspecialchars($_SESSION['member_name'] ?? 'member');
+    $mins = max(1, (int)ceil(($_SESSION['view_as']['exp'] - time()) / 60));
+    return '<div class="bg-amber-400 text-amber-950 text-sm font-medium px-4 py-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">'
+         . '<span><i class="fa-solid fa-eye"></i> Viewing as <strong>' . $name . '</strong> · read-only · ends in ' . $mins . ' min</span>'
+         . '<a href="impersonate.php?end=1" class="underline font-semibold">Exit to admin</a></div>';
+}
+
+// Chapter leaders — chapters are shown as a list of the people who lead
+// them; members are not assigned to or asked to pick a chapter.
+function chapterLeaders(): array {
+    try {
+        return db()->query("SELECT * FROM regional_sections WHERE is_published = 1 AND chair_name IS NOT NULL AND chair_name <> '' ORDER BY continent, display_order, name")->fetchAll();
+    } catch (Throwable $e) { return []; }
+}
+
+// ── "From RARL" feed ────────────────────────────────────────
+// Everything RARL publishes, merged newest-first: announcements, team posts,
+// events, learning resources and sent newsletters. Powers the member home
+// and search. Each source is queried defensively so a table from a
+// not-yet-run migration never takes the page down.
+function announcementsHaveControls(): bool {
+    static $ok = null;
+    if ($ok === null) {
+        try { $ok = (bool)db()->query("SHOW COLUMNS FROM announcements LIKE 'expires_at'")->fetch(); } catch (Throwable $e) { $ok = false; }
+    }
+    return $ok;
+}
+function liveAnnouncementsSql(): string {
+    return 'is_published = 1' . (announcementsHaveControls() ? ' AND (expires_at IS NULL OR expires_at >= CURDATE())' : '');
+}
+function rarlFeedItems(?int $sectionId, bool $isMember, int $limit = 20, string $q = ''): array {
+    $pdo = db(); $items = [];
+    $like = '%' . $q . '%';
+    $try = function (callable $fn) { try { $fn(); } catch (Throwable $e) { /* source unavailable — skip */ } };
+
+    $try(function () use ($pdo, &$items, $sectionId, $q, $like) {
+        $sql = 'SELECT * FROM announcements WHERE ' . liveAnnouncementsSql() . ' AND (section_id IS NULL OR section_id <=> ?)' . ($q !== '' ? ' AND (title LIKE ? OR content LIKE ?)' : '') . ' ORDER BY created_at DESC LIMIT 30';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$sectionId, $like, $like] : [$sectionId]);
+        foreach ($st as $a) $items[] = ['kind' => 'announcement', 'at' => $a['created_at'], 'pinned' => (bool)$a['is_pinned'], 'row' => $a];
+    });
+    if ($isMember) $try(function () use ($pdo, &$items, $q, $like) {
+        $sql = 'SELECT p.*, (SELECT COUNT(*) FROM community_likes l WHERE l.post_id = p.id) AS like_count, (SELECT COUNT(*) FROM community_comments c WHERE c.post_id = p.id) AS comment_count FROM community_posts p WHERE p.is_hidden = 0' . ($q !== '' ? ' AND p.body LIKE ?' : '') . ' ORDER BY p.created_at DESC LIMIT 30';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like] : []);
+        foreach ($st as $p) $items[] = ['kind' => 'post', 'at' => $p['created_at'], 'pinned' => (bool)$p['is_pinned'], 'row' => $p];
+    });
+    $try(function () use ($pdo, &$items, $isMember, $q, $like) {
+        $sql = "SELECT * FROM events WHERE is_active = 1" . ($isMember ? '' : " AND visibility = 'public'") . ($q !== '' ? ' AND (title LIKE ? OR description LIKE ? OR speaker_name LIKE ?)' : ' AND (event_date IS NULL OR event_date >= CURDATE() - INTERVAL 30 DAY)') . ' ORDER BY created_at DESC LIMIT 30';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like, $like] : []);
+        foreach ($st as $e) $items[] = ['kind' => 'event', 'at' => $e['created_at'], 'pinned' => false, 'row' => $e];
+    });
+    $try(function () use ($pdo, &$items, $isMember, $q, $like) {
+        $sql = "SELECT r.*, c.name AS category_name, c.slug AS category_slug FROM resources r JOIN resource_categories c ON c.id = r.category_id WHERE c.is_published = 1" . ($isMember ? '' : " AND r.access_level = 'public' AND c.access_level = 'public'") . ($q !== '' ? ' AND (r.title LIKE ? OR r.description LIKE ? OR c.name LIKE ?)' : '') . ' ORDER BY r.created_at DESC LIMIT 30';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like, $like] : []);
+        foreach ($st as $r) $items[] = ['kind' => 'resource', 'at' => $r['created_at'], 'pinned' => false, 'row' => $r];
+    });
+    if ($isMember) $try(function () use ($pdo, &$items, $q, $like) {
+        $sql = "SELECT id, subject, preview_text, sent_at FROM newsletters WHERE status = 'sent' AND sent_at IS NOT NULL" . ($q !== '' ? ' AND (subject LIKE ? OR preview_text LIKE ?)' : '') . ' ORDER BY sent_at DESC LIMIT 20';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like] : []);
+        foreach ($st as $n) $items[] = ['kind' => 'newsletter', 'at' => $n['sent_at'], 'pinned' => false, 'row' => $n];
+    });
+
+    usort($items, fn($a, $b) => [$b['pinned'], strtotime((string)$b['at'])] <=> [$a['pinned'], strtotime((string)$a['at'])]);
+    return array_slice($items, 0, $limit);
+}
+
+// One card per feed item. Posts reuse the community renderer elsewhere;
+// here every kind gets the same compact, LinkedIn-style card.
+function renderFeedItem(array $it): string {
+    $r = $it['row']; $h = fn($s) => ex($s);
+    $when = '<span title="' . $h(date('d M Y, g:i A', strtotime((string)$it['at']))) . '">' . timeAgo((string)$it['at']) . '</span>';
+    $pin  = $it['pinned'] ? '<span class="text-amber-700 dark:text-amber-400"><i class="fa-solid fa-thumbtack"></i> Pinned</span> · ' : '';
+    $head = function (string $icon, string $tint, string $label) use ($when, $pin) {
+        return '<div class="flex items-center gap-3 mb-3"><span class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ' . $tint . '"><i class="fa-solid ' . $icon . '"></i></span>'
+             . '<div class="min-w-0 leading-tight"><p class="text-sm font-semibold text-gray-900 dark:text-white">RARL · ' . $label . '</p><p class="text-xs text-gray-500">' . $pin . $when . '</p></div></div>';
+    };
+    $card = 'rarl-feed-card bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-5';
+    switch ($it['kind']) {
+        case 'announcement':
+            $tone = ['event' => 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300', 'opportunity' => 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300', 'alert' => 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300'][$r['type']] ?? 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300';
+            $label = ['event' => 'Event announcement', 'opportunity' => 'Opportunity', 'alert' => 'Important notice'][$r['type']] ?? 'Announcement';
+            $cta = !empty($r['link_url']) ? '<a href="' . $h($r['link_url']) . '" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full bg-rarl-red hover:bg-rarl-dark text-white text-sm font-semibold">' . $h($r['link_label'] ?: 'Learn more') . ' <i class="fa-solid fa-arrow-right text-xs"></i></a>' : '';
+            $exp = !empty($r['expires_at']) ? '<p class="text-xs text-gray-500 mt-3"><i class="fa-regular fa-clock"></i> Until ' . $h(date('d M Y', strtotime($r['expires_at']))) . '</p>' : '';
+            $body = $h($r['content']); $long = mb_strlen((string)$r['content']) > 320;
+            return '<article class="' . $card . '">' . $head('fa-bullhorn', $tone, $label)
+                 . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug">' . $h($r['title']) . '</h3>'
+                 . '<div class="mt-1.5 text-[15px] text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-line' . ($long ? ' line-clamp-5' : '') . '" data-clamp>' . $body . '</div>'
+                 . ($long ? '<button type="button" class="text-sm font-semibold text-gray-500 hover:text-rarl-red mt-1" onclick="this.previousElementSibling.classList.remove(\'line-clamp-5\');this.remove()">…see more</button>' : '')
+                 . $cta . $exp . '</article>';
+        case 'post':
+            $img = !empty($r['image_path']) ? '<img src="' . UPLOADS_URL . '/community/' . $h($r['image_path']) . '" alt="" loading="lazy" class="mt-3 -mx-5 w-[calc(100%+2.5rem)] max-h-[480px] object-cover"/>' : '';
+            $body = ($r['body_format'] ?? 'markdown') === 'html' ? sanitizeRichHtml((string)$r['body']) : markdownToHtml((string)$r['body']);
+            return '<article class="' . $card . '">' . $head('fa-flask', 'bg-rarl-red/10 text-rarl-red', 'Team update')
+                 . '<div class="md-content text-[15px] text-gray-800 dark:text-gray-200 leading-relaxed line-clamp-[8]">' . $body . '</div>' . $img
+                 . '<div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500"><span><i class="fa-solid fa-thumbs-up"></i> ' . (int)($r['like_count'] ?? 0) . '</span>' . (communityCommentsEnabled() ? '<span>' . (int)($r['comment_count'] ?? 0) . ' replies</span>' : '')
+                 . '<a href="community.php#post-' . (int)$r['id'] . '" class="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-rarl-red">Open in Updates →</a></div></article>';
+        case 'event':
+            $date = $r['event_date'] ? date('D, d M Y', strtotime($r['event_date'])) . ($r['event_time'] ? ' · ' . date('g:i A', strtotime($r['event_time'])) : '') : 'Date to be announced';
+            $past = $r['event_date'] && $r['event_date'] < date('Y-m-d');
+            $cover = !empty($r['cover_image']) ? '<img src="' . $h(str_starts_with((string)$r['cover_image'], 'http') ? $r['cover_image'] : UPLOADS_URL . '/events/' . $r['cover_image']) . '" alt="" loading="lazy" class="mt-3 w-full aspect-[2/1] object-cover rounded-xl"/>' : '';
+            return '<article class="' . $card . '">' . $head('fa-calendar-days', 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300', ($past ? 'Past ' : 'New ') . ucfirst((string)$r['type']))
+                 . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug">' . $h($r['title']) . '</h3>'
+                 . '<p class="text-sm text-gray-600 dark:text-gray-400 mt-1"><i class="fa-regular fa-calendar"></i> ' . $h($date) . ($r['location'] ? ' · ' . $h($r['location']) : ($r['online_url'] ? ' · Online' : '')) . '</p>'
+                 . ($r['speaker_name'] ? '<p class="text-sm text-gray-600 dark:text-gray-400"><i class="fa-solid fa-microphone"></i> ' . $h($r['speaker_name']) . '</p>' : '')
+                 . ($r['description'] ? '<p class="text-[15px] text-gray-700 dark:text-gray-300 mt-2 line-clamp-3">' . $h(strip_tags((string)$r['description'])) . '</p>' : '')
+                 . $cover
+                 . '<a href="events.php#event-' . (int)$r['id'] . '" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red">' . ($past && $r['recording_url'] ? 'Watch recording' : ($past ? 'View event' : 'Details &amp; RSVP')) . '</a></article>';
+        case 'resource':
+            $icon = ['youtube_playlist' => 'fa-brands fa-youtube', 'youtube_video' => 'fa-brands fa-youtube', 'article' => 'fa-solid fa-file-lines', 'book' => 'fa-solid fa-book', 'tool' => 'fa-solid fa-screwdriver-wrench', 'course' => 'fa-solid fa-graduation-cap'][$r['type']] ?? 'fa-solid fa-link';
+            return '<article class="' . $card . '">' . $head('fa-graduation-cap', 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300', 'New in Learning')
+                 . '<a href="' . $h($r['url']) . '" target="_blank" rel="noopener" class="flex gap-4 p-3 -m-1 rounded-xl border border-gray-200 dark:border-gray-800 hover:border-rarl-red/40 group">'
+                 . '<span class="w-12 h-12 rounded-lg bg-gray-100 dark:bg-gray-800 flex items-center justify-center text-xl text-gray-600 dark:text-gray-300 flex-shrink-0"><i class="' . $icon . '"></i></span>'
+                 . '<span class="min-w-0"><span class="block font-semibold text-gray-900 dark:text-white group-hover:text-rarl-red">' . $h($r['title']) . '</span>'
+                 . '<span class="block text-xs text-gray-500 mt-0.5">' . $h($r['category_name']) . ($r['access_level'] === 'member' ? ' · <i class="fa-solid fa-lock"></i> Members' : '') . '</span>'
+                 . ($r['description'] ? '<span class="block text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">' . $h($r['description']) . '</span>' : '') . '</span></a></article>';
+        case 'newsletter':
+            return '<article class="' . $card . '">' . $head('fa-envelope-open-text', 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', 'Newsletter')
+                 . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug">' . $h($r['subject']) . '</h3>'
+                 . ($r['preview_text'] ? '<p class="text-[15px] text-gray-700 dark:text-gray-300 mt-1">' . $h($r['preview_text']) . '</p>' : '')
+                 . '<p class="text-xs text-gray-500 mt-3"><i class="fa-solid fa-inbox"></i> Sent to your inbox</p></article>';
+    }
+    return '';
 }
 
 // ── Shared footer ──────────────────────────────────────────

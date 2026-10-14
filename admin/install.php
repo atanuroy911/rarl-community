@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <p class="text-gray-400 text-sm mb-5">This looks like a fresh install. Click below to create all tables and seed the default data — safe to run, it won't overwrite anything if tables already partially exist.</p>
 
     <?php if ($error): ?>
-    <div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= htmlspecialchars($error) ?></div>
+    <div class="mb-4 p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm"><i class="fa-solid fa-triangle-exclamation"></i> <?= ex($error) ?></div>
     <?php endif; ?>
 
     <?php if ($results): ?>
@@ -68,8 +68,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="flex items-start gap-2 text-xs">
         <span><?= $r['ok'] ? '<i class="fa-solid fa-circle-check"></i>' : '<i class="fa-solid fa-circle-xmark"></i>' ?></span>
         <div>
-          <span class="font-mono font-semibold text-gray-800"><?= htmlspecialchars($file) ?></span>
-          <?php if (!$r['ok']): ?><div class="text-red-600 mt-1"><?= htmlspecialchars($r['error']) ?></div><?php endif; ?>
+          <span class="font-mono font-semibold text-gray-800"><?= ex($file) ?></span>
+          <?php if (!$r['ok']): ?><div class="text-red-600 mt-1"><?= ex($r['error']) ?></div><?php endif; ?>
         </div>
       </div>
       <?php endforeach; ?>
@@ -78,12 +78,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <ul class="text-xs text-gray-500 space-y-1.5 mb-6">
       <?php foreach (RARL_MIGRATIONS as $file => $desc): ?>
-      <li><span class="font-mono font-semibold text-gray-700"><?= htmlspecialchars($file) ?></span> — <?= htmlspecialchars($desc) ?></li>
+      <li><span class="font-mono font-semibold text-gray-700"><?= ex($file) ?></span> — <?= ex($desc) ?></li>
       <?php endforeach; ?>
     </ul>
 
     <form method="POST">
-      <input type="hidden" name="csrf" value="<?= htmlspecialchars($_SESSION['install_csrf']) ?>">
+      <input type="hidden" name="csrf" value="<?= ex($_SESSION['install_csrf']) ?>">
       <button type="submit" class="w-full py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold rounded-xl text-sm transition shadow-lg hover:-translate-y-0.5">Set Up Database →</button>
     </form>
   </div>

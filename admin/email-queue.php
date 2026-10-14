@@ -96,7 +96,7 @@ adminWrap(function() use ($ready, $rows, $counts, $batches, $filter) {
       <?php foreach ($batches as $b): $pct = $b['total'] ? round(($b['sent'] + $b['failed'] + $b['cancelled']) / $b['total'] * 100) : 100; ?>
         <div>
           <div class="flex items-center justify-between gap-2 mb-1">
-            <p class="text-sm font-semibold text-gray-800 truncate"><?= htmlspecialchars($b['label'] ?: 'Email batch') ?></p>
+            <p class="text-sm font-semibold text-gray-800 truncate"><?= ex($b['label'] ?: 'Email batch') ?></p>
             <span class="text-[11px] text-gray-400 whitespace-nowrap"><?= date('d M H:i', strtotime($b['created_at'])) ?></span>
           </div>
           <div class="h-2 rounded-full bg-gray-100 overflow-hidden flex">
@@ -106,8 +106,8 @@ adminWrap(function() use ($ready, $rows, $counts, $batches, $filter) {
           <div class="flex items-center justify-between mt-1 text-[11px] text-gray-500">
             <span><?= (int)$b['sent'] ?>/<?= (int)$b['total'] ?> sent<?= $b['failed'] ? ' · <span class="text-red-600">' . (int)$b['failed'] . ' failed</span>' : '' ?><?= $b['pending'] ? ' · ' . (int)$b['pending'] . ' waiting' : '' ?></span>
             <span class="flex gap-2">
-              <?php if ($b['failed']): ?><form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="retry"><input type="hidden" name="batch" value="<?= htmlspecialchars($b['batch']) ?>"><button class="text-rarl-red font-semibold hover:underline" data-no-loading>Retry</button></form><?php endif; ?>
-              <?php if ($b['pending']): ?><form method="POST" data-confirm="Stop sending the remaining <?= (int)$b['pending'] ?> email(s) in this batch?" data-confirm-ok="Stop batch"><?= acsrfField() ?><input type="hidden" name="action" value="cancel"><input type="hidden" name="batch" value="<?= htmlspecialchars($b['batch']) ?>"><button class="text-gray-500 font-semibold hover:underline" data-no-loading>Stop</button></form><?php endif; ?>
+              <?php if ($b['failed']): ?><form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="retry"><input type="hidden" name="batch" value="<?= ex($b['batch']) ?>"><button class="text-rarl-red font-semibold hover:underline" data-no-loading>Retry</button></form><?php endif; ?>
+              <?php if ($b['pending']): ?><form method="POST" data-confirm="Stop sending the remaining <?= (int)$b['pending'] ?> email(s) in this batch?" data-confirm-ok="Stop batch"><?= acsrfField() ?><input type="hidden" name="action" value="cancel"><input type="hidden" name="batch" value="<?= ex($b['batch']) ?>"><button class="text-gray-500 font-semibold hover:underline" data-no-loading>Stop</button></form><?php endif; ?>
               <span><?= $pct ?>%</span>
             </span>
           </div>
@@ -118,7 +118,7 @@ adminWrap(function() use ($ready, $rows, $counts, $batches, $filter) {
     <div class="rarl-card p-5 text-xs text-gray-600 space-y-2">
       <h2 class="rarl-card-title">Optional: send without a browser open</h2>
       <p>Add a cron job in cPanel (every minute):</p>
-      <code class="block bg-gray-900 text-green-300 rounded-lg p-3 text-[11px] break-all">php <?= htmlspecialchars(dirname(__DIR__)) ?>/cron-email-queue.php</code>
+      <code class="block bg-gray-900 text-green-300 rounded-lg p-3 text-[11px] break-all">php <?= ex(dirname(__DIR__)) ?>/cron-email-queue.php</code>
     </div>
   </div>
 
@@ -135,13 +135,13 @@ adminWrap(function() use ($ready, $rows, $counts, $batches, $filter) {
           <?php foreach ($rows as $r):
             $badge = ['queued' => 'rarl-badge-blue', 'sending' => 'rarl-badge-indigo', 'sent' => 'rarl-badge-green', 'failed' => 'rarl-badge-red', 'cancelled' => 'rarl-badge-gray'][$r['status']]; ?>
           <tr>
-            <td><p class="font-medium text-gray-900 truncate max-w-[200px]"><?= htmlspecialchars($r['to_name'] ?: $r['to_email']) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[200px]"><?= htmlspecialchars($r['to_email']) ?></p></td>
-            <td><p class="truncate max-w-[260px] text-gray-700"><?= htmlspecialchars($r['subject']) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[260px]"><?= htmlspecialchars($r['batch_label']) ?></p></td>
+            <td><p class="font-medium text-gray-900 truncate max-w-[200px]"><?= ex($r['to_name'] ?: $r['to_email']) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[200px]"><?= ex($r['to_email']) ?></p></td>
+            <td><p class="truncate max-w-[260px] text-gray-700"><?= ex($r['subject']) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[260px]"><?= ex($r['batch_label']) ?></p></td>
             <td><span class="rarl-badge <?= $badge ?>"><?= ucfirst($r['status']) ?></span>
-              <?php if ($r['last_error'] && $r['status'] !== 'sent'): ?><p class="text-[10px] text-red-600 mt-1 max-w-[220px] truncate" title="<?= htmlspecialchars($r['last_error']) ?>"><?= htmlspecialchars($r['last_error']) ?></p><?php endif; ?></td>
-            <td class="text-[11px] text-gray-500 whitespace-nowrap" data-sort="<?= htmlspecialchars($r['sent_at'] ?: $r['created_at']) ?>"><?= date('d M H:i', strtotime($r['sent_at'] ?: $r['created_at'])) ?></td>
+              <?php if ($r['last_error'] && $r['status'] !== 'sent'): ?><p class="text-[10px] text-red-600 mt-1 max-w-[220px] truncate" title="<?= ex($r['last_error']) ?>"><?= ex($r['last_error']) ?></p><?php endif; ?></td>
+            <td class="text-[11px] text-gray-500 whitespace-nowrap" data-sort="<?= ex($r['sent_at'] ?: $r['created_at']) ?>"><?= date('d M H:i', strtotime($r['sent_at'] ?: $r['created_at'])) ?></td>
             <td class="text-right"><?php if (in_array($r['status'], ['failed','cancelled'], true)): ?>
-              <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="retry_one"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="<?= htmlspecialchars($filter) ?>"><button class="rarl-icon-btn" title="Retry"><i class="fa-solid fa-rotate-right"></i></button></form>
+              <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="retry_one"><input type="hidden" name="id" value="<?= (int)$r['id'] ?>"><input type="hidden" name="status" value="<?= ex($filter) ?>"><button class="rarl-icon-btn" title="Retry"><i class="fa-solid fa-rotate-right"></i></button></form>
             <?php endif; ?></td>
           </tr>
           <?php endforeach; ?>

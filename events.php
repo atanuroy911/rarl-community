@@ -83,15 +83,15 @@ echo htmlHead('Events & Webinars');
 <?= publicNav('events') ?>
 
 <!-- Hero -->
-<section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
-  <div class="relative z-10 max-w-5xl mx-auto px-6 py-16 text-center">
-    <div class="text-5xl mb-4"><i class="fa-solid fa-video"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-3">Events &amp; Webinars</h1>
-    <p class="text-white/60 text-base max-w-lg mx-auto">Workshops, webinars, and conferences from the RARL community — some open to everyone, some reserved for members.</p>
+<section class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+  <div class="max-w-5xl mx-auto px-6 py-7">
+    <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">RARL events</p>
+    <h1 class="font-heading font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">Events &amp; Webinars</h1>
+    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl">Workshops, webinars, hackathons and conferences run by RARL. Register in one click; your certificate arrives after you attend.</p>
   </div>
 </section>
 
-<div class="max-w-5xl mx-auto px-6 py-14">
+<div class="max-w-5xl mx-auto px-6 py-8">
   <?= renderFlash() ?>
 
   <!-- Tabs -->
@@ -119,9 +119,9 @@ echo htmlHead('Events & Webinars');
     ?>
     <div id="event-<?= $e['id'] ?>" class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:-translate-y-0.5 transition">
       <?php if (!empty($e['cover_image'])): ?>
-      <img src="<?= UPLOADS_URL ?>/events/<?= htmlspecialchars($e['cover_image']) ?>" alt="" class="w-full h-36 object-cover"/>
+      <img src="<?= UPLOADS_URL ?>/events/<?= ex($e['cover_image']) ?>" alt="" class="w-full h-36 object-cover"/>
       <?php else: ?>
-      <div class="w-full h-24 flex items-center justify-center text-4xl" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"><?= $typeIcons[$e['type']] ?? '<i class="fa-solid fa-thumbtack"></i>' ?></div>
+      <div class="w-full h-24 flex items-center justify-center text-4xl text-rarl-red/70 bg-gradient-to-br from-rarl-red/[.06] to-rarl-red/[.14] dark:from-rarl-red/10 dark:to-rarl-red/20"><?= $typeIcons[$e['type']] ?? '<i class="fa-solid fa-thumbtack"></i>' ?></div>
       <?php endif; ?>
 
       <div class="p-6">
@@ -135,18 +135,18 @@ echo htmlHead('Events & Webinars');
           <?php endif; ?>
         </div>
 
-        <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-1.5 leading-snug"><?= htmlspecialchars($e['title']) ?></h3>
+        <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-1.5 leading-snug"><?= ex($e['title']) ?></h3>
 
         <div class="text-xs text-gray-500 dark:text-gray-400 space-y-1 mb-3">
           <?php if ($e['event_date']): ?>
           <div><i class="fa-solid fa-calendar-days"></i> <?= date('D, d M Y', strtotime($e['event_date'])) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?></div>
           <?php endif; ?>
-          <?php if ($e['location']): ?><div><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($e['location']) ?></div><?php endif; ?>
-          <?php if ($e['speaker_name']): ?><div><i class="fa-solid fa-microphone"></i> <?= htmlspecialchars($e['speaker_name']) ?></div><?php endif; ?>
+          <?php if ($e['location']): ?><div><i class="fa-solid fa-location-dot"></i> <?= ex($e['location']) ?></div><?php endif; ?>
+          <?php if ($e['speaker_name']): ?><div><i class="fa-solid fa-microphone"></i> <?= ex($e['speaker_name']) ?></div><?php endif; ?>
         </div>
 
         <?php if ($e['description']): ?>
-        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3"><?= nl2br(htmlspecialchars($e['description'])) ?></p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 leading-relaxed mb-4 line-clamp-3"><?= nl2br(ex($e['description'])) ?></p>
         <?php endif; ?>
 
         <?php if ($e['capacity'] !== null && $tab === 'upcoming'): ?>
@@ -163,7 +163,7 @@ echo htmlHead('Events & Webinars');
 
         <?php if ($tab === 'past'): ?>
           <?php if (!empty($e['recording_url']) && $isActiveMember): ?>
-          <a href="<?= htmlspecialchars($e['recording_url']) ?>" target="_blank" rel="noopener"
+          <a href="<?= ex($e['recording_url']) ?>" target="_blank" rel="noopener"
             class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-800 hover:bg-gray-900 text-white text-xs font-semibold rounded-xl transition-colors"><i class="fa-solid fa-play"></i> Watch Recording</a>
           <?php elseif (!empty($e['recording_url'])): ?>
           <a href="register.php" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-xs font-semibold rounded-xl"><i class="fa-solid fa-lock"></i> Join Free to Watch Recording</a>
@@ -180,7 +180,7 @@ echo htmlHead('Events & Webinars');
           <div class="flex items-center gap-3">
             <span class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 text-xs font-bold rounded-xl"><i class="fa-solid fa-circle-check"></i> You're registered</span>
             <?php if (!empty($e['online_url'])): ?>
-            <a href="<?= htmlspecialchars($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs text-rarl-red font-semibold hover:underline">Join link →</a>
+            <a href="<?= ex($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs text-rarl-red font-semibold hover:underline">Join link →</a>
             <?php endif; ?>
             <form method="POST" onsubmit="return confirm('Cancel your registration?')">
               <?= csrfField() ?><input type="hidden" name="action" value="cancel_rsvp"><input type="hidden" name="event_id" value="<?= $e['id'] ?>">

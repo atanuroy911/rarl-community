@@ -24,6 +24,15 @@ $displayNameFor = fn(array $mm) => $mm['type'] === 'lab' ? $mm['lab_name'] : $mm
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && !empty($_POST['assist_action'])) {
     $assist = $_POST['assist_action'];
 
+    if ($assist === 'view_as') {
+        // Read-only look at the member portal as this member (see impersonate.php).
+        $token = bin2hex(random_bytes(32));
+        $pdo->prepare("INSERT INTO settings (`key`,`value`) VALUES (?,?)")
+            ->execute(['viewas_' . hash('sha256', $token), json_encode(['member_id' => $id, 'exp' => time() + 60])]);
+        $pdo->exec("DELETE FROM settings WHERE `key` LIKE 'viewas\_%' AND updated_at < NOW() - INTERVAL 1 HOUR");
+        header('Location: ../impersonate.php?t=' . $token); exit;
+    }
+
     if ($assist === 'resend_verification' && empty($m['email_verified_at'])) {
         $code = generateOtp($m['email'], 'verify');
         $memberName = $displayNameFor($m);
@@ -231,11 +240,11 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
     <?php endif; ?>
   </div>
   <div>
-    <h1 class="text-2xl font-black text-gray-900"><?= htmlspecialchars($displayName ?: '(unnamed)') ?></h1>
-    <p class="text-gray-500 text-sm flex flex-wrap items-center gap-2"><span class="rarl-badge <?= $statusBadge ?>"><?= ucfirst($m['status']) ?></span><?= $m['email_verified_at'] ? '' : '<span class="rarl-badge rarl-badge-red">Email not verified</span>' ?> <?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?><?= !empty($m['member_code']) ? ' · <span class="font-mono">#' . htmlspecialchars($m['member_code']) . '</span>' : '' ?></p>
+    <h1 class="text-2xl font-black text-gray-900"><?= ex($displayName ?: '(unnamed)') ?></h1>
+    <p class="text-gray-500 text-sm flex flex-wrap items-center gap-2"><span class="rarl-badge <?= $statusBadge ?>"><?= ucfirst($m['status']) ?></span><?= $m['email_verified_at'] ? '' : '<span class="rarl-badge rarl-badge-red">Email not verified</span>' ?> <?= $m['type'] === 'lab' ? '<i class="fa-solid fa-building-columns"></i> Research Lab' : '<i class="fa-solid fa-user-graduate"></i> Individual Researcher' ?> · Joined <?= date('d M Y', strtotime($m['created_at'])) ?><?= !empty($m['member_code']) ? ' · <span class="font-mono">#' . ex($m['member_code']) . '</span>' : '' ?></p>
   </div>
   <div class="ml-auto flex gap-2">
-    <a href="mailto:<?= htmlspecialchars($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-envelope"></i> Email</a>
+    <a href="mailto:<?= ex($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-envelope"></i> Email</a>
     <?php if (!empty($m['id_card_path'])): ?><a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="rarl-btn"><i class="fa-solid fa-id-card"></i> ID card</a><?php endif; ?>
     <a href="certificates.php?q=<?= urlencode($m['email']) ?>" class="rarl-btn"><i class="fa-solid fa-trophy"></i> Certificates</a>
   </div>
@@ -243,7 +252,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
 <?php if ($errors): ?>
 <div class="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm space-y-1">
-  <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= htmlspecialchars($e) ?></span></div><?php endforeach; ?>
+  <?php foreach ($errors as $e): ?><div class="flex items-start gap-2"><span><i class="fa-solid fa-triangle-exclamation"></i></span><span><?= ex($e) ?></span></div><?php endforeach; ?>
 </div>
 <?php endif; ?>
 
@@ -255,7 +264,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Email</label>
-          <input type="email" name="email" value="<?= htmlspecialchars($m['email']) ?>" required
+          <input type="email" name="email" value="<?= ex($m['email']) ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
         </div>
         <div>
@@ -271,7 +280,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Member ID <span class="text-gray-400 font-normal">(shown on ID card/certificates — leave blank to auto-generate on approval)</span></label>
-        <input type="text" name="member_code" value="<?= htmlspecialchars($m['member_code'] ?? '') ?>" placeholder="e.g. FRE0042"
+        <input type="text" name="member_code" value="<?= ex($m['member_code'] ?? '') ?>" placeholder="e.g. FRE0042"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm font-mono focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
       </div>
 
@@ -279,41 +288,41 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lab Name</label>
-          <input type="text" name="lab_name" value="<?= htmlspecialchars($m['lab_name'] ?? '') ?>" required
+          <input type="text" name="lab_name" value="<?= ex($m['lab_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">PI Name</label>
-          <input type="text" name="pi_name" value="<?= htmlspecialchars($m['pi_name'] ?? '') ?>" required
+          <input type="text" name="pi_name" value="<?= ex($m['pi_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Lab Website</label>
-        <input type="url" name="lab_website" value="<?= htmlspecialchars($m['lab_website'] ?? '') ?>"
+        <input type="url" name="lab_website" value="<?= ex($m['lab_website'] ?? '') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Research Areas</label>
-        <textarea name="research_areas" rows="2" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['research_areas'] ?? '') ?></textarea>
+        <textarea name="research_areas" rows="2" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm resize-none"><?= ex($m['research_areas'] ?? '') ?></textarea>
       </div>
       <?php else: ?>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Full Name</label>
-          <input type="text" name="full_name" value="<?= htmlspecialchars($m['full_name'] ?? '') ?>" required
+          <input type="text" name="full_name" value="<?= ex($m['full_name'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Institution</label>
-          <input type="text" name="institution" value="<?= htmlspecialchars($m['institution'] ?? '') ?>" required
+          <input type="text" name="institution" value="<?= ex($m['institution'] ?? '') ?>" required
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">Department</label>
-          <input type="text" name="department" value="<?= htmlspecialchars($m['department'] ?? '') ?>"
+          <input type="text" name="department" value="<?= ex($m['department'] ?? '') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
         <div>
@@ -325,27 +334,27 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Primary Lab Name</label>
-        <input type="text" name="primary_lab_name" value="<?= htmlspecialchars($m['primary_lab_name'] ?? '') ?>"
+        <input type="text" name="primary_lab_name" value="<?= ex($m['primary_lab_name'] ?? '') ?>"
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Research Interests</label>
-        <textarea name="research_interests" rows="2" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['research_interests'] ?? '') ?></textarea>
+        <textarea name="research_interests" rows="2" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm resize-none"><?= ex($m['research_interests'] ?? '') ?></textarea>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
           <label class="block text-xs text-gray-500 mb-1">Google Scholar URL</label>
-          <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($m['google_scholar_url'] ?? '') ?>"
+          <input type="url" name="google_scholar_url" value="<?= ex($m['google_scholar_url'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs"/>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">ORCID ID</label>
-          <input type="text" name="orcid_id" value="<?= htmlspecialchars($m['orcid_id'] ?? '') ?>"
+          <input type="text" name="orcid_id" value="<?= ex($m['orcid_id'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs"/>
         </div>
         <div>
           <label class="block text-xs text-gray-500 mb-1">LinkedIn URL</label>
-          <input type="url" name="linkedin_url" value="<?= htmlspecialchars($m['linkedin_url'] ?? '') ?>"
+          <input type="url" name="linkedin_url" value="<?= ex($m['linkedin_url'] ?? '') ?>"
             class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-xs"/>
         </div>
       </div>
@@ -358,7 +367,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-600 mb-1.5">City / State</label>
-          <input type="text" name="city_state" value="<?= htmlspecialchars($m['city_state'] ?? '') ?>"
+          <input type="text" name="city_state" value="<?= ex($m['city_state'] ?? '') ?>"
             class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm"/>
         </div>
       </div>
@@ -383,7 +392,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
           <select name="plan_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm">
             <option value="">— None —</option>
             <?php foreach ($plans as $p): ?>
-            <option value="<?= $p['id'] ?>" <?= (int)($m['plan_id']??0)===(int)$p['id']?'selected':'' ?>><?= htmlspecialchars($p['name']) ?></option>
+            <option value="<?= $p['id'] ?>" <?= (int)($m['plan_id']??0)===(int)$p['id']?'selected':'' ?>><?= ex($p['name']) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -392,7 +401,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
           <select name="section_id" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm">
             <option value="">— None —</option>
             <?php foreach ($sections as $s): ?>
-            <option value="<?= $s['id'] ?>" <?= (int)($m['section_id']??0)===(int)$s['id']?'selected':'' ?>><?= htmlspecialchars($s['name']) ?></option>
+            <option value="<?= $s['id'] ?>" <?= (int)($m['section_id']??0)===(int)$s['id']?'selected':'' ?>><?= ex($s['name']) ?></option>
             <?php endforeach; ?>
           </select>
         </div>
@@ -423,13 +432,13 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">CV / Resume Link <span class="text-gray-400 font-normal">(e.g. Google Drive — used if no file is uploaded above)</span></label>
-        <input type="url" name="cv_url" value="<?= htmlspecialchars($m['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
+        <input type="url" name="cv_url" value="<?= ex($m['cv_url'] ?? '') ?>" placeholder="https://drive.google.com/..."
           class="w-full px-4 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
       </div>
 
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1.5">Admin Notes <span class="text-gray-400 font-normal">(internal only, never shown to the member)</span></label>
-        <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm resize-none"><?= htmlspecialchars($m['notes'] ?? '') ?></textarea>
+        <textarea name="notes" rows="3" class="w-full px-4 py-2.5 bg-amber-50 border border-amber-200 rounded-xl text-sm resize-none"><?= ex($m['notes'] ?? '') ?></textarea>
       </div>
 
       <div id="save-bar" class="sticky bottom-3 z-10 flex items-center gap-3 p-3 -mx-3 rounded-2xl bg-white/90 backdrop-blur border border-gray-200 shadow-lg">
@@ -463,7 +472,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
         <?php if (!empty($m['cv_path'])): ?>
         <a href="../uploads/cv/<?= urlencode($m['cv_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-file-lines"></i> View CV</a>
         <?php elseif (!empty($m['cv_url'])): ?>
-        <a href="<?= htmlspecialchars($m['cv_url']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-arrow-up-right-from-square"></i> CV Link (external)</a>
+        <a href="<?= ex($m['cv_url']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 rounded-lg font-semibold hover:bg-blue-100"><i class="fa-solid fa-arrow-up-right-from-square"></i> CV Link (external)</a>
         <?php else: ?>
         <span class="text-gray-300">Not uploaded</span>
         <?php endif; ?>
@@ -471,7 +480,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <div class="text-xs">
         <p class="text-gray-500 mb-1">ID Card</p>
         <?php if (!empty($m['id_card_path'])): ?>
-        <a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg font-semibold hover:bg-purple-100"><i class="fa-solid fa-id-card"></i> <?= htmlspecialchars($m['member_code'] ?? '') ?></a>
+        <a href="../uploads/id-cards/<?= urlencode($m['id_card_path']) ?>" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg font-semibold hover:bg-purple-100"><i class="fa-solid fa-id-card"></i> <?= ex($m['member_code'] ?? '') ?></a>
         <p class="text-gray-400 mt-1">Expires <?= $m['id_card_expires_at'] ? date('d M Y', strtotime($m['id_card_expires_at'])) : '—' ?></p>
         <?php else: ?>
         <span class="text-gray-300">Not generated</span>
@@ -481,7 +490,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-2 text-xs">
       <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">Account Info</h2>
-      <div class="flex justify-between"><span class="text-gray-500">UUID</span><span class="text-gray-700 font-mono text-[10px]"><?= htmlspecialchars($m['uuid']) ?></span></div>
+      <div class="flex justify-between"><span class="text-gray-500">UUID</span><span class="text-gray-700 font-mono text-[10px]"><?= ex($m['uuid']) ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Email verified</span><span class="text-gray-700"><?= $m['email_verified_at'] ? date('d M Y', strtotime($m['email_verified_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Last login</span><span class="text-gray-700"><?= $m['last_login_at'] ? date('d M Y H:i', strtotime($m['last_login_at'])) : '—' ?></span></div>
       <div class="flex justify-between"><span class="text-gray-500">Welcome email sent</span><span class="text-gray-700"><?= $m['discord_invited'] ? 'Yes' : 'No' ?></span></div>
@@ -492,9 +501,12 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
     <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-2">
       <h2 class="font-heading font-bold text-sm text-gray-800 mb-1"><i class="fa-solid fa-life-ring"></i> Admin Assist</h2>
       <p class="text-[11px] text-gray-400 mb-2">Common help-desk actions for this member.</p>
+      <form method="POST" target="_blank"><?= acsrfField() ?><input type="hidden" name="assist_action" value="view_as">
+        <button type="submit" data-no-loading class="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-xs font-semibold bg-gray-900 hover:bg-black text-white rounded-lg"><i class="fa-solid fa-eye"></i> View portal as this member</button></form>
+      <p class="text-[10px] text-gray-400 pb-1">Opens their Home in a new tab, read-only, for 30 minutes. Signs you out of any member account in this browser.</p>
       <?php
         $assistBtn = function(string $action, string $label, string $confirmMsg = '', string $classes = 'bg-gray-50 hover:bg-gray-100 text-gray-700') {
-            $onsubmit = $confirmMsg ? " onsubmit=\"return confirm('" . htmlspecialchars($confirmMsg, ENT_QUOTES) . "')\"" : '';
+            $onsubmit = $confirmMsg ? " onsubmit=\"return confirm('" . ex($confirmMsg, ENT_QUOTES) . "')\"" : '';
             echo '<form method="POST"' . $onsubmit . '>' . acsrfField()
                . '<input type="hidden" name="assist_action" value="' . $action . '">'
                . '<button type="submit" class="w-full text-left px-3 py-2 text-xs font-semibold ' . $classes . ' rounded-lg transition-colors">' . $label . '</button></form>';
@@ -540,7 +552,7 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
       <h2 class="font-heading font-bold text-sm text-gray-800 mb-1">Linked Emails</h2>
       <?php foreach ($linkedEmails as $le): ?>
       <div class="flex items-center justify-between gap-2 text-xs p-2 bg-gray-50 rounded-lg">
-        <span class="truncate"><?= htmlspecialchars($le['email']) ?> <?= $le['is_primary'] ? '· primary' : ($le['verified_at'] ? '· verified' : '· pending') ?></span>
+        <span class="truncate"><?= ex($le['email']) ?> <?= $le['is_primary'] ? '· primary' : ($le['verified_at'] ? '· verified' : '· pending') ?></span>
         <?php if (!$le['is_primary']): ?>
         <form method="POST" onsubmit="return confirm('Unlink this email?')"><?= acsrfField() ?><input type="hidden" name="assist_action" value="remove_email"><input type="hidden" name="email_id" value="<?= $le['id'] ?>">
           <button type="submit" class="text-red-500 font-semibold flex-shrink-0" title="Unlink this email" aria-label="Unlink this email"><i class="fa-solid fa-xmark"></i></button>

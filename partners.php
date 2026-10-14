@@ -17,15 +17,17 @@ echo htmlHead('Partner With Us');
 <?= publicNav('partners') ?>
 
 <!-- Hero -->
-<section class="bg-rarl-navy text-white py-14 px-6 text-center">
-  <div class="max-w-2xl mx-auto">
-    <div class="text-4xl mb-4"><i class="fa-solid fa-handshake"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl mb-3">Partner With RARL</h1>
-    <p class="text-white/60 text-sm max-w-lg mx-auto"><?= htmlspecialchars($set['partner_page_intro'] ?? '') ?></p>
+<section class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+  <div class="max-w-5xl mx-auto px-6 py-7 flex flex-wrap items-end justify-between gap-4">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">Partnerships</p>
+      <h1 class="font-heading font-bold text-2xl md:text-3xl text-gray-900 dark:text-white">Partner with RARL</h1>
+      <p class="text-sm text-gray-500 dark:text-gray-400 mt-1 max-w-2xl"><?= ex($set['partner_page_intro'] ?? '') ?></p>
+    </div>
   </div>
 </section>
 
-<div class="max-w-5xl mx-auto px-6 py-14">
+<div class="max-w-5xl mx-auto px-6 py-10">
 
   <!-- Member vs Partner benefits switcher -->
   <div class="mb-14">
@@ -37,14 +39,14 @@ echo htmlHead('Partner With Us');
       <div data-panel="member">
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <?php foreach ($memberBenefits as $b): ?>
-          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 text-rarl-red flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= htmlspecialchars($b) ?></li>
+          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-red-50 dark:bg-red-900/30 text-rarl-red flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= ex($b) ?></li>
           <?php endforeach; ?>
         </ul>
       </div>
       <div data-panel="partner" class="hidden">
         <ul class="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <?php foreach ($partnerBenefits as $b): ?>
-          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-rarl-blue flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= htmlspecialchars($b) ?></li>
+          <li class="flex items-start gap-2.5 text-sm text-gray-600 dark:text-gray-300"><span class="w-5 h-5 rounded-full bg-blue-50 dark:bg-blue-900/30 text-rarl-blue flex items-center justify-center text-[11px] font-bold flex-shrink-0 mt-0.5"><i class="fa-solid fa-check"></i></span><?= ex($b) ?></li>
           <?php endforeach; ?>
         </ul>
       </div>
@@ -66,15 +68,15 @@ echo htmlHead('Partner With Us');
   <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-8 text-center mb-10">
     <h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2">Interested in partnering with RARL as an organization?</h3>
     <p class="text-gray-500 dark:text-gray-400 text-sm max-w-lg mx-auto mb-5">If your institution or company wants to explore a partnership with RARL, get in touch — no fees or tiers, just a conversation.</p>
-    <a href="mailto:<?= htmlspecialchars($set['partner_contact_email']) ?>?subject=<?= urlencode('RARL Partnership Inquiry') ?>"
-      class="inline-flex items-center gap-1.5 text-sm font-semibold text-rarl-red hover:underline">Contact <?= htmlspecialchars($set['partner_contact_name'] ?? 'Us') ?> →</a>
+    <a href="mailto:<?= ex($set['partner_contact_email']) ?>?subject=<?= urlencode('RARL Partnership Inquiry') ?>"
+      class="inline-flex items-center gap-1.5 text-sm font-semibold text-rarl-red hover:underline">Contact <?= ex($set['partner_contact_name'] ?? 'Us') ?> →</a>
   </div>
   <?php endif; ?>
 
   <!-- Ethics note -->
   <?php if (!empty($set['partner_ethics_note'])): ?>
   <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-6 text-center mb-10">
-    <p class="text-amber-700 dark:text-amber-300 text-sm"><i class="fa-solid fa-scroll"></i> <?= htmlspecialchars($set['partner_ethics_note']) ?></p>
+    <p class="text-amber-700 dark:text-amber-300 text-sm"><i class="fa-solid fa-scroll"></i> <?= ex($set['partner_ethics_note']) ?></p>
   </div>
   <?php endif; ?>
 

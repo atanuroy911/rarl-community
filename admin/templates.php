@@ -162,7 +162,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
 
 <div class="flex flex-wrap gap-2 mb-5" id="tpl-tabs">
   <?php foreach (['all' => 'All'] + $TYPE_LABELS as $k => $label): $n = $k === 'all' ? count($templates) : ($counts[$k] ?? 0); ?>
-  <button type="button" data-tab="<?= $k ?>" class="tpl-tab px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors <?= $k === 'all' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400' ?>"><?= htmlspecialchars($label) ?> <span class="opacity-60"><?= $n ?></span></button>
+  <button type="button" data-tab="<?= $k ?>" class="tpl-tab px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-colors <?= $k === 'all' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400' ?>"><?= ex($label) ?> <span class="opacity-60"><?= $n ?></span></button>
   <?php endforeach; ?>
 </div>
 
@@ -176,7 +176,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
 <?php else: ?>
 <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5" id="tpl-grid">
   <?php foreach ($templates as $t): $nFields = count(json_decode($t['config'] ?: '[]', true) ?: []); $used = $usage[(int)$t['id']] ?? 0; ?>
-  <div class="tpl-card group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col" data-type="<?= htmlspecialchars($t['type']) ?>">
+  <div class="tpl-card group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col" data-type="<?= ex($t['type']) ?>">
     <a href="templates.php?edit=<?= $t['id'] ?>" class="block relative bg-[repeating-conic-gradient(#f3f4f6_0_25%,#fff_0_50%)] bg-[length:16px_16px] p-4">
       <div class="mx-auto pointer-events-none" style="max-width:<?= $t['page_width_mm'] >= $t['page_height_mm'] ? '100%' : '55%' ?>">
         <?= renderTemplateHtml($t, templateSampleData($t['type'])) ?>
@@ -187,10 +187,10 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
     </a>
     <div class="p-4 flex-1 flex flex-col">
       <div class="flex items-start gap-2 mb-1">
-        <p class="font-semibold text-sm text-gray-900 flex-1 min-w-0 truncate" title="<?= htmlspecialchars($t['name']) ?>"><?= htmlspecialchars($t['name']) ?></p>
+        <p class="font-semibold text-sm text-gray-900 flex-1 min-w-0 truncate" title="<?= ex($t['name']) ?>"><?= ex($t['name']) ?></p>
         <?php if ($t['is_default']): ?><span class="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-2 py-0.5 rounded-full flex-shrink-0"><i class="fa-solid fa-star"></i> Default</span><?php endif; ?>
       </div>
-      <p class="text-xs text-gray-500"><?= htmlspecialchars($TYPE_LABELS[$t['type']] ?? $t['type']) ?> · <?= rtrim(rtrim(number_format((float)$t['page_width_mm'], 1), '0'), '.') ?>×<?= rtrim(rtrim(number_format((float)$t['page_height_mm'], 1), '0'), '.') ?> mm</p>
+      <p class="text-xs text-gray-500"><?= ex($TYPE_LABELS[$t['type']] ?? $t['type']) ?> · <?= rtrim(rtrim(number_format((float)$t['page_width_mm'], 1), '0'), '.') ?>×<?= rtrim(rtrim(number_format((float)$t['page_height_mm'], 1), '0'), '.') ?> mm</p>
       <p class="text-xs text-gray-400 mt-0.5"><?= $nFields ?> field<?= $nFields === 1 ? '' : 's' ?><?= $used ? " · used by {$used} certificate" . ($used === 1 ? '' : 's') : '' ?><?= $nFields === 0 ? ' · <span class="text-amber-600 font-semibold">needs fields</span>' : '' ?></p>
       <div class="flex flex-wrap gap-1.5 mt-auto pt-3">
         <a href="templates.php?edit=<?= $t['id'] ?>" class="px-3 py-1.5 text-xs font-semibold bg-gray-900 text-white rounded-lg hover:bg-gray-700">Design</a>
@@ -203,7 +203,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
           <button type="submit" class="px-3 py-1.5 text-xs font-semibold bg-green-50 text-green-700 rounded-lg hover:bg-green-100" title="Use this template by default">Set default</button>
         </form>
         <?php endif; ?>
-        <form method="POST" class="ml-auto" data-confirm="Delete “<?= htmlspecialchars($t['name']) ?>”? This cannot be undone." data-confirm-ok="Delete"><?= acsrfField() ?><input type="hidden" name="action" value="delete_template"><input type="hidden" name="template_id" value="<?= $t['id'] ?>">
+        <form method="POST" class="ml-auto" data-confirm="Delete “<?= ex($t['name']) ?>”? This cannot be undone." data-confirm-ok="Delete"><?= acsrfField() ?><input type="hidden" name="action" value="delete_template"><input type="hidden" name="template_id" value="<?= $t['id'] ?>">
           <button type="submit" class="px-2.5 py-1.5 text-xs font-semibold text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg" title="Delete"><i class="fa-solid fa-trash"></i></button>
         </form>
       </div>
@@ -396,8 +396,8 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
 <div class="flex flex-wrap items-center gap-2 mb-3">
   <a href="templates.php" class="tpl-btn bg-white border border-gray-200" title="Back to templates"><i class="fa-solid fa-arrow-left"></i></a>
   <div class="min-w-0 flex-1 flex items-center gap-2">
-    <input id="tpl-name" value="<?= htmlspecialchars($edit['name']) ?>" class="font-heading font-black text-lg text-gray-900 bg-transparent border border-transparent hover:border-gray-300 focus:border-rarl-red focus:bg-white rounded-lg px-2 py-0.5 min-w-0 w-full max-w-md focus:outline-none" aria-label="Template name"/>
-    <span class="hidden sm:inline text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap"><?= htmlspecialchars($TYPE_LABELS[$edit['type']] ?? $edit['type']) ?> · <?= (float)$edit['page_width_mm'] ?>×<?= (float)$edit['page_height_mm'] ?>mm</span>
+    <input id="tpl-name" value="<?= ex($edit['name']) ?>" class="font-heading font-black text-lg text-gray-900 bg-transparent border border-transparent hover:border-gray-300 focus:border-rarl-red focus:bg-white rounded-lg px-2 py-0.5 min-w-0 w-full max-w-md focus:outline-none" aria-label="Template name"/>
+    <span class="hidden sm:inline text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full whitespace-nowrap"><?= ex($TYPE_LABELS[$edit['type']] ?? $edit['type']) ?> · <?= (float)$edit['page_width_mm'] ?>×<?= (float)$edit['page_height_mm'] ?>mm</span>
     <?php if ($edit['is_default']): ?><span class="hidden sm:inline text-[10px] font-bold text-green-700 bg-green-50 px-2 py-0.5 rounded-full">Default</span><?php endif; ?>
   </div>
   <span id="save-state" class="text-xs text-gray-400 mr-1"><i class="fa-solid fa-check"></i> All changes saved</span>
@@ -418,7 +418,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
       <div class="space-y-0.5" id="add-list">
         <?php foreach ($keys as $k => $label):
           $icon = ['qr'=>'fa-qrcode','avatar'=>'fa-user','name'=>'fa-signature','date'=>'fa-calendar','since_date'=>'fa-calendar','cert_no'=>'fa-hashtag','member_code'=>'fa-hashtag','event'=>'fa-calendar-days','section'=>'fa-earth-americas'][$k] ?? 'fa-font'; ?>
-        <button type="button" class="add-btn" data-add="<?= $k ?>"><i class="fa-solid <?= $icon ?> w-4 text-center text-gray-400"></i><?= htmlspecialchars($label) ?><span class="used hidden"><i class="fa-solid fa-check"></i></span></button>
+        <button type="button" class="add-btn" data-add="<?= $k ?>"><i class="fa-solid <?= $icon ?> w-4 text-center text-gray-400"></i><?= ex($label) ?><span class="used hidden"><i class="fa-solid fa-check"></i></span></button>
         <?php endforeach; ?>
         <div class="border-t border-gray-100 my-1.5"></div>
         <button type="button" class="add-btn" data-add="custom_text"><i class="fa-solid fa-font w-4 text-center text-blue-500"></i>Custom text</button>
@@ -437,7 +437,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
       </div>
       <div class="space-y-1.5" id="sample-fields">
         <?php foreach ($sample as $k => $v): if (!isset($keys[$k])) continue; ?>
-        <div><label class="tpl-label"><?= htmlspecialchars($keys[$k]) ?></label><input class="tpl-input" data-sample="<?= $k ?>" value="<?= htmlspecialchars($v) ?>"/></div>
+        <div><label class="tpl-label"><?= ex($keys[$k]) ?></label><input class="tpl-input" data-sample="<?= $k ?>" value="<?= ex($v) ?>"/></div>
         <?php endforeach; ?>
       </div>
     </div>
@@ -477,7 +477,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
     <div id="stage" class="flex-1">
       <div id="stage-inner">
         <div id="canvas">
-          <img class="bg" id="bg-img" src="../uploads/templates/<?= htmlspecialchars(rawurlencode($edit['background_path'])) ?>" alt="" crossorigin="anonymous"/>
+          <img class="bg" id="bg-img" src="../uploads/templates/<?= ex(rawurlencode($edit['background_path'])) ?>" alt="" crossorigin="anonymous"/>
           <svg id="grid-ov"></svg>
           <div id="safe-ov"></div>
         </div>

@@ -22,7 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
     // no create_post handler here anymore so a direct POST can't slip through
     // even if old composer markup somehow got submitted.
 
-    if ($action === 'create_comment' && $me && $me['status'] === 'active') {
+    if ($action === 'create_comment' && $me && $me['status'] === 'active' && communityCommentsEnabled()) {
         $postId = (int)($_POST['post_id'] ?? 0);
         $body   = mb_substr(trim($_POST['body'] ?? ''), 0, 2000);
         if ($postId && $body !== '') {
@@ -50,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
         header('Location: community.php#post-' . $postId); exit;
     }
 
-    if ($action === 'edit_comment' && $me && $me['status'] === 'active') {
+    if ($action === 'edit_comment' && $me && $me['status'] === 'active' && communityCommentsEnabled()) {
         $commentId = (int)($_POST['comment_id'] ?? 0);
         $body = mb_substr(trim($_POST['body'] ?? ''), 0, 2000);
         if ($body !== '') {
@@ -122,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && !empty($_SESSION['me
 }
 
 $guidelines    = setting('community_guidelines');
-$feedIntro     = setting('community_feed_intro', 'Share updates, ask questions, and connect with fellow RARL researchers.');
+$feedIntro     = setting('community_feed_intro', 'News, announcements and highlights from the RARL team.');
 $isMember      = !empty($_SESSION['member_id']);
 $myMemberId    = (int)($_SESSION['member_id'] ?? 0);
 $myAvatarHtml  = '';
@@ -161,7 +161,7 @@ if ($isMember && ($_GET['ajax'] ?? '') === 'posts') {
     exit;
 }
 
-$annStmt = $pdo->prepare("SELECT * FROM announcements WHERE is_published = 1 AND (section_id IS NULL OR section_id = ?) ORDER BY is_pinned DESC, created_at DESC");
+$annStmt = $pdo->prepare('SELECT * FROM announcements WHERE ' . liveAnnouncementsSql() . ' AND (section_id IS NULL OR section_id <=> ?) ORDER BY is_pinned DESC, created_at DESC');
 $annStmt->execute([$mySectionId]);
 $announcements = $annStmt->fetchAll();
 
@@ -209,233 +209,93 @@ if ($isMember) {
 }
 $upcomingEvents = $pdo->query("SELECT id, title, event_date FROM events WHERE is_active = 1 AND (event_date IS NULL OR event_date >= CURDATE()) ORDER BY event_date ASC LIMIT 3")->fetchAll();
 
-echo htmlHead('Community Portal');
+echo htmlHead('Updates');
+$tab = ($_GET['tab'] ?? '') === 'announcements' || !$isMember ? 'announcements' : 'posts';
 ?>
 <?= publicNav('community') ?>
-
-<!-- Hero: compact for returning members (they already know what this is), full pitch for guests -->
-<section class="relative overflow-hidden" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 60%,#5865f2 100%);">
-  <div class="absolute inset-0" style="background-image:linear-gradient(rgba(255,255,255,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.03) 1px,transparent 1px);background-size:40px 40px;"></div>
-  <?php if ($isMember): ?>
-  <div class="relative z-10 max-w-5xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-    <h1 class="font-heading font-black text-xl text-white"><i class="fa-solid fa-earth-americas"></i> Robotics & Automation Research Lab (RARL) Feed</h1>
-    <a href="#feed" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-rarl-red font-black rounded-xl shadow-lg hover:-translate-y-0.5 transition text-xs flex-shrink-0">
-      Go to the Feed ↓
-    </a>
-  </div>
-  <?php else: ?>
-  <div class="relative z-10 max-w-5xl mx-auto px-6 py-14 text-center">
-    <div class="text-4xl mb-4"><i class="fa-solid fa-earth-americas"></i></div>
-    <h1 class="font-heading font-black text-3xl md:text-4xl text-white mb-4">Robotics & Automation Research Lab (RARL) Feed</h1>
-    <p class="text-white/65 text-base max-w-lg mx-auto mb-8"><?= htmlspecialchars($feedIntro) ?></p>
-    <div class="inline-flex flex-col items-center gap-3">
-      <a href="register.php" class="inline-flex items-center gap-2 px-8 py-4 bg-white text-rarl-red font-black rounded-xl shadow-xl hover:-translate-y-1 transition text-sm">
-        <i class="fa-solid fa-lock"></i> Join as a Member to Post &amp; Comment
-      </a>
-      <p class="text-white/40 text-xs">Membership is free and open to all researchers</p>
+<div class="bg-[#f4f2ee] dark:bg-gray-950 min-h-screen">
+  <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 pt-6">
+      <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">From the RARL team</p>
+      <h1 class="font-heading font-bold text-2xl text-gray-900 dark:text-white">Updates</h1>
+      <p class="text-sm text-gray-500 mt-1 max-w-2xl"><?= ex($feedIntro) ?></p>
+      <nav class="flex gap-6 mt-4 text-sm font-semibold" aria-label="Updates sections">
+        <?php if ($isMember): ?>
+        <a href="community.php" <?= $tab === 'posts' ? 'aria-current="page"' : '' ?> class="pb-3 border-b-2 <?= $tab === 'posts' ? 'border-rarl-red text-gray-900 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white' ?>">Team updates <span class="text-gray-400 font-medium"><?= $communityStats['posts'] ?></span></a>
+        <?php endif; ?>
+        <a href="community.php?tab=announcements" <?= $tab === 'announcements' ? 'aria-current="page"' : '' ?> class="pb-3 border-b-2 <?= $tab === 'announcements' ? 'border-rarl-red text-gray-900 dark:text-white' : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-white' ?>">Announcements <span class="text-gray-400 font-medium"><?= count($announcements) ?></span></a>
+      </nav>
     </div>
   </div>
-  <?php endif; ?>
-</section>
 
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-10">
-  <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-6 grid lg:grid-cols-[minmax(0,1fr)_300px] gap-6 items-start">
+    <div class="min-w-0 space-y-4">
+      <?= renderFlash() ?>
 
-    <!-- Left sidebar -->
-    <div class="hidden lg:block lg:col-span-3 space-y-5">
-      <?php if ($isMember && $myFull): ?>
-      <?php $myDisplayName = $myFull['type'] === 'lab' ? $myFull['lab_name'] : $myFull['full_name']; ?>
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm sticky top-4">
-        <div class="h-14" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);"></div>
-        <div class="px-5 pb-5 -mt-7">
-          <?= memberAvatarHtml($myFull['avatar_path'], $myDisplayName ?: '?', 'w-14 h-14 text-lg border-4 border-white dark:border-gray-900 shadow', memberNeedsAttention($myFull)) ?>
-          <p class="font-heading font-bold text-sm text-gray-900 dark:text-white mt-2 truncate"><?= htmlspecialchars($myDisplayName ?: '(unnamed)') ?></p>
-          <p class="text-xs text-gray-500 dark:text-gray-400 truncate">
-            <?= $myFull['type'] === 'lab' ? htmlspecialchars($myFull['pi_name'] ?? '') : htmlspecialchars($myFull['position'] ?? '') ?>
-            <?= $myFull['institution'] ? ' · ' . htmlspecialchars(mb_strimwidth($myFull['institution'], 0, 24, '…')) : '' ?>
-          </p>
-          <?php if ($myFull['country']): ?><p class="text-[11px] text-gray-400 mt-0.5"><i class="fa-solid fa-location-dot"></i> <?= htmlspecialchars($myFull['country']) ?></p><?php endif; ?>
-          <?php if ($mySection): ?>
-          <div class="mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-[11px] text-gray-500 dark:text-gray-400">
-            <i class="fa-solid fa-earth-americas"></i> <?= htmlspecialchars($mySection['name']) ?>
-          </div>
-          <?php endif; ?>
-        </div>
-        <nav class="border-t border-gray-100 dark:border-gray-800 py-2">
-          <a href="profile.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-user"></i> My Profile</a>
-          <a href="dashboard.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-chart-simple"></i> Dashboard</a>
-          <?php if (!empty($myFull['id_card_path'])): ?>
-          <a href="uploads/id-cards/<?= urlencode($myFull['id_card_path']) ?>" target="_blank" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-id-card"></i> My ID Card</a>
-          <?php endif; ?>
-          <a href="directory.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-magnifying-glass"></i> Member Directory</a>
-        </nav>
-      </div>
-      <?php else: ?>
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-5 shadow-sm sticky top-4">
-        <p class="text-sm font-semibold text-gray-800 dark:text-white mb-1">Join the Robotics & Automation Research Lab (RARL)</p>
-        <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">Create a free account to post, comment, and connect with researchers worldwide.</p>
-        <a href="register.php" class="block text-center px-4 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white text-xs font-bold rounded-xl transition-colors">Join Free →</a>
+      <?php if (!$isMember): ?>
+      <div class="rarl-panel p-5 flex flex-col sm:flex-row items-center gap-4">
+        <span class="w-12 h-12 rounded-2xl bg-rarl-red/10 text-rarl-red flex items-center justify-center text-xl flex-shrink-0"><i class="fa-solid fa-lock"></i></span>
+        <div class="flex-1 text-center sm:text-left"><p class="font-semibold text-gray-900 dark:text-white">Members see every team update</p><p class="text-sm text-gray-500">Join free to follow RARL's news, events and learning in one place.</p></div>
+        <a href="register.php" class="px-5 py-2.5 rounded-full bg-rarl-red hover:bg-rarl-dark text-white text-sm font-semibold whitespace-nowrap">Join RARL</a>
       </div>
       <?php endif; ?>
 
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800">
-          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white">Explore</h3>
-        </div>
-        <nav class="py-2">
-          <a href="events.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-calendar-days"></i> Events</a>
-          <a href="resources.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-book"></i> Resources</a>
-          <a href="people.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-people-group"></i> Leadership</a>
-          <a href="partners.php" class="flex items-center gap-2.5 px-5 py-2 text-xs font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-rarl-red transition-colors"><i class="fa-solid fa-handshake"></i> Partnerships</a>
-        </nav>
-      </div>
-    </div>
-
-    <div class="lg:col-span-6 space-y-10">
-
-      <?php if ($isMember): ?>
-      <!-- Community Feed -->
+      <?php if ($tab === 'posts'): ?>
       <div id="feed">
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-comments"></i> Community Feed</h2>
-        <p class="text-xs text-gray-400 mb-5">Posts here come from the RARL team — you can comment and like below.</p>
-
         <?php if (empty($posts)): ?>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
-          <p class="text-3xl mb-2"><i class="fa-solid fa-inbox text-gray-300"></i></p><p class="text-sm">No posts yet. Be the first to share something!</p>
-        </div>
+        <div class="rarl-panel p-12 text-center"><i class="fa-regular fa-newspaper text-3xl text-gray-300"></i><p class="font-semibold text-gray-700 dark:text-gray-200 mt-3">No team updates yet</p><p class="text-sm text-gray-500 mt-1">News from the RARL team will appear here.</p></div>
         <?php else: ?>
-        <div id="post-list" class="space-y-5">
+        <div id="post-list" class="space-y-4">
           <?php foreach ($posts as $post) echo renderCommunityPost($pdo, $post, $myMemberId); ?>
         </div>
-        <div id="feed-sentinel" class="py-6 text-center text-xs text-gray-400" data-offset="<?= count($posts) ?>" data-has-more="<?= $hasMorePosts ? '1' : '0' ?>">
-          <?php if ($hasMorePosts): ?>Loading more…<?php endif; ?>
-        </div>
+        <div id="feed-sentinel" class="py-6 text-center text-xs text-gray-500" data-offset="<?= count($posts) ?>" data-has-more="<?= $hasMorePosts ? '1' : '0' ?>"><?php if ($hasMorePosts): ?>Loading more…<?php endif; ?></div>
         <?php endif; ?>
       </div>
-      <?php endif; ?>
-
-      <!-- Announcements -->
-      <div>
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-thumbtack"></i> Community Announcements</h2>
+      <?php else: ?>
+      <div id="announcements" class="space-y-4">
         <?php if (empty($announcements)): ?>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
-          <p class="text-3xl mb-2"><i class="fa-solid fa-inbox text-gray-300"></i></p><p class="text-sm">No announcements yet. Check back soon.</p>
-        </div>
-        <?php else: ?>
-        <div class="space-y-4">
-          <?php foreach ($announcements as $ann):
-            $colors = ['event'=>'bg-blue-50 border-blue-200 text-blue-700 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-300',
-                       'opportunity'=>'bg-green-50 border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300',
-                       'alert'=>'bg-red-50 border-red-200 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300',
-                       'general'=>'bg-gray-50 border-gray-200 text-gray-600 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'];
-            $cc = $colors[$ann['type']] ?? $colors['general'];
-          ?>
-          <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-            <div class="flex items-start justify-between gap-3 mb-3">
-              <div class="flex items-center gap-2">
-                <?php if ($ann['is_pinned']): ?><span class="text-xs font-bold text-amber-500"><i class="fa-solid fa-thumbtack"></i></span><?php endif; ?>
-                <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border <?= $cc ?>"><?= ucfirst($ann['type']) ?></span>
-              </div>
-              <span class="text-xs text-gray-400"><?= date('d M Y', strtotime($ann['created_at'])) ?></span>
-            </div>
-            <h3 class="font-heading font-bold text-base text-gray-900 dark:text-white mb-2"><?= htmlspecialchars($ann['title']) ?></h3>
-            <p class="text-gray-500 dark:text-gray-400 text-sm leading-relaxed"><?= nl2br(htmlspecialchars($ann['content'])) ?></p>
-          </div>
-          <?php endforeach; ?>
-        </div>
+        <div class="rarl-panel p-12 text-center"><i class="fa-solid fa-bullhorn text-3xl text-gray-300"></i><p class="font-semibold text-gray-700 dark:text-gray-200 mt-3">No announcements right now</p></div>
         <?php endif; ?>
+        <?php foreach ($announcements as $ann) echo renderFeedItem(['kind' => 'announcement', 'at' => $ann['created_at'], 'pinned' => (bool)$ann['is_pinned'], 'row' => $ann]); ?>
       </div>
-
-      <!-- Regional Leadership -->
-      <div>
-        <h2 class="font-heading font-black text-xl text-gray-900 dark:text-white mb-5"><i class="fa-solid fa-map-location-dot"></i> Regional Leadership</h2>
-        <?php if (empty($regionGroups)): ?>
-        <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-10 text-center text-gray-400">
-          <p class="text-sm">Regional leadership information coming soon.</p>
-        </div>
-        <?php else: ?>
-        <div class="space-y-6">
-          <?php foreach ($regionGroups as $continent => $grp): ?>
-          <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-            <h3 class="font-heading font-bold text-sm text-rarl-red uppercase tracking-wider mb-4"><?= htmlspecialchars($continent) ?></h3>
-            <?php foreach ($grp['continent'] as $row): ?>
-            <div class="mb-3 pb-3 border-b border-gray-100 dark:border-gray-800 last:border-0 last:pb-0 last:mb-0">
-              <p class="font-semibold text-sm text-gray-900 dark:text-white"><?= htmlspecialchars($row['name']) ?></p>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5"><?= htmlspecialchars($row['chair_name']) ?> — <?= htmlspecialchars($row['chair_title']) ?></p>
-              <?php if (!empty($row['chair_email'])): ?>
-              <a href="mailto:<?= htmlspecialchars($row['chair_email']) ?>" class="text-xs text-rarl-red hover:underline"><?= htmlspecialchars($row['chair_email']) ?></a>
-              <?php endif; ?>
-            </div>
-            <?php endforeach; ?>
-            <?php if (!empty($grp['country'])): ?>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-              <?php foreach ($grp['country'] as $row): ?>
-              <div class="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
-                <p class="font-semibold text-xs text-gray-800 dark:text-white"><?= htmlspecialchars($row['name']) ?></p>
-                <p class="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5"><?= htmlspecialchars($row['chair_name']) ?> — <?= htmlspecialchars($row['chair_title']) ?></p>
-                <?php if (!empty($row['chair_email'])): ?>
-                <a href="mailto:<?= htmlspecialchars($row['chair_email']) ?>" class="text-[11px] text-rarl-red hover:underline"><?= htmlspecialchars($row['chair_email']) ?></a>
-                <?php endif; ?>
-              </div>
-              <?php endforeach; ?>
-            </div>
-            <?php endif; ?>
-          </div>
-          <?php endforeach; ?>
-        </div>
-        <?php endif; ?>
-      </div>
-
+      <?php endif; ?>
     </div>
 
-    <!-- Right sidebar -->
-    <div class="lg:col-span-3 space-y-5">
+    <aside class="space-y-4 min-w-0 lg:sticky lg:top-[88px]">
       <?php if ($upcomingEvents): ?>
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl overflow-hidden shadow-sm">
-        <div class="px-5 py-3 border-b border-gray-100 dark:border-gray-800 flex items-center justify-between">
-          <h3 class="font-heading font-bold text-xs text-gray-800 dark:text-white"><i class="fa-solid fa-calendar-days"></i> Upcoming Events</h3>
-          <a href="events.php" class="text-[10px] text-rarl-red hover:underline">See all</a>
-        </div>
-        <div class="divide-y divide-gray-100 dark:divide-gray-800">
+      <section class="rarl-panel overflow-hidden">
+        <div class="px-4 pt-4 pb-2 flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900 dark:text-white">Upcoming events</h2><a href="events.php" class="text-xs font-semibold text-gray-500 hover:text-rarl-red">See all</a></div>
+        <ul class="divide-y divide-gray-100 dark:divide-gray-800">
           <?php foreach ($upcomingEvents as $ev): ?>
-          <a href="events.php#event-<?= $ev['id'] ?>" class="block px-5 py-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-            <p class="text-xs font-semibold text-gray-800 dark:text-white truncate"><?= htmlspecialchars($ev['title']) ?></p>
-            <p class="text-[11px] text-gray-400 mt-0.5"><?= $ev['event_date'] ? date('d M Y', strtotime($ev['event_date'])) : 'Date TBA' ?></p>
-          </a>
+          <li><a href="events.php#event-<?= (int)$ev['id'] ?>" class="flex gap-3 px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-800/60">
+            <span class="w-11 text-center flex-shrink-0 rounded-lg border border-gray-200 dark:border-gray-700 py-1 h-fit"><?php if ($ev['event_date']): ?><span class="block text-[10px] font-bold uppercase text-rarl-red leading-tight"><?= date('M', strtotime($ev['event_date'])) ?></span><span class="block font-heading font-bold text-lg text-gray-900 dark:text-white leading-none"><?= date('d', strtotime($ev['event_date'])) ?></span><?php else: ?><span class="block text-[10px] font-bold text-gray-500 py-1.5">TBA</span><?php endif; ?></span>
+            <span class="text-sm font-semibold text-gray-900 dark:text-white leading-snug line-clamp-2"><?= ex($ev['title']) ?></span>
+          </a></li>
           <?php endforeach; ?>
-        </div>
-      </div>
+        </ul>
+      </section>
       <?php endif; ?>
 
-      <!-- Community Stats -->
-      <div class="rounded-2xl p-6 shadow-sm text-white" style="background:linear-gradient(135deg,#12213a 0%,#1c3358 100%);">
-        <h3 class="font-heading font-bold text-sm mb-4"><i class="fa-solid fa-earth-americas"></i> Robotics & Automation Research Lab (RARL)</h3>
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div>
-            <div class="font-heading font-black text-xl"><?= $communityStats['members'] ?></div>
-            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Members</div>
+      <section class="rounded-2xl p-5 text-white bg-rarl-navy relative overflow-hidden">
+        <div class="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_100%_0%,#CC0703,transparent_55%)]"></div>
+        <div class="relative">
+          <h2 class="font-heading font-bold text-sm">RARL worldwide</h2>
+          <div class="grid grid-cols-2 gap-3 mt-3">
+            <div><div class="font-heading font-black text-2xl"><?= number_format($communityStats['members']) ?></div><div class="text-white/60 text-xs">Members</div></div>
+            <div><div class="font-heading font-black text-2xl"><?= number_format($communityStats['countries']) ?></div><div class="text-white/60 text-xs">Countries</div></div>
           </div>
-          <div>
-            <div class="font-heading font-black text-xl"><?= $communityStats['posts'] ?></div>
-            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Posts</div>
-          </div>
-          <div>
-            <div class="font-heading font-black text-xl"><?= $communityStats['countries'] ?></div>
-            <div class="text-white/50 text-[10px] uppercase tracking-wider mt-0.5">Countries</div>
-          </div>
+          <a href="people.php" class="inline-block mt-4 text-xs font-semibold text-white/80 hover:text-white">Leadership &amp; chapters →</a>
         </div>
-      </div>
+      </section>
 
-      <!-- Guidelines -->
       <?php if ($guidelines): ?>
-      <div class="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-2xl p-6 shadow-sm">
-        <h3 class="font-heading font-bold text-sm text-gray-800 dark:text-white mb-3"><i class="fa-solid fa-clipboard-list"></i> Community Guidelines</h3>
-        <p class="text-gray-500 dark:text-gray-400 text-xs leading-relaxed"><?= nl2br(htmlspecialchars($guidelines)) ?></p>
-      </div>
+      <section class="rarl-panel p-4">
+        <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-2">Community guidelines</h2>
+        <p class="text-xs text-gray-500 leading-relaxed"><?= nl2br(ex($guidelines)) ?></p>
+      </section>
       <?php endif; ?>
-    </div>
-
-  </div>
+    </aside>
+  </main>
 </div>
 
 <?php if ($isMember): ?>

@@ -141,12 +141,12 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Name <span class="text-rarl-red">*</span></label>
-          <input type="text" name="lab_name" value="<?= htmlspecialchars($vals['lab_name'] ?? '') ?>" required
+          <input type="text" name="lab_name" value="<?= ex($vals['lab_name'] ?? '') ?>" required
             placeholder="e.g. RARL Lab" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Principal Investigator <span class="text-rarl-red">*</span></label>
-          <input type="text" name="pi_name" value="<?= htmlspecialchars($vals['pi_name'] ?? '') ?>" required
+          <input type="text" name="pi_name" value="<?= ex($vals['pi_name'] ?? '') ?>" required
             placeholder="Dr. John Smith" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
@@ -154,7 +154,7 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Contact Email <span class="text-rarl-red">*</span></label>
-          <input type="email" name="email" value="<?= htmlspecialchars($vals['email'] ?? '') ?>" required
+          <input type="email" name="email" value="<?= ex($vals['email'] ?? '') ?>" required
             placeholder="lab@university.edu" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
@@ -167,7 +167,7 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">University / Institution <span class="text-rarl-red">*</span></label>
-          <input type="text" name="institution" value="<?= htmlspecialchars($vals['institution'] ?? '') ?>" required
+          <input type="text" name="institution" value="<?= ex($vals['institution'] ?? '') ?>" required
             placeholder="e.g. MIT" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
@@ -179,7 +179,7 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">City &amp; State/Province <span class="text-rarl-red">*</span></label>
-          <input type="text" name="city_state" value="<?= htmlspecialchars($vals['city_state'] ?? '') ?>" required
+          <input type="text" name="city_state" value="<?= ex($vals['city_state'] ?? '') ?>" required
             placeholder="e.g. Cambridge, MA" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
@@ -201,7 +201,7 @@ echo htmlHead('Research Lab Registration');
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">CV / Resume (PI) <span class="text-rarl-red">*</span></label>
           <?php if ($keptCv): ?>
           <label class="flex items-center gap-2 mb-2 p-2.5 rounded-xl bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 text-xs text-green-800 dark:text-green-200">
-            <input type="checkbox" name="keep_cv" value="1" checked class="accent-rarl-red"/> <i class="fa-solid fa-paperclip"></i> Keep <strong><?= htmlspecialchars($_SESSION['reg_cv_name'] ?? 'the uploaded CV') ?></strong>
+            <input type="checkbox" name="keep_cv" value="1" checked class="accent-rarl-red"/> <i class="fa-solid fa-paperclip"></i> Keep <strong><?= ex($_SESSION['reg_cv_name'] ?? 'the uploaded CV') ?></strong>
           </label>
           <?php endif; ?>
           <input type="file" name="cv_file" <?= $keptCv ? '' : 'required' ?> accept=".pdf,.doc,.docx"
@@ -212,12 +212,12 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Google Scholar URL <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input type="url" name="google_scholar_url" value="<?= htmlspecialchars($vals['google_scholar_url'] ?? '') ?>"
+          <input type="url" name="google_scholar_url" value="<?= ex($vals['google_scholar_url'] ?? '') ?>"
             placeholder="scholar.google.com/…" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">ORCID ID <span class="text-gray-400 font-normal">(optional)</span></label>
-          <input type="text" name="orcid_id" value="<?= htmlspecialchars($vals['orcid_id'] ?? '') ?>"
+          <input type="text" name="orcid_id" value="<?= ex($vals['orcid_id'] ?? '') ?>"
             placeholder="0000-0000-0000-0000" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
       </div>
@@ -225,12 +225,12 @@ echo htmlHead('Research Lab Registration');
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Research Areas <span class="text-rarl-red">*</span></label>
         <textarea name="research_areas" required rows="2" placeholder="e.g. Service Robotics, Autonomous Systems, Industrial Automation, Computer Vision"
-          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= htmlspecialchars($vals['research_areas'] ?? '') ?></textarea>
+          class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition resize-none"><?= ex($vals['research_areas'] ?? '') ?></textarea>
       </div>
 
       <div>
         <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Lab Website <span class="text-gray-400 font-normal">(optional)</span></label>
-        <input type="url" name="lab_website" value="<?= htmlspecialchars($vals['lab_website'] ?? '') ?>"
+        <input type="url" name="lab_website" value="<?= ex($vals['lab_website'] ?? '') ?>"
           placeholder="https://your-lab.university.edu"
           class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
       </div>
