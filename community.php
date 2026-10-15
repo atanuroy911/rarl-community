@@ -181,7 +181,7 @@ if ($isMember) {
 
 // ── Community stats (sidebar social proof) ──
 $communityStats = [
-    'members'   => (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active'")->fetchColumn(),
+    'members'   => (int) $pdo->query("SELECT COUNT(*) FROM members WHERE status='active' AND " . REAL_MEMBER_SQL)->fetchColumn(),
     'posts'     => (int) $pdo->query("SELECT COUNT(*) FROM community_posts WHERE is_hidden=0")->fetchColumn(),
     'countries' => (int) $pdo->query("SELECT COUNT(DISTINCT country) FROM members WHERE status='active' AND country IS NOT NULL AND country != ''")->fetchColumn(),
 ];

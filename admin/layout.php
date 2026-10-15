@@ -64,6 +64,7 @@ function htmlAdminHead(string $title): void {
   .rarl-btn-primary:hover{background:' . BRAND_RED_DARK . ';border-color:' . BRAND_RED_DARK . '}
   .rarl-btn-dark{background:#0f172a;border-color:#0f172a;color:#fff}
   .rarl-btn-dark:hover{background:#1e293b;border-color:#1e293b}
+  .rarl-btn:disabled,.rarl-btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
   .rarl-btn-sm{height:1.9rem;padding:0 .7rem;font-size:.72rem;border-radius:.6rem}
   .rarl-icon-btn{display:inline-flex;align-items:center;justify-content:center;width:2rem;height:2rem;border-radius:.6rem;color:#64748b}
   .rarl-icon-btn:hover{background:#f1f5f9;color:#0f172a}
@@ -91,10 +92,41 @@ function htmlAdminHead(string $title): void {
   .rarl-tabs .on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.1)}
   .rarl-tabs .count{font-size:.66rem;padding:0 .4rem;border-radius:999px;background:rgba(15,23,42,.07)}
   .rarl-tabs .count.hot{background:' . BRAND_RED . ';color:#fff}
-  .rarl-drawer{position:fixed;inset:0 0 0 auto;width:min(560px,100vw);background:#fff;z-index:70;box-shadow:-24px 0 64px rgba(15,23,42,.18);transform:translateX(100%);transition:transform .28s cubic-bezier(.16,1,.3,1);display:flex;flex-direction:column}
-  .rarl-drawer.open{transform:none}
-  .rarl-drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.35);z-index:69;opacity:0;pointer-events:none;transition:opacity .2s}
+  /* Drawers render as modals: centred card on desktop, bottom sheet on phones */
+  .rarl-drawer{position:fixed;left:50%;top:50%;width:min(var(--modal-w,640px),calc(100vw - 2rem));max-height:min(88vh,920px);background:#fff;z-index:70;border-radius:1.25rem;box-shadow:0 30px 90px rgba(15,23,42,.35);display:flex;flex-direction:column;overflow:hidden;opacity:0;pointer-events:none;visibility:hidden;transform:translate(-50%,-48%) scale(.98);transition:opacity .18s ease,transform .22s cubic-bezier(.16,1,.3,1),visibility 0s linear .22s}
+  .rarl-drawer>*,.rarl-drawer .h-full{display:flex;flex-direction:column;height:auto;min-height:0;max-height:inherit}
+  .rarl-drawer .flex-1.overflow-y-auto{flex:1 1 auto;min-height:0}
+  .rarl-drawer.open{opacity:1;pointer-events:auto;visibility:visible;transform:translate(-50%,-50%);transition:opacity .18s ease,transform .22s cubic-bezier(.16,1,.3,1),visibility 0s}
+  @media (max-width:639px){
+    .rarl-drawer{left:0;right:0;top:auto;bottom:0;width:100%;max-height:92dvh;border-radius:1.25rem 1.25rem 0 0;transform:translateY(100%);padding-bottom:env(safe-area-inset-bottom)}
+    .rarl-drawer.open{transform:none}
+    .rarl-drawer::before{content:"";display:block;flex-shrink:0;width:40px;height:5px;border-radius:99px;background:#d4d4d8;margin:8px auto 0}
+  }
+  /* Responsive tables: wide tables scroll inside their card; the members list drops secondary columns */
+  .rarl-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  @media (max-width:1023px){.rarl-members-table th:nth-child(4),.rarl-members-table td:nth-child(4),.rarl-members-table th:nth-child(6),.rarl-members-table td:nth-child(6){display:none}}
+  @media (max-width:639px){.rarl-members-table th:nth-child(3),.rarl-members-table td:nth-child(3),.rarl-members-table th:nth-child(7),.rarl-members-table td:nth-child(7){display:none}
+    .rarl-page-head h1{font-size:1.35rem !important}
+    .rarl-admin-content{padding-bottom:6rem}}
+  /* adminModalOpen()/adminModalClose(): native <dialog> modal */
+  dialog.rarl-amodal{padding:0;border:0;margin:auto;width:min(var(--modal-w,560px),calc(100vw - 2rem));max-height:min(88vh,920px);border-radius:1.25rem;box-shadow:0 30px 90px rgba(15,23,42,.35);overflow:hidden;background:#fff;color:var(--fg)}
+  dialog.rarl-amodal[open]{display:flex;flex-direction:column;animation:rarlPop .2s cubic-bezier(.16,1,.3,1)}
+  dialog.rarl-amodal::backdrop{background:rgba(15,23,42,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+  .rarl-amodal-head{display:flex;align-items:flex-start;gap:.75rem;padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);flex-shrink:0}
+  .rarl-amodal-head h2{font-family:"' . BRAND_FONT_HEADING . '",sans-serif;font-weight:700;font-size:1.05rem;line-height:1.3}
+  .rarl-amodal-head p{font-size:.8rem;color:var(--muted-fg);margin-top:.1rem}
+  .rarl-amodal-body{padding:1.25rem;overflow-y:auto;min-height:0;flex:1 1 auto}
+  .rarl-amodal-foot{display:flex;justify-content:flex-end;gap:.5rem;padding:.9rem 1.25rem;border-top:1px solid var(--border);background:#fafafa;flex-shrink:0}
+  dialog.rarl-amodal form.rarl-amodal-form{display:flex;flex-direction:column;min-height:0;flex:1 1 auto}
+  @media (max-width:639px){
+    dialog.rarl-amodal{width:100%;max-width:100%;margin:auto 0 0;max-height:92dvh;border-radius:1.25rem 1.25rem 0 0;padding-bottom:env(safe-area-inset-bottom)}
+    dialog.rarl-amodal[open]{animation:rarlSheet .26s cubic-bezier(.16,1,.3,1)}
+    dialog.rarl-amodal::before{content:"";display:block;flex-shrink:0;width:40px;height:5px;border-radius:99px;background:#d4d4d8;margin:8px auto 0}
+  }
+  @keyframes rarlSheet{from{transform:translateY(60px);opacity:.6}to{transform:none;opacity:1}}
+  .rarl-drawer-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.45);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:69;opacity:0;pointer-events:none;transition:opacity .2s}
   .rarl-drawer-backdrop.open{opacity:1;pointer-events:auto}
+  @media (prefers-reduced-motion:reduce){.rarl-drawer,.rarl-drawer.open{transition:none}}
   .rarl-empty{padding:3.5rem 1rem;text-align:center;color:#94a3b8;font-size:.85rem}
   #rarl-queue-pill{position:fixed;bottom:1rem;right:1rem;z-index:90;display:none;align-items:center;gap:.7rem;padding:.6rem .9rem .6rem .7rem;border-radius:999px;background:#0f172a;color:#fff;font-size:12px;box-shadow:0 12px 32px rgba(15,23,42,.3)}
   #rarl-queue-pill .bar{width:90px;height:5px;border-radius:999px;background:rgba(255,255,255,.18);overflow:hidden}
@@ -279,6 +311,45 @@ function htmlAdminHead(string $title): void {
     document.querySelectorAll("button[data-label]").forEach(function(b) { b.innerHTML = b.dataset.label; b.disabled = false; b.classList.remove("opacity-80", "cursor-wait"); });
   });
 
+  // ── adminModal: [data-amodal="id"] opens, [data-amodal-close] / backdrop closes,
+  // data-autoopen opens on load (edit links, validation errors). ──
+  document.addEventListener("click", function(e) {
+    var t = e.target.closest && e.target.closest("[data-amodal]");
+    if (t) { var d = document.getElementById(t.dataset.amodal); if (d) { e.preventDefault(); d.showModal(); var f = d.querySelector("[autofocus],input:not([type=hidden]):not([type=checkbox]):not([type=file]),textarea,select"); if (f) setTimeout(function(){ f.focus(); }, 30); } return; }
+    if (e.target.closest && e.target.closest("[data-amodal-close]")) { e.target.closest("dialog").close(); return; }
+    if (e.target.tagName === "DIALOG" && e.target.classList.contains("rarl-amodal")) e.target.close();
+  });
+  document.addEventListener("DOMContentLoaded", function() {
+    document.querySelectorAll("dialog.rarl-amodal[data-autoopen]").forEach(function(d) { d.showModal(); });
+  });
+
+  // ── Drawers are modal dialogs: semantics, focus in/out, background inert ──
+  document.addEventListener("DOMContentLoaded", function() {
+    var main = document.querySelector("main");
+    document.querySelectorAll(".rarl-drawer").forEach(function(d) {
+      d.setAttribute("role", "dialog"); d.setAttribute("aria-modal", "true");
+      var opener = null;
+      new MutationObserver(function() {
+        var open = d.classList.contains("open");
+        if (open === (d.dataset.wasOpen === "1")) return;
+        d.dataset.wasOpen = open ? "1" : "0";
+        document.body.style.overflow = open ? "hidden" : "";
+        if (main && !main.contains(d)) main.inert = open;
+        if (open) { opener = document.activeElement; setTimeout(function() { if (!d.contains(document.activeElement)) { var f = d.querySelector("input:not([type=hidden]),select,textarea,button,a[href]"); if (f) f.focus({preventScroll: true}); } }, 230); }
+        else if (opener && opener.focus) { opener.focus({preventScroll: true}); }
+      }).observe(d, {attributes: true, attributeFilter: ["class"]});
+    });
+  });
+
+  document.addEventListener("DOMContentLoaded", function() {
+    // ── Tables never push the page sideways: wrap any table not already in a scroller ──
+    document.querySelectorAll(".rarl-admin-content table").forEach(function(t) {
+      var p = t.parentElement, ov = getComputedStyle(p).overflowX;
+      if (ov === "auto" || ov === "scroll") return;
+      var w = document.createElement("div"); w.className = "rarl-table-scroll"; p.insertBefore(w, t); w.appendChild(t);
+    });
+  });
+
   document.addEventListener("DOMContentLoaded", function() {
     // ── Legacy forms: placeholder-only inputs get a real, always-visible label
     // (a placeholder disappears once the field has a value, e.g. an order "0") ──
@@ -432,7 +503,7 @@ function adminSidebar(string $active = ''): void {
             'events'       => ['events.php',        '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
             'certificates' => ['certificates.php',  '<i class="fa-solid fa-trophy"></i>', 'Certificates'],
             'templates'    => ['templates.php',     '<i class="fa-solid fa-image"></i>', 'Templates'],
-            'resources'    => ['resources.php',     '<i class="fa-solid fa-book"></i>', 'Resources'],
+            'resources'    => ['resources.php',     '<i class="fa-solid fa-graduation-cap"></i>', 'Learning'],
         ],
         'Outreach' => [
             'newsletter'   => ['newsletter.php',    '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
@@ -442,7 +513,7 @@ function adminSidebar(string $active = ''): void {
         ],
         'Configuration' => [
             'plans'    => ['plans.php',    '<i class="fa-solid fa-graduation-cap"></i>', 'Plans'],
-            'migrate'  => ['migrate.php',  '<i class="fa-solid fa-database"></i>', 'Migrations'],
+            'migrate'  => ['migrate.php',  '<i class="fa-solid fa-database"></i>', 'Database'],
             'settings' => ['settings.php', '<i class="fa-solid fa-gear"></i>', 'Settings'],
         ],
     ];
@@ -461,6 +532,7 @@ function adminSidebar(string $active = ''): void {
     // Work waiting on an admin shows as a count next to its page.
     $counts = [];
     try { $counts['members'] = (int)db()->query("SELECT COUNT(*) FROM members WHERE status = 'pending' AND email_verified_at IS NOT NULL")->fetchColumn(); } catch (Throwable $e) {}
+    $counts['migrate'] = count(pendingMigrations());
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
         foreach ($items as $key => [$href, $icon, $label]) {
@@ -496,6 +568,13 @@ function adminWrap(callable $content, string $page = '', string $title = ''): vo
       <span class="font-heading font-bold text-sm text-gray-800">RARL Admin</span>
     </div>';
     echo '<div class="rarl-admin-content p-4 sm:p-7 overflow-auto">';
+    // Deploys apply schema updates themselves; if one is still pending (the
+    // deploy hook failed, or files were uploaded by hand) say so everywhere.
+    if ($page !== 'migrate' && ($n = count(pendingMigrations()))) {
+        echo '<div role="status" class="mb-5 flex flex-wrap items-center gap-3 px-4 py-3 rounded-[var(--radius)] border border-amber-300 bg-amber-50 text-amber-900 text-sm">'
+           . '<i class="fa-solid fa-database"></i><span class="flex-1">' . $n . ' database update' . ($n === 1 ? ' is' : 's are') . ' waiting. Some features may not work until ' . ($n === 1 ? 'it is' : 'they are') . ' applied.</span>'
+           . '<form method="POST" action="migrate.php">' . acsrfField() . '<input type="hidden" name="action" value="apply_pending"><button class="rarl-btn rarl-btn-sm rarl-btn-dark">Apply now</button></form></div>';
+    }
     $content();
     echo '</div></main></div>';
     adminQueuePill();
@@ -632,5 +711,26 @@ function adminImageDrop(string $name, ?string $currentUrl, string $hint, string 
          . '<span class="min-w-0"><span class="block text-sm font-semibold">' . $title . '</span>'
          . '<span class="block text-xs text-[color:var(--muted-fg)] mt-0.5">' . htmlspecialchars($hint) . '</span></span></label>'
          . '<script>window.rarlDropPreview=window.rarlDropPreview||function(i){var t=i.parentNode.querySelector(".rarl-drop-thumb");if(i.files&&i.files[0]){t.innerHTML="";var im=new Image();im.alt="";im.src=URL.createObjectURL(i.files[0]);t.appendChild(im);}};</script>';
+}
+
+// Opens a modal; put the form/content between adminModalOpen() and adminModalClose().
+// $form: wrap the body in a POST form (multipart) so the footer buttons submit it.
+function adminModalOpen(string $id, string $title, string $sub = '', array $opt = []): void {
+    $w = $opt['width'] ?? '560px';
+    echo '<dialog class="rarl-amodal" id="' . ex($id) . '" aria-labelledby="' . ex($id) . '-t" style="--modal-w:' . ex($w) . '"' . (!empty($opt['autoopen']) ? ' data-autoopen' : '') . '>';
+    if (!empty($opt['form'])) echo '<form method="POST" enctype="multipart/form-data" class="rarl-amodal-form"' . (!empty($opt['form_attrs']) ? ' ' . $opt['form_attrs'] : '') . '>' . acsrfField();
+    echo '<div class="rarl-amodal-head"><div class="flex-1 min-w-0"><h2 id="' . ex($id) . '-t">' . $title . '</h2>' . ($sub ? '<p>' . $sub . '</p>' : '') . '</div>'
+       . '<button type="button" class="rarl-icon-btn" data-amodal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div><div class="rarl-amodal-body space-y-4">';
+}
+// $submit: primary button label (only for form modals); $extra: HTML placed at the start of the footer.
+function adminModalClose(string $submit = '', string $extra = '', bool $form = false): void {
+    echo '</div>';
+    if ($submit !== '' || $extra !== '') {
+        echo '<div class="rarl-amodal-foot">' . ($extra ? '<div class="me-auto flex gap-2">' . $extra . '</div>' : '')
+           . '<button type="button" class="rarl-btn" data-amodal-close>Cancel</button>'
+           . ($submit !== '' ? '<button type="submit" class="rarl-btn rarl-btn-primary">' . $submit . '</button>' : '') . '</div>';
+    }
+    if ($form) echo '</form>';
+    echo '</dialog>';
 }
 

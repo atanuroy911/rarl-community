@@ -1,0 +1,26 @@
+{
+  "name": "RARL Community",
+  "short_name": "RARL",
+  "description": "Your Robotics & Automation Research Lab membership: updates, events, learning, ID card and certificates.",
+  "id": "./?app=rarl",
+  "start_url": "./dashboard.php?source=pwa",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#ffffff",
+  "theme_color": "#CC0703",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["education", "science", "social"],
+  "icons": [
+    { "src": "assets/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "assets/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Events", "short_name": "Events", "url": "./events.php?source=pwa", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "My membership & ID card", "short_name": "Membership", "url": "./membership.php?source=pwa", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Learning hub", "short_name": "Learning", "url": "./resources.php?source=pwa", "icons": [{ "src": "assets/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

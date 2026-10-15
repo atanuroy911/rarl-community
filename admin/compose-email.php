@@ -37,7 +37,7 @@ function composeRecipients(PDO $pdo, array $in): array {
         case 'pending':
             $rows = $pdo->query("SELECT email, full_name, lab_name, type FROM members WHERE status = 'pending'")->fetchAll(); break;
         case 'all_active':
-            $rows = $pdo->query("SELECT email, full_name, lab_name, type FROM members WHERE status = 'active'")->fetchAll(); break;
+            $rows = $pdo->query("SELECT email, full_name, lab_name, type FROM members WHERE status = 'active' AND " . REAL_MEMBER_SQL)->fetchAll(); break;
     }
     return array_map(fn($r) => ['email' => $r['email'], 'name' => $nameOf($r) ?: $r['email']], $rows);
 }

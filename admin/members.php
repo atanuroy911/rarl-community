@@ -279,17 +279,17 @@ $sort = in_array($_GET['sort'] ?? '', ['oldest','name','login'], true) ? $_GET['
 $page = max(1, (int)($_GET['page'] ?? 1));
 
 $tabWhere = [
-    'all'       => '1',
+    'all'       => REAL_MEMBER_SQL,
     'pending'   => "status = 'pending'",
     'active'    => "status = 'active'",
     'inactive'  => "status = 'inactive'",
-    'attention' => "status = 'active' AND (avatar_path IS NULL OR avatar_path = '' OR id_card_path IS NULL OR id_card_path = '' OR section_id IS NULL OR (id_card_expires_at IS NOT NULL AND id_card_expires_at < DATE_ADD(CURDATE(), INTERVAL 60 DAY)))",
+    'attention' => "status = 'active' AND (avatar_path IS NULL OR avatar_path = '' OR id_card_path IS NULL OR id_card_path = '' OR (id_card_expires_at IS NOT NULL AND id_card_expires_at < DATE_ADD(CURDATE(), INTERVAL 60 DAY)))",
     'chairs'    => 'is_chair = 1',
 ];
 $counts = [];
-foreach ($tabWhere as $k => $w) { try { $counts[$k] = (int)$pdo->query("SELECT COUNT(*) FROM members WHERE {$w}")->fetchColumn(); } catch (Throwable $e) { $counts[$k] = 0; } }
+foreach ($tabWhere as $k => $w) { try { $counts[$k] = (int)$pdo->query("SELECT COUNT(*) FROM members WHERE {$w} AND " . REAL_MEMBER_SQL)->fetchColumn(); } catch (Throwable $e) { $counts[$k] = 0; } }
 
-$where = [$tabWhere[$tab]]; $params = [];
+$where = [$tabWhere[$tab], REAL_MEMBER_SQL]; $params = [];
 if ($ft) { $where[] = 'type = ?'; $params[] = $ft; }
 if ($fsec === 'none') $where[] = 'section_id IS NULL';
 elseif ((int)$fsec) { $where[] = 'section_id = ?'; $params[] = (int)$fsec; }
@@ -371,7 +371,7 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
   </div></div>
 
   <div class="overflow-x-auto">
-    <table class="rarl-table" data-no-sort>
+    <table class="rarl-table rarl-members-table" data-no-sort>
       <thead><tr>
         <th class="w-8"><?= bulkSelectAllCheckbox() ?></th>
         <th>Member</th><th>Affiliation</th><th>Chapter</th><th>Status</th><th>ID card</th><th>Joined</th><th class="text-right">Actions</th>
@@ -462,6 +462,8 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
     drawer.classList.add('open'); bg.classList.add('open'); drawer.setAttribute('aria-hidden', 'false');
     try {
       const res = await fetch('members.php?panel=' + current, {headers: {'X-Requested-With': 'fetch'}});
+      // Session timed out: the request was bounced to the login page — go there properly.
+      if (res.redirected && /\/login\.php/.test(res.url)) { location.href = 'login.php?e=expired'; return; }
       body.innerHTML = await res.text();
       wire();
     } catch (e) { body.innerHTML = '<p class="p-6 text-sm text-red-600">Could not load this member.</p>'; }
@@ -511,6 +513,8 @@ adminWrap(function() use ($members, $sections, $sectionName, $counts, $tab, $ft,
     reviewing = true; open(queue[0]);
   });
   if (new URLSearchParams(location.search).has('review')) document.getElementById('btn-review')?.click();
+  // #member-ID opens that member's details directly (shareable admin link).
+  const hm = location.hash.match(/^#member-(\d+)$/); if (hm) open(hm[1]);
 
   document.addEventListener('keydown', e => {
     if (!drawer.classList.contains('open') || document.querySelector('dialog[open]')) return;

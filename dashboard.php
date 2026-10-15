@@ -101,6 +101,13 @@ echo htmlHead('Home');
       </div>
     </section>
 
+    <section data-install hidden class="rarl-panel p-4 relative" id="install-card">
+      <button type="button" class="absolute top-2 end-2 w-8 h-8 rounded-full text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Dismiss" onclick="try{localStorage.setItem('rarl-install-dismissed','1')}catch(e){};this.parentNode.remove()"><i class="fa-solid fa-xmark"></i></button>
+      <div class="flex items-center gap-3"><img src="assets/icons/icon-192.png" alt="" class="w-11 h-11 rounded-xl border border-gray-200 dark:border-gray-700"/><div><p class="text-sm font-bold text-gray-900 dark:text-white">Get the RARL app</p><p class="text-xs text-gray-500">Your card, events and updates, one tap away.</p></div></div>
+      <button type="button" data-install-go class="mt-3 w-full h-10 rounded-full bg-rarl-red hover:bg-rarl-dark text-white text-sm font-semibold"><i class="fa-solid fa-download"></i> Install</button>
+    </section>
+    <script>try { if (localStorage.getItem('rarl-install-dismissed')) document.getElementById('install-card').remove(); } catch (e) {}</script>
+
     <?php if ($strengthDone < count($strength)): ?>
     <section class="rarl-panel p-4">
       <div class="flex items-center justify-between"><h2 class="text-sm font-bold text-gray-900 dark:text-white">Profile strength</h2><span class="text-xs font-semibold text-gray-500"><?= $strengthPct ?>%</span></div>

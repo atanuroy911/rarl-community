@@ -74,10 +74,14 @@ it in place and deletes the zip. One file over the wire instead of hundreds.
    so whatever you create on the server in step 3 below stays in place across every
    future deploy. Same goes for real server environment variables instead of a `.env`
    file (see step 3).
-5. Database migrations (importing `sql/schema.sql` / `sql/002_v2_features.sql`) are
-   **not** part of this workflow — it only syncs PHP/asset files. Run migrations from
-   **Admin → Migrations** in the app itself after a deploy that adds new tables/columns
-   (see step 3's SQL import, or that admin page for the automated version).
+5. Database migrations run **automatically** at the end of every deploy:
+   `deploy-extract.php` applies any `sql/*.sql` file listed in `migrations.php` that
+   hasn't been applied yet (tracked in the `schema_migrations` table) and prints the
+   result in the Actions log. Every file is idempotent and portable across MySQL and
+   MariaDB. If a run fails, every admin page shows a banner with an **Apply now**
+   button, and **Admin → Database** shows the error, per-file status and a Repair
+   option. To add a migration: create `sql/NNN_name.sql`, then add it to
+   `RARL_MIGRATIONS` in `migrations.php`.
 
 ## 3. Configure
 
@@ -226,7 +230,7 @@ existing install:
 
 `sql/003_community_richtext.sql` adds two columns to `community_posts`:
 `body_format` (`'markdown'` for pre-existing posts, `'html'` for new ones) and
-`image_path` (single photo per post). Run it via **Admin → Migrations** (or
+`image_path` (single photo per post). Run it via **Admin → Database** (or
 phpMyAdmin) after `002_v2_features.sql` — same idempotent, safe-to-re-run style.
 
 - The composer now uses **Quill.js** (loaded from a CDN, no Composer/build step)
@@ -251,7 +255,7 @@ phpMyAdmin) after `002_v2_features.sql` — same idempotent, safe-to-re-run styl
 
 ## 11. Public events/RSVP, premium learning content, member directory
 
-`sql/004_events_premium_directory.sql` — run via **Admin → Migrations** after
+`sql/004_events_premium_directory.sql` — run via **Admin → Database** after
 `003_community_richtext.sql`. Adds:
 
 - **Events**: `visibility` (`public`/`members_only`), `event_time`, `online_url`,

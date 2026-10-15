@@ -94,61 +94,33 @@ if ($editTierId) {
 
 adminWrap(function() use ($tiers, $set, $editTier) {
     adminFlash(); ?>
-<h1 class="text-2xl font-black text-gray-900 mb-1">Partnerships</h1>
-<p class="text-gray-500 text-sm mb-7">Manage paid membership/partnership tiers and the public "Partner With Us" page</p>
-
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-  <!-- Left: tier form -->
-  <div class="xl:col-span-1 space-y-6">
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editTier ? '<i class="fa-solid fa-pen-to-square"></i> Edit Tier' : '<i class="fa-solid fa-plus"></i> Add Tier' ?></h2>
-      <form method="POST" class="space-y-3">
-        <?= acsrfField() ?>
-        <input type="hidden" name="action" value="<?= $editTier ? 'update_tier' : 'add_tier' ?>">
-        <?php if ($editTier): ?><input type="hidden" name="tier_id" value="<?= $editTier['id'] ?>"><?php endif; ?>
-
-        <select name="category" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
-          <option value="membership" <?= ($editTier['category'] ?? '') === 'membership' ? 'selected' : '' ?>>Membership</option>
-          <option value="partnership" <?= ($editTier['category'] ?? 'partnership') === 'partnership' ? 'selected' : '' ?>>Partnership</option>
-        </select>
-        <input type="text" name="name" required value="<?= ex($editTier['name'] ?? '') ?>" placeholder="Tier Name"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <textarea name="description" rows="2" placeholder="Description"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editTier['description'] ?? '') ?></textarea>
-
-        <div class="grid grid-cols-3 gap-2">
-          <input type="number" step="0.01" name="fee_amount" value="<?= ex($editTier['fee_amount'] ?? '') ?>" placeholder="Fee"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="fee_currency" value="<?= ex($editTier['fee_currency'] ?? 'EUR') ?>" placeholder="EUR"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="fee_period" value="<?= ex($editTier['fee_period'] ?? 'year') ?>" placeholder="year"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        </div>
-        <p class="text-[10px] text-gray-400">Leave Fee blank to hide pricing on this tier's card.</p>
-
-        <div class="grid grid-cols-2 gap-2">
-          <input type="number" name="display_order" value="<?= ex($editTier['display_order'] ?? 0) ?>" placeholder="Order"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        </div>
-
-        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="is_addon" value="1" <?= !empty($editTier['is_addon']) ? 'checked' : '' ?> class="accent-rarl-red w-3.5 h-3.5"/>
-          <span class="text-xs text-gray-600">Show as separate add-on card (e.g. "High Visibility")</span>
-        </label>
-        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="is_published" value="1" <?= ($editTier['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-3.5 h-3.5"/>
-          <span class="text-xs text-gray-600">Published (visible on partners.php)</span>
-        </label>
-
-        <button type="submit" class="w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors"><?= $editTier ? 'Save Changes' : 'Add Tier' ?></button>
-        <?php if ($editTier): ?><a href="partnerships.php" class="block text-center text-xs text-gray-400 hover:text-gray-600 mt-1">Cancel edit</a><?php endif; ?>
-      </form>
-    </div>
+<div class="rarl-page-head">
+  <div><h1>Partnerships</h1><p>Tiers and copy for the public <a href="../partners.php" target="_blank" class="underline">Partner with RARL</a> page.</p></div>
+  <a href="partnerships.php?new=1" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-plus"></i> New tier</a>
+</div>
+<?php $v = fn($k, $d = '') => ex($editTier[$k] ?? $d); ?>
+<?php adminModalOpen('tier-modal', $editTier ? 'Edit tier' : 'New tier', 'Shown as a card on the public partners page.', ['form' => true, 'width' => '560px', 'autoopen' => $editTier || !empty($_GET['new'])]); ?>
+  <input type="hidden" name="action" value="<?= $editTier ? 'update_tier' : 'add_tier' ?>">
+  <?php if ($editTier): ?><input type="hidden" name="tier_id" value="<?= (int)$editTier['id'] ?>"><?php endif; ?>
+  <div class="grid sm:grid-cols-[1fr_180px] gap-3">
+    <div><label class="rarl-label" for="t-name">Name <span class="text-rarl-red">*</span></label><input id="t-name" name="name" required class="rarl-input" value="<?= $v('name') ?>" placeholder="Gold partner"/></div>
+    <div><label class="rarl-label" for="t-cat">Section</label><select id="t-cat" name="category" class="rarl-input"><option value="partnership" <?= ($editTier['category'] ?? 'partnership') === 'partnership' ? 'selected' : '' ?>>Partnership</option><option value="membership" <?= ($editTier['category'] ?? '') === 'membership' ? 'selected' : '' ?>>Membership</option></select></div>
   </div>
+  <div><label class="rarl-label" for="t-desc">Description</label><textarea id="t-desc" name="description" rows="3" class="rarl-input"><?= $v('description') ?></textarea></div>
+  <div class="grid grid-cols-3 gap-2">
+    <div><label class="rarl-label" for="t-fee">Fee</label><input id="t-fee" type="number" step="0.01" min="0" name="fee_amount" class="rarl-input" value="<?= $v('fee_amount') ?>" placeholder="Hidden"/></div>
+    <div><label class="rarl-label" for="t-cur">Currency</label><input id="t-cur" name="fee_currency" maxlength="3" class="rarl-input uppercase" value="<?= $v('fee_currency', 'EUR') ?>"/></div>
+    <div><label class="rarl-label" for="t-per">Per</label><input id="t-per" name="fee_period" class="rarl-input" value="<?= $v('fee_period', 'year') ?>"/></div>
+  </div>
+  <p class="text-xs text-[color:var(--muted-fg)] -mt-2">Leave the fee empty to show the card without a price.</p>
+  <input type="hidden" name="display_order" value="<?= (int)($editTier['display_order'] ?? 0) ?>">
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_addon" value="1" <?= !empty($editTier['is_addon']) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Show as a separate add-on card (e.g. "High visibility")</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_published" value="1" <?= ($editTier['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Published</label>
+<?php adminModalClose($editTier ? 'Save changes' : 'Create tier', '', true); ?>
+<script>document.getElementById('tier-modal').addEventListener('close', function () { if (/[?&](edit|new)=/.test(location.search)) history.replaceState(null, '', 'partnerships.php'); });</script>
 
-  <!-- Right: tier list -->
-  <div class="xl:col-span-2">
+<div class="space-y-6">
+  <div>
     <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
       <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
         <h2 class="font-heading font-bold text-sm text-gray-800">All Tiers <span class="text-gray-400 font-normal text-xs">(<?= count($tiers) ?>)</span></h2>
@@ -164,7 +136,7 @@ adminWrap(function() use ($tiers, $set, $editTier) {
       <?php endif; ?>
       <div class="divide-y divide-gray-100">
         <?php if (empty($tiers)): ?>
-        <p class="p-8 text-center text-gray-400 text-sm">No tiers yet. Add one on the left.</p>
+        <p class="rarl-empty">No tiers yet. <a class="underline font-semibold" href="partnerships.php?new=1">Create the first one</a>.</p>
         <?php endif; ?>
         <?php foreach ($tiers as $t): ?>
         <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
@@ -179,11 +151,9 @@ adminWrap(function() use ($tiers, $set, $editTier) {
             <p class="font-semibold text-sm text-gray-900"><?= ex($t['name']) ?></p>
             <p class="text-xs text-gray-500 mt-0.5 truncate"><?= ex($t['description']) ?></p>
           </div>
-          <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <a href="partnerships.php?edit=<?= $t['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded text-center">Edit</a>
-            <form method="POST" onsubmit="return confirm('Delete this tier?')"><?= acsrfField() ?><input type="hidden" name="action" value="delete_tier"><input type="hidden" name="tier_id" value="<?= $t['id'] ?>">
-              <button type="submit" class="w-full px-2 py-1 text-[10px] font-semibold bg-red-50 text-red-600 rounded">Delete</button>
-            </form>
+          <div class="flex items-center gap-1 flex-shrink-0">
+            <a href="partnerships.php?edit=<?= $t['id'] ?>" class="rarl-icon-btn" title="Edit"><i class="fa-solid fa-pen"></i></a>
+            <form method="POST" data-confirm="Delete the “<?= ex($t['name']) ?>” tier?"><?= acsrfField() ?><input type="hidden" name="action" value="delete_tier"><input type="hidden" name="tier_id" value="<?= $t['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash"></i></button></form>
           </div>
         </div>
         <?php endforeach; ?>

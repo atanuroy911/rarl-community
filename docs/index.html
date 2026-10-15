@@ -191,7 +191,7 @@
     <li>The setup screen shows a single "Set Up Database" button that runs <code>sql/schema.sql</code> then <code>sql/002_v2_features.sql</code> (idempotent — safe to re-run, uses <code>CREATE TABLE IF NOT EXISTS</code> / <code>ON DUPLICATE KEY UPDATE</code>).</li>
     <li>On success, the session is destroyed and the admin is redirected to login with a flash message — no auto-login, matching how WordPress makes you log in fresh after install.</li>
     <li>If tables already exist, <code>install.php</code> refuses to run and redirects straight to login — it can't be used to re-trigger setup on a live site.</li>
-    <li>A logged-in admin can also re-run the same migrations any time from <strong>Admin → Migrations</strong> (<code>admin/migrate.php</code>) — useful after a deploy that adds new tables/columns (e.g. the v2 feature set).</li>
+    <li>A logged-in admin can also re-run the same migrations any time from <strong>Admin → Database</strong> (<code>admin/migrate.php</code>) — useful after a deploy that adds new tables/columns (e.g. the v2 feature set).</li>
   </ul>
 </section>
 

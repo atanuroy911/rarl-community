@@ -78,119 +78,83 @@ if ($editPlanId) {
 }
 
 adminWrap(function() use ($plans, $editPlan) {
-    adminFlash(); ?>
-<h1 class="text-2xl font-black text-gray-900 mb-1">Membership Plans</h1>
-<p class="text-gray-500 text-sm mb-7">Internal categorization for members (Free / Student / Organization). Everyone gets identical access — this is not a public pricing page.</p>
-
-<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
-  <!-- Left: form -->
-  <div class="xl:col-span-1 space-y-6">
-    <div class="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-      <h2 class="font-heading font-bold text-base text-gray-800 mb-4"><?= $editPlan ? '<i class="fa-solid fa-pen-to-square"></i> Edit Plan' : '<i class="fa-solid fa-plus"></i> Add Plan' ?></h2>
-      <form method="POST" class="space-y-3">
-        <?= acsrfField() ?>
-        <input type="hidden" name="action" value="<?= $editPlan ? 'update_plan' : 'add_plan' ?>">
-        <?php if ($editPlan): ?><input type="hidden" name="plan_id" value="<?= $editPlan['id'] ?>"><?php endif; ?>
-
-        <div class="grid grid-cols-2 gap-2">
-          <input type="text" name="name" required value="<?= ex($editPlan['name'] ?? '') ?>" placeholder="Plan Name"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-          <input type="text" name="slug" required value="<?= ex($editPlan['slug'] ?? '') ?>" placeholder="slug"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        </div>
-        <input type="text" name="tagline" value="<?= ex($editPlan['tagline'] ?? '') ?>" placeholder="Tagline"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red"/>
-        <textarea name="description" rows="2" placeholder="Description"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editPlan['description'] ?? '') ?></textarea>
-        <textarea name="features" rows="3" placeholder="Features — one per line"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red resize-none"><?= ex($editPlan['features'] ?? '') ?></textarea>
-
-        <select name="audience" class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
-          <?php foreach (['individual'=>'Individual','lab'=>'Lab','both'=>'Both'] as $v=>$l): ?>
-          <option value="<?= $v ?>" <?= ($editPlan['audience'] ?? 'both') === $v ? 'selected' : '' ?>><?= $l ?></option>
-          <?php endforeach; ?>
-        </select>
-
-        <div class="grid grid-cols-3 gap-2">
-          <input type="number" step="0.01" name="regular_price" value="<?= ex($editPlan['regular_price'] ?? '') ?>" placeholder="Price"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="currency" value="<?= ex($editPlan['currency'] ?? 'EUR') ?>" placeholder="EUR"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-          <input type="text" name="billing_period" value="<?= ex($editPlan['billing_period'] ?? 'year') ?>" placeholder="year"
-            class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-        </div>
-        <p class="text-[10px] text-gray-400">Regular price is stored for future reference only — not shown publicly while free.</p>
-
-        <input type="text" name="free_note" value="<?= ex($editPlan['free_note'] ?? 'Free for a limited time') ?>" placeholder="Free note"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-
-        <input type="number" name="display_order" value="<?= ex($editPlan['display_order'] ?? 0) ?>" placeholder="Order"
-          class="w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-gray-50 focus:outline-none focus:ring-2 focus:ring-rarl-red/25"/>
-
-        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="is_free_now" value="1" <?= ($editPlan['is_free_now'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-3.5 h-3.5"/>
-          <span class="text-xs text-gray-600">Free right now</span>
-        </label>
-        <label class="flex items-center gap-2 p-2.5 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="is_published" value="1" <?= ($editPlan['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-3.5 h-3.5"/>
-          <span class="text-xs text-gray-600">Published</span>
-        </label>
-
-        <button type="submit" class="w-full py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl transition-colors"><?= $editPlan ? 'Save Changes' : 'Add Plan' ?></button>
-        <?php if ($editPlan): ?><a href="plans.php" class="block text-center text-xs text-gray-400 hover:text-gray-600 mt-1">Cancel edit</a><?php endif; ?>
-      </form>
-    </div>
-  </div>
-
-  <!-- Right: list -->
-  <div class="xl:col-span-2">
-    <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-      <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between gap-3">
-        <h2 class="font-heading font-bold text-sm text-gray-800">All Plans <span class="text-gray-400 font-normal text-xs">(<?= count($plans) ?>)</span></h2>
-        <?php if ($plans): ?><label class="flex items-center gap-1.5 text-xs text-gray-500"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
-      </div>
-      <?php if ($plans): ?>
-      <?= bulkFormOpen() ?>
-      <?= bulkBar([
-          ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
-          ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
-          ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected plans?'],
-      ]) ?>
-      <?php endif; ?>
-      <div class="divide-y divide-gray-100">
-        <?php if (empty($plans)): ?>
-        <p class="p-8 text-center text-gray-400 text-sm">No plans yet. Add one on the left.</p>
-        <?php endif; ?>
-        <?php foreach ($plans as $p): ?>
-        <div class="p-4 flex items-center gap-4 hover:bg-gray-50 group">
-          <?= bulkRowCheckbox((int)$p['id']) ?>
-          <div class="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg flex-shrink-0"><i class="fa-solid fa-graduation-cap"></i></div>
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded"><?= ucfirst($p['audience']) ?></span>
-              <?php if (!$p['is_published']): ?><span class="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded">Draft</span><?php endif; ?>
-              <?php if ($p['is_free_now']): ?><span class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded">Free now</span><?php endif; ?>
-              <?php if ($p['regular_price'] !== null): ?><span class="text-[10px] font-bold text-gray-400"><?= number_format((float)$p['regular_price'], 0) ?> <?= ex($p['currency']) ?>/<?= ex($p['billing_period']) ?></span><?php endif; ?>
-            </div>
-            <p class="font-semibold text-sm text-gray-900"><?= ex($p['name']) ?> <span class="text-gray-400 font-normal text-xs">(<?= ex($p['slug']) ?>)</span></p>
-            <p class="text-xs text-gray-500 mt-0.5 truncate"><?= ex($p['tagline']) ?></p>
-          </div>
-          <div class="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
-            <a href="plans.php?edit=<?= $p['id'] ?>" class="px-2 py-1 text-[10px] font-semibold bg-blue-50 text-blue-600 rounded text-center">Edit</a>
-            <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="plan_id" value="<?= $p['id'] ?>">
-              <button type="submit" class="w-full px-2 py-1 text-[10px] font-semibold <?= $p['is_published']?'bg-gray-100 text-gray-600':'bg-green-50 text-green-600' ?> rounded"><?= $p['is_published']?'Unpublish':'Publish' ?></button>
-            </form>
-            <form method="POST" onsubmit="return confirm('Delete this plan?')"><?= acsrfField() ?><input type="hidden" name="action" value="delete_plan"><input type="hidden" name="plan_id" value="<?= $p['id'] ?>">
-              <button type="submit" class="w-full px-2 py-1 text-[10px] font-semibold bg-red-50 text-red-600 rounded">Delete</button>
-            </form>
-          </div>
-        </div>
-        <?php endforeach; ?>
-      </div>
-    </div>
-  </div>
-
+    adminFlash();
+    $v = fn($k, $d = '') => ex($editPlan[$k] ?? $d); ?>
+<div class="rarl-page-head">
+  <div><h1>Membership plans</h1><p>Internal categories for members (e.g. Student, Researcher, Lab). Everyone gets the same access — this is not a public pricing page.</p></div>
+  <a href="plans.php?new=1" class="rarl-btn rarl-btn-primary" data-amodal="plan-modal" <?= $editPlan ? '' : 'data-plan-new' ?>><i class="fa-solid fa-plus"></i> New plan</a>
 </div>
+
+<div class="rarl-card overflow-hidden">
+  <div class="px-5 py-4 border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+    <h2 class="rarl-card-title">All plans <span class="font-normal text-[color:var(--muted-fg)]"><?= count($plans) ?></span></h2>
+    <?php if ($plans): ?><label class="flex items-center gap-1.5 text-xs text-[color:var(--muted-fg)]"><?= bulkSelectAllCheckbox() ?> Select all</label><?php endif; ?>
+  </div>
+  <?php if (!$plans): ?><div class="rarl-empty">No plans yet. <a class="underline font-semibold" href="plans.php?new=1">Create the first one</a>.</div><?php else: ?>
+  <?= bulkFormOpen() ?>
+  <?= bulkBar([
+      ['label'=>'Publish','op'=>'publish','class'=>'bg-green-600 hover:bg-green-500'],
+      ['label'=>'Unpublish','op'=>'unpublish','class'=>'bg-amber-600 hover:bg-amber-500'],
+      ['label'=>'Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected plans?'],
+  ]) ?>
+  <ul class="divide-y divide-[color:var(--border)]">
+    <?php foreach ($plans as $p): ?>
+    <li class="px-4 sm:px-5 py-3.5 flex items-center gap-3 sm:gap-4">
+      <?= bulkRowCheckbox((int)$p['id']) ?>
+      <span class="w-10 h-10 rounded-[var(--radius)] bg-[color:var(--muted)] flex items-center justify-center flex-shrink-0 text-[color:var(--muted-fg)]"><i class="fa-solid fa-id-badge"></i></span>
+      <a href="plans.php?edit=<?= (int)$p['id'] ?>" class="flex-1 min-w-0">
+        <span class="flex flex-wrap items-center gap-1.5"><span class="font-semibold text-sm hover:underline"><?= ex($p['name']) ?></span>
+          <span class="rarl-badge rarl-badge-gray"><?= ['individual' => 'Individuals', 'lab' => 'Labs', 'both' => 'Everyone'][$p['audience']] ?? ucfirst($p['audience']) ?></span>
+          <?php if (!$p['is_published']): ?><span class="rarl-badge rarl-badge-amber">Draft</span><?php endif; ?>
+          <?php if ($p['is_free_now']): ?><span class="rarl-badge rarl-badge-green">Free now</span><?php endif; ?></span>
+        <span class="block text-xs text-[color:var(--muted-fg)] truncate mt-0.5"><?= ex($p['tagline'] ?: $p['slug']) ?><?= $p['regular_price'] !== null ? ' · later ' . number_format((float)$p['regular_price'], 0) . ' ' . ex($p['currency']) . '/' . ex($p['billing_period']) : '' ?></span>
+      </a>
+      <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_pub"><input type="hidden" name="plan_id" value="<?= (int)$p['id'] ?>"><button class="rarl-icon-btn" title="<?= $p['is_published'] ? 'Unpublish' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $p['is_published'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
+      <a href="plans.php?edit=<?= (int)$p['id'] ?>" class="rarl-icon-btn" title="Edit"><i class="fa-solid fa-pen"></i></a>
+      <form method="POST" data-confirm="Delete the “<?= ex($p['name']) ?>” plan?"><?= acsrfField() ?><input type="hidden" name="action" value="delete_plan"><input type="hidden" name="plan_id" value="<?= (int)$p['id'] ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash"></i></button></form>
+    </li>
+    <?php endforeach; ?>
+  </ul>
+  <?php endif; ?>
+</div>
+
+<?php adminModalOpen('plan-modal', $editPlan ? 'Edit plan' : 'New plan', 'Members are assigned a plan by admins; it never changes what they can access.', ['form' => true, 'width' => '620px', 'autoopen' => $editPlan || !empty($_GET['new'])]); ?>
+  <input type="hidden" name="action" value="<?= $editPlan ? 'update_plan' : 'add_plan' ?>">
+  <?php if ($editPlan): ?><input type="hidden" name="plan_id" value="<?= (int)$editPlan['id'] ?>"><?php endif; ?>
+  <div class="grid sm:grid-cols-2 gap-3">
+    <div><label class="rarl-label" for="pl-name">Name <span class="text-rarl-red">*</span></label><input id="pl-name" name="name" required class="rarl-input" value="<?= $v('name') ?>" placeholder="Researcher"/></div>
+    <div><label class="rarl-label" for="pl-slug">Short ID <span class="text-rarl-red">*</span></label><input id="pl-slug" name="slug" required pattern="[a-z0-9-]+" class="rarl-input font-mono" value="<?= $v('slug') ?>" placeholder="researcher"/><p class="text-xs text-[color:var(--muted-fg)] mt-1">Lowercase letters, numbers and dashes.</p></div>
+  </div>
+  <div><label class="rarl-label" for="pl-tag">Tagline</label><input id="pl-tag" name="tagline" class="rarl-input" value="<?= $v('tagline') ?>"/></div>
+  <div><label class="rarl-label" for="pl-desc">Description</label><textarea id="pl-desc" name="description" rows="2" class="rarl-input"><?= $v('description') ?></textarea></div>
+  <div><label class="rarl-label" for="pl-feat">What's included <span class="font-normal text-[color:var(--muted-fg)]">— one per line</span></label><textarea id="pl-feat" name="features" rows="3" class="rarl-input"><?= $v('features') ?></textarea></div>
+  <div class="grid sm:grid-cols-2 gap-3">
+    <div><label class="rarl-label" for="pl-aud">For</label><select id="pl-aud" name="audience" class="rarl-input"><?php foreach (['both' => 'Everyone', 'individual' => 'Individuals', 'lab' => 'Research labs'] as $k => $l): ?><option value="<?= $k ?>" <?= ($editPlan['audience'] ?? 'both') === $k ? 'selected' : '' ?>><?= $l ?></option><?php endforeach; ?></select></div>
+    <div><label class="rarl-label" for="pl-free">Note shown while free</label><input id="pl-free" name="free_note" class="rarl-input" value="<?= $v('free_note', 'Free for a limited time') ?>"/></div>
+  </div>
+  <fieldset class="p-3 rounded-[var(--radius)] border border-[color:var(--border)]">
+    <legend class="px-1 text-xs text-[color:var(--muted-fg)]">Future price (stored only, never shown while free)</legend>
+    <div class="grid grid-cols-3 gap-2">
+      <div><label class="rarl-label" for="pl-price">Amount</label><input id="pl-price" type="number" step="0.01" min="0" name="regular_price" class="rarl-input" value="<?= $v('regular_price') ?>"/></div>
+      <div><label class="rarl-label" for="pl-cur">Currency</label><input id="pl-cur" name="currency" maxlength="3" class="rarl-input uppercase" value="<?= $v('currency', 'EUR') ?>"/></div>
+      <div><label class="rarl-label" for="pl-per">Per</label><input id="pl-per" name="billing_period" class="rarl-input" value="<?= $v('billing_period', 'year') ?>"/></div>
+    </div>
+  </fieldset>
+  <input type="hidden" name="display_order" value="<?= (int)($editPlan['display_order'] ?? 0) ?>">
+  <div class="flex flex-wrap gap-5 text-sm">
+    <label class="flex items-center gap-2"><input type="checkbox" name="is_free_now" value="1" <?= ($editPlan['is_free_now'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Free right now</label>
+    <label class="flex items-center gap-2"><input type="checkbox" name="is_published" value="1" <?= ($editPlan['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Published</label>
+  </div>
+<?php adminModalClose($editPlan ? 'Save changes' : 'Create plan', '', true); ?>
+<script>
+  // Closing the edit modal returns to the plain list URL.
+  document.getElementById('plan-modal').addEventListener('close', function () { if (/[?&](edit|new)=/.test(location.search)) history.replaceState(null, '', 'plans.php'); });
+  // "New plan" while an edit is loaded: go to a clean form.
+  document.querySelectorAll('a[href="plans.php?new=1"]').forEach(function (a) { a.addEventListener('click', function (e) { <?php if ($editPlan): ?>e.stopImmediatePropagation(); location.href = a.href;<?php endif; ?> }, true); });
+  // Short ID follows the name until edited by hand.
+  (function () { var n = document.getElementById('pl-name'), s = document.getElementById('pl-slug'), touched = !!s.value;
+    s.addEventListener('input', function () { touched = true; });
+    n.addEventListener('input', function () { if (!touched) s.value = n.value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }); })();
+</script>
 <?= bulkBarScript() ?>
 <?php }, 'plans', 'Membership Plans');

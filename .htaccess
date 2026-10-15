@@ -25,6 +25,17 @@ Options -Indexes
   Header set Referrer-Policy "strict-origin-when-cross-origin"
 </IfModule>
 
+# PWA: correct type for the manifest; the service worker must never be served
+# stale, or app updates would be delayed until the browser cache expired.
+<IfModule mod_mime.c>
+  AddType application/manifest+json .webmanifest
+</IfModule>
+<IfModule mod_headers.c>
+  <FilesMatch "^(sw\.js|manifest\.webmanifest)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
 # Don't leak the Apache/PHP version in response headers
 ServerSignature Off
 

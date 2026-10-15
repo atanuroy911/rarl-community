@@ -102,20 +102,21 @@ adminWrap(function () use ($people, $edit, $chapterCount) {
   </div>
   <div class="flex gap-2">
     <a href="../people.php" target="_blank" class="rarl-btn"><i class="fa-solid fa-arrow-up-right-from-square"></i> View public page</a>
-    <?php if ($edit): ?><a href="people.php" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-plus"></i> Add person</a><?php endif; ?>
+    <a href="people.php?new=1" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-plus"></i> Add person</a>
   </div>
 </div>
 
-<div class="grid xl:grid-cols-[400px_minmax(0,1fr)] gap-6 items-start">
-  <!-- Editor -->
-  <form method="POST" enctype="multipart/form-data" class="rarl-card p-6 space-y-4 xl:sticky xl:top-6" data-no-autolabel>
+<dialog class="rarl-amodal" id="person-modal" aria-labelledby="person-modal-t" style="--modal-w:860px"<?= ($edit || !empty($_GET['new'])) ? ' data-autoopen' : '' ?>>
+  <form method="POST" enctype="multipart/form-data" class="rarl-amodal-form" data-no-autolabel>
     <?= acsrfField() ?>
     <input type="hidden" name="action" value="<?= $edit ? 'update_person' : 'add_person' ?>">
     <?php if ($edit): ?><input type="hidden" name="person_id" value="<?= (int)$edit['id'] ?>"><?php endif; ?>
-    <div>
-      <h2 class="rarl-card-title"><?= $edit ? 'Edit ' . ex($edit['name']) : 'Add a person' ?></h2>
-      <p class="text-xs text-[color:var(--muted-fg)] mt-0.5"><?= $edit ? 'Changes go live on the public page as soon as you save.' : 'New people are added to the end of the list. Drag to reorder.' ?></p>
-    </div>
+    <div class="rarl-amodal-head"><div class="flex-1 min-w-0">
+      <h2 id="person-modal-t"><?= $edit ? 'Edit ' . ex($edit['name']) : 'Add a person' ?></h2>
+      <p><?= $edit ? 'Changes go live on the public page as soon as you save.' : 'New people are added to the end of the list; drag to reorder.' ?></p>
+    </div><button type="button" class="rarl-icon-btn" data-amodal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="rarl-amodal-body grid md:grid-cols-[minmax(0,1fr)_260px] gap-6 items-start">
+    <div class="space-y-4">
 
     <div>
       <span class="rarl-label">Photo</span>
@@ -142,7 +143,8 @@ adminWrap(function () use ($people, $edit, $chapterCount) {
       <input type="checkbox" name="is_published" value="1" <?= ($edit['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-5 h-5">
     </label>
 
-    <div>
+    </div>
+    <div class="md:sticky md:top-0">
       <span class="rarl-label">Preview</span>
       <div class="rounded-[calc(var(--radius)+4px)] border border-[color:var(--border)] p-5 text-center bg-[color:var(--bg)]">
         <div id="pv-photo" class="w-20 h-20 rounded-full mx-auto mb-3 overflow-hidden bg-rarl-red text-white flex items-center justify-center text-2xl font-bold"><?php if ($edit && $photoUrl($edit)): ?><img src="<?= ex($photoUrl($edit)) ?>" alt="" class="w-full h-full object-cover"><?php else: ?><?= ex(mb_strtoupper(mb_substr($edit['name'] ?? '?', 0, 1))) ?><?php endif; ?></div>
@@ -152,16 +154,14 @@ adminWrap(function () use ($people, $edit, $chapterCount) {
       </div>
     </div>
 
-    <div class="flex items-center justify-between gap-2 pt-2 border-t border-[color:var(--border)]">
-      <?php if ($edit): ?>
-      <button type="submit" form="del-person" class="rarl-btn text-red-600"><i class="fa-solid fa-trash"></i> Remove</button>
-      <?php else: ?><span></span><?php endif; ?>
-      <div class="flex gap-2">
-        <?php if ($edit): ?><a href="people.php" class="rarl-btn">Cancel</a><?php endif; ?>
-        <button type="submit" class="rarl-btn rarl-btn-primary"><?= $edit ? 'Save changes' : '<i class="fa-solid fa-plus"></i> Add person' ?></button>
-      </div>
+    </div>
+    <div class="rarl-amodal-foot">
+      <?php if ($edit): ?><button type="submit" form="del-person" class="rarl-btn text-red-600 me-auto"><i class="fa-solid fa-trash"></i> Remove</button><?php endif; ?>
+      <button type="button" class="rarl-btn" data-amodal-close>Cancel</button>
+      <button type="submit" class="rarl-btn rarl-btn-primary"><?= $edit ? 'Save changes' : '<i class="fa-solid fa-plus"></i> Add person' ?></button>
     </div>
   </form>
+</dialog>
   <?php if ($edit): ?>
   <form id="del-person" method="POST" class="hidden" data-confirm="Remove <?= ex($edit['name']) ?> from the leadership page?"><?= acsrfField() ?><input type="hidden" name="action" value="delete_person"><input type="hidden" name="person_id" value="<?= (int)$edit['id'] ?>"></form>
   <?php endif; ?>
@@ -209,9 +209,9 @@ adminWrap(function () use ($people, $edit, $chapterCount) {
     </ul>
     <?php endif; ?>
   </div>
-</div>
 
 <script>
+  document.getElementById('person-modal').addEventListener('close', function () { if (/[?&](edit|new)=/.test(location.search)) history.replaceState(null, '', 'people.php'); });
 (function () {
   // Live preview of the public card.
   var $ = function (s) { return document.querySelector(s); };

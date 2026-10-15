@@ -19,7 +19,9 @@ if (session_status() === PHP_SESSION_NONE && PHP_SAPI !== 'cli') {
 // before any output. Clickjacking is blocked with frame-ancestors + the legacy
 // X-Frame-Options; nosniff stops MIME confusion; the CSP is a defence-in-depth
 // layer behind the HTML sanitizer. The CSP allows the exact CDNs the pages load
-// (Tailwind Play, Font Awesome, Google Fonts, jsDelivr/unpkg, YouTube embeds)
+// (Tailwind Play, Font Awesome, Google Fonts, jsDelivr/unpkg, YouTube embeds,
+// and Google Translate for the language menu — loaded only once a visitor
+// picks a language other than English)
 // and keeps 'unsafe-inline'/'unsafe-eval' because the app uses inline handlers
 // and the Tailwind Play CDN — tightening those needs a build step, tracked
 // separately. HSTS is sent only over HTTPS so local http dev still works.
@@ -37,10 +39,10 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
         . "form-action 'self'; "
         . "img-src 'self' data: https:; "
         . "font-src 'self' data: https://fonts.gstatic.com https://cdnjs.cloudflare.com; "
-        . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com; "
-        . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com; "
-        . "connect-src 'self'; "
-        . "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://zoom.us"
+        . "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com https://cdn.tailwindcss.com https://cdn.jsdelivr.net https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com; "
+        . "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://unpkg.com https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com; "
+        . "connect-src 'self' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.gstatic.com; "
+        . "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://zoom.us https://translate.google.com"
         . ($rarlHttps ? '; upgrade-insecure-requests' : ''));
     if ($rarlHttps) header('Strict-Transport-Security: max-age=31536000; includeSubDomains');
     unset($rarlHttps);
@@ -535,6 +537,7 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     $faUrl      = FONTAWESOME_CDN_URL;
     $sizeCss    = rarlFontSizeCss() . rarlA11yCss();
     $formJs     = rarlFormFrictionJs();
+    $langJs     = languageHeadJs();
     $brandRedHex = BRAND_RED;
     return <<<HTML
 <!DOCTYPE html>
@@ -545,15 +548,50 @@ function htmlHead(string $title, bool $isAdmin = false): string {
   <title>{$fullTitle}</title>
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
   <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)"/>
-  <link rel="icon" href="assets/mark.png"/>
+  <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32"/>
+  <link rel="manifest" href="manifest.webmanifest"/>
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-title" content="RARL"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="application-name" content="RARL Community"/>
+  <meta name="format-detection" content="telephone=no"/>
   <script>
-    (function(){ try { var t = localStorage.getItem('rarl-theme'); if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches && localStorage.getItem('rarl-theme-follow') === '1')) document.documentElement.classList.add('dark'); } catch (e) {} })();
+    // PWA: offline support + install. Install UI = any [data-install] element
+    // (hidden until installing is possible on this device).
+    if ('serviceWorker' in navigator) window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').then(function (reg) {
+        if (/[?&]logged_out=1/.test(location.search) && reg.active) reg.active.postMessage('clear-pages');
+      }).catch(function () {});
+    });
+    (function () {
+      var deferred = null, ua = navigator.userAgent;
+      var standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+      var ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      var iosSafari = ios && /safari/i.test(ua) && !/crios|fxios|edgios|opios/i.test(ua);
+      if (standalone) document.documentElement.classList.add('is-standalone');
+      function show(on) { document.querySelectorAll('[data-install]').forEach(function (el) { el.hidden = !on; }); }
+      window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); deferred = e; show(true); });
+      window.addEventListener('appinstalled', function () { deferred = null; show(false); });
+      document.addEventListener('DOMContentLoaded', function () { show(!standalone && (!!deferred || iosSafari)); });
+      document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('[data-install-go]'); if (!b) return;
+        e.preventDefault();
+        if (deferred) { deferred.prompt(); deferred.userChoice.finally(function () { deferred = null; show(false); }); }
+        else if (iosSafari && window.rarlModal) rarlModal.open('ios-install', b);
+      });
+    })();
+  </script>
+  <script>
+    (function(){ try { var t = localStorage.getItem('rarl-theme'); if (t === 'dark' || (!t && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.classList.add('dark'); } catch (e) {} })();
     document.addEventListener('click', function (e) {
       var b = e.target.closest && e.target.closest('[data-theme-toggle]'); if (!b) return;
       var dark = document.documentElement.classList.toggle('dark');
       try { localStorage.setItem('rarl-theme', dark ? 'dark' : 'light'); } catch (err) {}
     });
   </script>
+  {$langJs}
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -602,13 +640,72 @@ function htmlHead(string $title, bool $isAdmin = false): string {
     .md-content strong { font-weight: 700; }
     .md-content blockquote { border-left: 3px solid #CC0703; padding-left: 0.75em; color: inherit; opacity: .8; margin: 0.5em 0; }
     html.dark { color-scheme: dark; }
+    /* WCAG AA contrast on every surface the portal uses (incl. the warm #f4f2ee page) */
+    html:not(.dark) .text-gray-500 { color:#565d6b; }                 /* 4.3:1 → 5.6:1 on #f4f2ee */
+    html:not(.dark) .text-gray-400 { color:#5f6672; }
+    .dark .text-gray-500 { color:#9ca3af; }                             /* 3.9:1 → 7.0:1 on gray-900 */
+    .dark .text-gray-400 { color:#a8afba; }
+    .dark .text-rarl-red, .dark .hover\:text-rarl-red:hover { color:#ff6b66; }   /* brand red 3.2:1 → 6.1:1 */
+    .dark .border-rarl-red { border-color:#ff6b66; }
+    .dark ::selection { background:#ff6b66; color:#111; }
+    /* Comfortable reading measure and rhythm for long text (Apple HIG: legibility) */
+    .md-content, [data-clamp] { max-width: 72ch; }
+    [dir=rtl] .fa-arrow-right, [dir=rtl] .fa-chevron-right { transform: scaleX(-1); }
     .dark .md-content a { color: #f87171; }
     /* Portal surface — shared card look for member pages */
     .rarl-panel { background:#fff; border:1px solid #e5e7eb; border-radius:1rem; }
     .dark .rarl-panel { background:#111827; border-color:#1f2937; }
     .rarl-feed-card { transition: box-shadow .15s ease, border-color .15s ease; }
     .rarl-feed-card:hover { box-shadow: 0 8px 24px -16px rgba(15,23,42,.25); }
+    /* ── Modal (native <dialog>): centred card on desktop, bottom sheet on phones ── */
+    dialog.rarl-modal { padding:0; border:0; background:transparent; max-width:none; max-height:none; width:100%; height:100%; margin:0; overflow:visible; }
+    dialog.rarl-modal::backdrop { background:rgba(10,12,20,.55); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+    dialog.rarl-modal[open] { display:flex; align-items:flex-end; justify-content:center; }
+    .rarl-modal-panel { position:relative; width:100%; max-height:92dvh; overflow-y:auto; overscroll-behavior:contain; background:#fff; border-radius:1.5rem 1.5rem 0 0; box-shadow:0 -12px 48px rgba(0,0,0,.25); padding-bottom:env(safe-area-inset-bottom); }
+    .dark .rarl-modal-panel { background:#111827; }
+    .rarl-modal-panel::before { content:""; position:sticky; top:0; display:block; width:40px; height:5px; margin:8px auto -13px; border-radius:99px; background:rgba(127,127,127,.35); z-index:2; }
+    @media (min-width:640px) {
+      dialog.rarl-modal[open] { align-items:center; padding:2rem; }
+      .rarl-modal-panel { max-width:var(--modal-w, 40rem); max-height:88vh; border-radius:1.5rem; box-shadow:0 24px 80px rgba(0,0,0,.35); }
+      .rarl-modal-panel::before { display:none; }
+    }
+    dialog.rarl-modal[open] .rarl-modal-panel { animation:rarlSheetUp .28s cubic-bezier(.16,1,.3,1); }
+    @media (min-width:640px) { dialog.rarl-modal[open] .rarl-modal-panel { animation:rarlPopIn .22s cubic-bezier(.16,1,.3,1); } }
+    @keyframes rarlSheetUp { from { transform:translateY(40px); opacity:.6 } to { transform:none; opacity:1 } }
+    @keyframes rarlPopIn { from { transform:translateY(8px) scale(.98); opacity:0 } to { transform:none; opacity:1 } }
+    .rarl-modal-close { position:absolute; top:.75rem; inset-inline-end:.75rem; z-index:3; width:2.5rem; height:2.5rem; border-radius:999px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,.9); color:#111827; box-shadow:0 1px 4px rgba(0,0,0,.15); }
+    .dark .rarl-modal-close { background:rgba(31,41,55,.9); color:#f3f4f6; }
+    .rarl-modal-close:hover { background:#fff; }
+    body.rarl-modal-open { overflow:hidden; }
   </style>
+  <script>
+    // Modals: <dialog class="rarl-modal" id="x"> + any [data-modal="x"] trigger.
+    // Backdrop click and Escape close; the URL hash (#x) opens it on load so
+    // modals are linkable; focus returns to the trigger on close.
+    window.rarlModal = {
+      open: function (id, opener) {
+        var d = document.getElementById(id); if (!d || d.open) return;
+        d._opener = opener || document.activeElement; d.showModal(); document.body.classList.add('rarl-modal-open');
+        if (d.dataset.hash !== 'off' && location.hash !== '#' + id) history.replaceState(null, '', '#' + id);
+      },
+      close: function (d) { if (typeof d === 'string') d = document.getElementById(d); if (d && d.open) d.close(); }
+    };
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest && e.target.closest('[data-modal]');
+      if (t) { e.preventDefault(); rarlModal.open(t.dataset.modal, t); return; }
+      if (e.target.closest && e.target.closest('[data-modal-close]')) { rarlModal.close(e.target.closest('dialog')); return; }
+      if (e.target.tagName === 'DIALOG' && e.target.classList.contains('rarl-modal')) rarlModal.close(e.target);
+    });
+    document.addEventListener('close', function (e) {
+      var d = e.target; if (!d.classList || !d.classList.contains('rarl-modal')) return;
+      if (!document.querySelector('dialog.rarl-modal[open]')) document.body.classList.remove('rarl-modal-open');
+      if (location.hash === '#' + d.id) history.replaceState(null, '', location.pathname + location.search);
+      if (d._opener && d._opener.focus) d._opener.focus();
+    }, true);
+    function rarlOpenFromHash() { var id = decodeURIComponent(location.hash.slice(1)); var d = id && document.getElementById(id); if (d && d.classList.contains('rarl-modal')) rarlModal.open(id); }
+    document.addEventListener('DOMContentLoaded', rarlOpenFromHash);
+    window.addEventListener('hashchange', rarlOpenFromHash);
+  </script>
 </head>
 <body class="bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100 min-h-screen">
 HTML;
@@ -757,21 +854,8 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
         </div>';
 }
 
-// ── Install / migrations ────────────────────────────────────
-const RARL_MIGRATIONS = [
-    'schema.sql'                        => 'Base schema (members, certificates, settings, …)',
-    '002_v2_features.sql'               => 'v2 features (plans, OTP, community, ID cards, sections)',
-    '003_community_richtext.sql'        => 'Community rich-text posts + single photo upload',
-    '004_events_premium_directory.sql'  => 'Public events/RSVP, premium learning content, member directory',
-    '005_chapters_not_sections.sql'     => 'Consolidate "Section" terminology into "Chapter"',
-    '006_multi_email_accounts.sql'      => 'Multiple emails per account + temp-password / chair-account support',
-    '007_certificate_templates.sql'     => 'Uploadable ID card / certificate templates (HTML-based generation)',
-    '008_membership_certs_and_chapters.sql' => 'Membership certificates (nullable event_id, cert_type) + chapter-scoped announcements',
-    '009_admin_only_posts.sql'          => 'Seeds the "Robotics & Automation Research Lab (RARL) Team" system account admin posts are authored as',
-    '010_cv_url.sql'                    => 'Optional external CV/Resume link (e.g. Google Drive) alongside the local upload',
-    '012_email_queue.sql'               => 'Background email queue for bulk sends (certificates, newsletters, approvals)',
-    '013_announcement_controls.sql'     => 'Announcement call-to-action link and expiry date',
-];
+// ── Install / migrations — see migrations.php ──────────────
+require_once __DIR__ . '/migrations.php';
 
 function dbTablesExist(): bool {
     try {
@@ -780,34 +864,6 @@ function dbTablesExist(): bool {
     } catch (Throwable $e) {
         return false;
     }
-}
-
-function runSqlFile(PDO $pdo, string $path): array {
-    $sql = file_get_contents($path);
-    $sql = preg_replace('/^--.*$/m', '', $sql);
-    $statements = array_filter(array_map('trim', explode(';', $sql)));
-
-    $ran = 0;
-    foreach ($statements as $stmt) {
-        if ($stmt === '') continue;
-        $pdo->exec($stmt);
-        $ran++;
-    }
-    return ['ok' => true, 'statements' => $ran];
-}
-
-function runAllMigrations(): array {
-    $pdo = db();
-    $results = [];
-    foreach (array_keys(RARL_MIGRATIONS) as $file) {
-        $path = __DIR__ . '/sql/' . $file;
-        try {
-            $results[$file] = runSqlFile($pdo, $path);
-        } catch (PDOException $e) {
-            $results[$file] = ['ok' => false, 'error' => $e->getMessage()];
-        }
-    }
-    return $results;
 }
 
 // ── Admin login throttle (brute-force protection) ──────────
@@ -1061,6 +1117,10 @@ function memberNeedsAttention(array $member): bool {
 // The "Robotics & Automation Research Lab (RARL) Team" system account admin-authored feed posts are
 // attributed to (see sql/009_admin_only_posts.sql) — reuses community_posts'
 // existing member_id join instead of adding a parallel admin-post table.
+// SQL condition for real people: excludes internal accounts such as the
+// "RARL Team" account team posts are published as (…@rarl.internal).
+const REAL_MEMBER_SQL = "email NOT LIKE '%@rarl.internal'";
+
 function systemPosterMemberId(): ?int {
     static $id = null;
     if ($id === null) {
@@ -2064,6 +2124,119 @@ function completeApproval(int $memberId): void {
     issueMembershipCertificate($memberId);
 }
 
+// ── Language menu (Google Translate) ───────────────────────
+// Same approach as ULAB MMS: the choice is Google's own `googtrans` cookie,
+// and Google's widget script loads only once someone has picked a language
+// other than English, so English pages make no request to Google. Languages
+// follow where RARL's members are; each is named in its own script.
+const RARL_LANGUAGES = [
+    'en' => 'English',          'ar' => 'العربية',   'bn' => 'বাংলা',          'zh-CN' => '中文',
+    'fr' => 'Français',         'de' => 'Deutsch',  'hi' => 'हिन्दी',          'id' => 'Bahasa Indonesia',
+    'ja' => '日本語',            'ko' => '한국어',     'ms' => 'Bahasa Melayu',  'ne' => 'नेपाली',
+    'fa' => 'فارسی',            'pt' => 'Português', 'es' => 'Español',       'tr' => 'Türkçe',
+    'ur' => 'اردو',             'vi' => 'Tiếng Việt',
+];
+const RARL_RTL_LANGUAGES = ['ar', 'fa', 'ur'];
+
+// Runs in <head>: sets lang/dir before first paint, then (only when needed)
+// loads Google's widget, hides its banner/tooltips and keeps our fonts.
+function languageHeadJs(): string {
+    $codes = json_encode(array_keys(RARL_LANGUAGES));
+    $rtl   = json_encode(RARL_RTL_LANGUAGES);
+    return <<<HTML
+<script>
+(function () {
+  var CODES = {$codes}, RTL = {$rtl};
+  function current() { var m = document.cookie.match(/(?:^|;\s*)googtrans=([^;]*)/); var l = m ? decodeURIComponent(m[1]).split('/').pop() : 'en'; return CODES.indexOf(l) > -1 ? l : 'en'; }
+  var lang = current(), root = document.documentElement;
+  window.rarlLang = lang;
+  window.rarlSetLang = function (l) {
+    var host = location.hostname, parts = host.split('.'), domains = ['', host];
+    if (parts.length > 1) domains.push('.' + parts.slice(-2).join('.'));
+    domains.forEach(function (d) {
+      var dom = d ? '; domain=' + d : '';
+      document.cookie = l === 'en' ? 'googtrans=; path=/' + dom + '; expires=Thu, 01 Jan 1970 00:00:00 GMT'
+                                   : 'googtrans=/en/' + l + '; path=/' + dom + '; max-age=31536000; SameSite=Lax';
+    });
+    location.reload();
+  };
+  if (lang === 'en') return;
+  root.setAttribute('lang', lang);
+  if (RTL.indexOf(lang) > -1) root.setAttribute('dir', 'rtl');
+  var css = document.createElement('style');
+  css.textContent = '.goog-te-banner-frame,iframe.skiptranslate,body>.skiptranslate,#goog-gt-tt,.goog-te-balloon-frame,.goog-tooltip,.VIpgJd-ZVi9od-ORHb-OEVmcd,.VIpgJd-ZVi9od-aZ2wEe-wOHMyf,.VIpgJd-yAWNEb-L7lbkb,.VIpgJd-yAWNEb-hvhgNd{display:none!important}'
+    + 'body{top:0!important;position:static!important}'
+    + 'html.translated-ltr .rarl-keep,html.translated-rtl .rarl-keep{margin-inline:.25em}'
+    + '.goog-text-highlight,.VIpgJd-yAWNEb-VIpgJd-fmcmS-sn54Q,font{background:none!important;background-color:transparent!important;box-shadow:none!important}';
+  document.head.appendChild(css);
+  window.googleTranslateElementInit = function () {
+    if (window.google && google.translate) new google.translate.TranslateElement({pageLanguage: 'en', includedLanguages: CODES.join(','), autoDisplay: false}, 'google_translate_element');
+  };
+  document.addEventListener('DOMContentLoaded', function () {
+    // Keep the RARL name intact: Google otherwise "expands" the acronym.
+    var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT), hits = [];
+    for (var n = walker.nextNode(); n; n = walker.nextNode()) if (/\bRARL\b/.test(n.nodeValue) && !n.parentNode.closest('script,style,textarea,.notranslate')) hits.push(n);
+    hits.forEach(function (t) {
+      var frag = document.createDocumentFragment();
+      t.nodeValue.split(/(\bRARL\b)/).forEach(function (part) {
+        if (part === 'RARL') { var sp = document.createElement('span'); sp.className = 'notranslate rarl-keep'; sp.setAttribute('translate', 'no'); sp.textContent = part; frag.appendChild(sp); }
+        else if (part) frag.appendChild(document.createTextNode(part));
+      });
+      t.parentNode.replaceChild(frag, t);
+    });
+    var host = document.createElement('div'); host.id = 'google_translate_element'; host.hidden = true; document.body.appendChild(host);
+    var s = document.createElement('script'); s.src = 'https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit'; s.async = true;
+    document.body.appendChild(s);
+  });
+})();
+</script>
+HTML;
+}
+
+// The globe button + menu in the site header.
+function languageMenuHtml(): string {
+    $items = '';
+    foreach (RARL_LANGUAGES as $code => $name) {
+        $items .= '<li><button type="button" role="menuitemradio" data-lang="' . $code . '" lang="' . $code . '"'
+                . ' class="w-full flex items-center justify-between gap-3 px-4 py-2 text-sm text-start text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 focus-visible:bg-gray-50 dark:focus-visible:bg-gray-800">'
+                . '<span>' . $name . '</span><i class="fa-solid fa-check text-rarl-red text-xs" hidden></i></button></li>';
+    }
+    return <<<HTML
+<div class="relative notranslate" translate="no">
+  <button type="button" id="lang-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="lang-menu" title="Language" aria-label="Choose language"
+    class="h-10 px-2.5 flex items-center gap-1.5 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white">
+    <i class="fa-solid fa-language text-[17px]"></i><span id="lang-code" class="hidden lg:inline text-xs font-semibold uppercase">EN</span>
+  </button>
+  <div id="lang-menu" role="menu" aria-label="Language" hidden class="absolute end-0 top-[calc(100%+6px)] w-60 max-h-[70vh] overflow-y-auto bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl z-50 py-1.5">
+    <p class="px-4 pt-1.5 pb-2 text-[11px] text-gray-500 leading-snug">Machine translation by Google. The English text is the official version.</p>
+    <ul>{$items}</ul>
+  </div>
+</div>
+<script>
+(function () {
+  var b = document.getElementById('lang-btn'), m = document.getElementById('lang-menu'), cur = window.rarlLang || 'en';
+  document.getElementById('lang-code').textContent = cur.split('-')[0];
+  m.querySelectorAll('[data-lang]').forEach(function (el) {
+    var on = el.dataset.lang === cur; el.setAttribute('aria-checked', on ? 'true' : 'false'); el.querySelector('i').hidden = !on;
+    el.addEventListener('click', function () { if (el.dataset.lang !== cur) window.rarlSetLang(el.dataset.lang); else set(false); });
+  });
+  function items() { return Array.prototype.slice.call(m.querySelectorAll('[data-lang]')); }
+  function set(open) { m.hidden = !open; b.setAttribute('aria-expanded', open ? 'true' : 'false'); if (open) (m.querySelector('[aria-checked=true]') || items()[0]).focus(); }
+  b.addEventListener('click', function (e) { e.stopPropagation(); set(m.hidden); });
+  document.addEventListener('click', function (e) { if (!m.hidden && !m.contains(e.target)) set(false); });
+  m.addEventListener('keydown', function (e) {
+    var list = items(), i = list.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown') { e.preventDefault(); list[(i + 1) % list.length].focus(); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); list[(i - 1 + list.length) % list.length].focus(); }
+    else if (e.key === 'Home') { e.preventDefault(); list[0].focus(); }
+    else if (e.key === 'End') { e.preventDefault(); list[list.length - 1].focus(); }
+    else if (e.key === 'Escape' || e.key === 'Tab') { set(false); b.focus(); }
+  });
+})();
+</script>
+HTML;
+}
+
 // ── Shared nav ─────────────────────────────────────────────
 // Signed-in members get a portal bar (icon tabs + "Me" menu, like LinkedIn,
 // with an IEEE-style "Membership" area); visitors get the public nav. One
@@ -2114,7 +2287,8 @@ function publicNav(string $active = ''): string {
     $mainUrl  = MAIN_SITE_URL;
     $mark     = BRAND_MARK_PATH;
     $searchQ  = htmlspecialchars($_GET['q'] ?? '', ENT_QUOTES);
-    $themeBtn = '<button type="button" data-theme-toggle class="w-10 h-10 flex items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Switch light/dark theme" title="Switch light/dark theme"><i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i></button>';
+    $langMenu = languageMenuHtml();
+    $themeBtn = '<button type="button" data-theme-toggle class="hidden sm:flex w-10 h-10 items-center justify-center rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Switch light/dark theme" title="Switch light/dark theme"><i class="fa-solid fa-moon dark:hidden"></i><i class="fa-solid fa-sun hidden dark:inline"></i></button>';
     $menuItem = 'flex items-center gap-3 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 [&>i]:w-4 [&>i]:text-center [&>i]:text-gray-400';
 
     if ($isLoggedIn) {
@@ -2147,27 +2321,33 @@ function publicNav(string $active = ''): string {
     </div>
     <div class="border-t border-gray-100 dark:border-gray-800 py-1.5">
       <a href="profile.php#account" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-gear"></i> Settings &amp; privacy</a>
+      <button type="button" role="menuitem" data-install data-install-go hidden class="{$menuItem} w-full text-start"><i class="fa-solid fa-mobile-screen-button"></i> Install the RARL app</button>
+      <button type="button" role="menuitem" data-theme-toggle class="{$menuItem} w-full text-start"><i class="fa-solid fa-circle-half-stroke"></i> <span class="dark:hidden">Dark mode</span><span class="hidden dark:inline">Light mode</span></button>
       <a href="logout.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-right-from-bracket"></i> Sign out</a>
     </div>
   </div>
 </div>
 HTML;
         $mobileExtra = '<a href="profile.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-user w-5 text-center"></i>Profile &amp; settings</a>'
+                     . '<button type="button" data-install data-install-go hidden class="w-full flex items-center gap-3 px-4 py-3 text-sm text-start text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-mobile-screen-button w-5 text-center"></i>Install the RARL app</button>'
                      . '<a href="people.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-people-group w-5 text-center"></i>Leadership</a>'
                      . '<a href="logout.php" class="flex items-center gap-3 px-4 py-3 text-sm text-rarl-red"><i class="fa-solid fa-right-from-bracket w-5 text-center"></i>Sign out</a>';
     } else {
         $right = '<div class="flex items-center gap-2 pl-1">
             <a href="login.php" class="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full">Sign in</a>
-            <a href="register.php" class="inline-flex px-4 py-2 text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark rounded-full">Join RARL</a>
+            <a href="register.php" class="inline-flex whitespace-nowrap px-4 py-2 text-sm font-semibold text-white bg-rarl-red hover:bg-rarl-dark rounded-full"><span class="sm:hidden">Join</span><span class="hidden sm:inline">Join RARL</span></a>
           </div>';
         $mobileExtra = '<a href="people.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-people-group w-5 text-center"></i>Leadership</a>'
                      . '<a href="partners.php" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-handshake w-5 text-center"></i>Partner with us</a>'
+                     . '<button type="button" data-theme-toggle class="w-full flex items-center gap-3 px-4 py-3 text-sm text-start text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-800"><i class="fa-solid fa-circle-half-stroke w-5 text-center"></i><span class="dark:hidden">Dark mode</span><span class="hidden dark:inline">Light mode</span></button>'
                      . '<a href="login.php" class="flex items-center gap-3 px-4 py-3 text-sm font-semibold text-rarl-red"><i class="fa-solid fa-right-to-bracket w-5 text-center"></i>Sign in</a>';
     }
 
     // The "free membership ends soon — join now" urgency banner is a sales
     // message; members already joined, so they never see it.
     $banner = $isLoggedIn ? '' : freeMembershipBannerHtml();
+    $iosInstall = iosInstallModalHtml();
+    $burgerCls = $isLoggedIn ? 'hidden' : 'md:hidden';
     $viewAs = viewAsBannerHtml();
     $tabBarHtml = $isLoggedIn
         ? '<nav class="md:hidden fixed bottom-0 inset-x-0 z-40 flex bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-200 dark:border-gray-800 pb-[env(safe-area-inset-bottom)]" aria-label="Primary">' . $tabBar . '</nav>'
@@ -2181,7 +2361,7 @@ HTML;
   <div class="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center gap-3">
     <a href="{$homeHref}" class="flex items-center gap-2.5 flex-shrink-0" aria-label="RARL home">
       <img src="{$mark}" alt="" class="w-9 h-9 rounded-xl object-contain"/>
-      <span class="hidden xl:block font-heading font-bold text-sm text-gray-900 dark:text-white leading-tight">RARL<span class="block text-[11px] font-medium text-gray-500">Community</span></span>
+      <span class="hidden xl:block font-heading font-bold text-sm text-gray-900 dark:text-white leading-tight notranslate" translate="no">RARL<span class="block text-[11px] font-medium text-gray-500">Community</span></span>
     </a>
     <form action="search.php" method="GET" role="search" class="hidden sm:block flex-1 max-w-xs">
       <label class="relative block"><span class="sr-only">Search RARL</span>
@@ -2192,9 +2372,10 @@ HTML;
     <nav class="hidden md:flex items-stretch ml-auto" aria-label="Primary">{$nav}</nav>
     <div class="flex items-center ml-auto md:ml-2 md:pl-2 md:border-l border-gray-200 dark:border-gray-800">
       <a href="search.php" class="sm:hidden w-10 h-10 flex items-center justify-center rounded-full text-gray-500" aria-label="Search"><i class="fa-solid fa-magnifying-glass"></i></a>
+      {$langMenu}
       {$themeBtn}
       {$right}
-      <button type="button" id="mobile-nav-btn" aria-expanded="false" aria-controls="mobile-nav-panel" class="md:hidden w-10 h-10 flex items-center justify-center rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+      <button type="button" id="mobile-nav-btn" aria-expanded="false" aria-controls="mobile-nav-panel" class="{$burgerCls} w-10 h-10 flex items-center justify-center rounded-full text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
     </div>
   </div>
   <div id="mobile-nav-panel" hidden class="md:hidden bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 shadow-lg max-h-[70vh] overflow-y-auto">
@@ -2202,6 +2383,7 @@ HTML;
   </div>
 </header>
 {$tabBarHtml}
+{$iosInstall}
 <script>
 (function(){
   function wire(btnId, panelId, isMenu){
@@ -2215,6 +2397,28 @@ HTML;
 })();
 </script>
 <span id="main" tabindex="-1"></span>
+HTML;
+}
+
+// iOS has no install prompt: this guide shows the two taps instead.
+function iosInstallModalHtml(): string {
+    return <<<HTML
+<dialog class="rarl-modal" id="ios-install" data-hash="off" aria-labelledby="ios-install-t">
+  <div class="rarl-modal-panel" style="--modal-w:26rem">
+    <button type="button" class="rarl-modal-close" data-modal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    <div class="p-6 pt-8 text-center">
+      <img src="assets/icons/apple-touch-icon.png" alt="" class="w-16 h-16 rounded-2xl mx-auto shadow"/>
+      <h2 id="ios-install-t" class="font-heading font-bold text-xl text-gray-900 dark:text-white mt-4">Add RARL to your Home Screen</h2>
+      <p class="text-sm text-gray-500 mt-1">Opens full screen, like an app, and keeps your ID card and events handy, even offline.</p>
+      <ol class="text-start mt-5 space-y-3 text-[15px] text-gray-800 dark:text-gray-200">
+        <li class="flex gap-3 items-center"><span class="w-7 h-7 rounded-full bg-rarl-red text-white text-sm font-bold flex items-center justify-center flex-shrink-0">1</span><span>Tap <strong>Share</strong> <i class="fa-solid fa-arrow-up-from-bracket text-[#007aff]"></i> in Safari's toolbar</span></li>
+        <li class="flex gap-3 items-center"><span class="w-7 h-7 rounded-full bg-rarl-red text-white text-sm font-bold flex items-center justify-center flex-shrink-0">2</span><span>Choose <strong>Add to Home Screen</strong> <i class="fa-regular fa-square-plus"></i></span></li>
+        <li class="flex gap-3 items-center"><span class="w-7 h-7 rounded-full bg-rarl-red text-white text-sm font-bold flex items-center justify-center flex-shrink-0">3</span><span>Tap <strong>Add</strong></span></li>
+      </ol>
+      <button type="button" data-modal-close class="mt-6 w-full h-11 rounded-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-semibold">Got it</button>
+    </div>
+  </div>
+</dialog>
 HTML;
 }
 

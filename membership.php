@@ -61,17 +61,17 @@ echo htmlHead('My Membership');
 <?= publicNav('membership') ?>
 <div class="bg-[#f4f2ee] dark:bg-gray-950 min-h-screen">
   <div class="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
-    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-wrap items-center gap-4">
-      <?= memberAvatarHtml($m['avatar_path'], (string)$displayName, 'w-16 h-16 text-2xl') ?>
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-5 sm:py-6 flex items-center gap-3 sm:gap-4">
+      <?= memberAvatarHtml($m['avatar_path'], (string)$displayName, 'w-14 h-14 sm:w-16 sm:h-16 text-2xl') ?>
       <div class="flex-1 min-w-0">
         <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">My membership</p>
-        <h1 class="font-heading font-bold text-2xl text-gray-900 dark:text-white truncate"><?= $h($displayName) ?></h1>
+        <h1 class="font-heading font-bold text-xl sm:text-2xl text-gray-900 dark:text-white leading-tight line-clamp-2"><?= $h($displayName) ?></h1>
         <div class="flex flex-wrap items-center gap-2 mt-1 text-sm">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold <?= $statusChip[1] ?>"><i class="fa-solid <?= $statusChip[2] ?>"></i> <?= $statusChip[0] ?></span>
-          <?php if ($m['member_code']): ?><span class="font-mono text-gray-600 dark:text-gray-300">#<?= $h($m['member_code']) ?></span><?php endif; ?>
+          <?php if ($m['member_code']): ?><span class="font-mono whitespace-nowrap text-gray-600 dark:text-gray-300 notranslate" translate="no">#<?= $h($m['member_code']) ?></span><?php endif; ?>
         </div>
       </div>
-      <a href="profile.php" class="px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red"><i class="fa-solid fa-pen"></i> Edit profile</a>
+      <a href="profile.php" class="flex-shrink-0 w-11 h-11 sm:w-auto sm:h-auto sm:px-4 sm:py-2 inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red" aria-label="Edit profile"><i class="fa-solid fa-pen"></i><span class="hidden sm:inline">Edit profile</span></a>
     </div>
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-6 text-sm font-semibold text-gray-500 overflow-x-auto" aria-label="Sections">
       <a href="#overview" class="py-3 border-b-2 border-rarl-red text-gray-900 dark:text-white whitespace-nowrap">Overview</a>

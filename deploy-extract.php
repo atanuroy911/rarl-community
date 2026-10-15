@@ -48,3 +48,22 @@ if (function_exists('opcache_reset')) {
 }
 
 echo "Deployed " . date('c') . "\n";
+
+// Bring the database up to date with the code that was just unpacked, so a
+// deploy never needs a follow-up click in Admin → Database. Only pending
+// migrations run, and each is idempotent. A failure is reported here and to
+// admins as a banner, but doesn't fail the deploy: the files are in place.
+try {
+    require_once __DIR__ . '/functions.php';
+    if (!dbTablesExist()) {
+        echo "Database is empty — finish setup at /admin/ (first-run installer).\n";
+    } else {
+        $results = applyMigrations();
+        if (!$results) echo "Database already up to date.\n";
+        foreach ($results as $file => $r) {
+            echo ($r['ok'] ? "Migrated {$file} ({$r['statements']} changes, {$r['ms']} ms)" : "FAILED {$file}: {$r['error']}") . "\n";
+        }
+    }
+} catch (Throwable $e) {
+    echo "Migration step skipped: " . $e->getMessage() . "\n";
+}

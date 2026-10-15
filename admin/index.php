@@ -12,16 +12,15 @@ $q = function (string $sql, $default = 0) use ($pdo) { try { return $pdo->query(
 
 $s = $pdo->query("SELECT COUNT(*) total, SUM(status='active') active, SUM(status='pending') pending, SUM(type='lab') labs,
     SUM(newsletter_opt_in=1 AND status='active') newsletter, SUM(created_at >= NOW() - INTERVAL 30 DAY) new30,
-    SUM(created_at >= NOW() - INTERVAL 60 DAY AND created_at < NOW() - INTERVAL 30 DAY) prev30 FROM members")->fetch();
+    SUM(created_at >= NOW() - INTERVAL 60 DAY AND created_at < NOW() - INTERVAL 30 DAY) prev30 FROM members WHERE " . REAL_MEMBER_SQL)->fetch();
 $certCount   = (int)$q("SELECT COUNT(*) FROM certificates");
 $unsentCerts = (int)$q("SELECT COUNT(*) FROM certificates WHERE emailed_at IS NULL AND pdf_path IS NOT NULL");
 $failedMail  = (int)$q("SELECT COUNT(*) FROM email_queue WHERE status='failed'");
-$noChapter   = (int)$q("SELECT COUNT(*) FROM members WHERE status='active' AND section_id IS NULL");
-$noPhoto     = (int)$q("SELECT COUNT(*) FROM members WHERE status='active' AND (avatar_path IS NULL OR avatar_path='')");
+$noPhoto     = (int)$q("SELECT COUNT(*) FROM members WHERE status='active' AND (avatar_path IS NULL OR avatar_path='') AND " . REAL_MEMBER_SQL);
 $expiring    = (int)$q("SELECT COUNT(*) FROM members WHERE status='active' AND id_card_expires_at IS NOT NULL AND id_card_expires_at < DATE_ADD(CURDATE(), INTERVAL 60 DAY)");
 $chairless   = (int)$q("SELECT COUNT(*) FROM regional_sections WHERE is_published=1 AND (chair_name IS NULL OR chair_name='')");
 
-$pending = $pdo->query("SELECT id, full_name, lab_name, type, email, institution, country, avatar_path, created_at, email_verified_at FROM members WHERE status='pending' ORDER BY created_at ASC LIMIT 5")->fetchAll();
+$pending = $pdo->query("SELECT id, full_name, lab_name, type, email, institution, country, avatar_path, created_at, email_verified_at FROM members WHERE status='pending' AND " . REAL_MEMBER_SQL . " ORDER BY created_at ASC LIMIT 5")->fetchAll();
 $needAttendance = [];
 try { $needAttendance = $pdo->query("SELECT e.id, e.title, e.event_date, COUNT(r.id) open_regs FROM events e JOIN event_registrations r ON r.event_id = e.id AND r.status = 'registered'
     WHERE e.event_date < CURDATE() AND e.event_date >= CURDATE() - INTERVAL 60 DAY GROUP BY e.id ORDER BY e.event_date DESC LIMIT 3")->fetchAll(); } catch (Throwable $e) {}
@@ -33,13 +32,13 @@ try { $nextEvents = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_tim
 $weeks = [];
 for ($i = 11; $i >= 0; $i--) { $start = strtotime("monday this week -{$i} week"); $weeks[date('Y-m-d', $start)] = 0; }
 try {
-    foreach ($pdo->query("SELECT DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY)) wk, COUNT(*) n FROM members WHERE created_at >= CURDATE() - INTERVAL 12 WEEK GROUP BY wk") as $r) {
+    foreach ($pdo->query("SELECT DATE(DATE_SUB(created_at, INTERVAL WEEKDAY(created_at) DAY)) wk, COUNT(*) n FROM members WHERE created_at >= CURDATE() - INTERVAL 12 WEEK AND " . REAL_MEMBER_SQL . " GROUP BY wk") as $r) {
         if (isset($weeks[$r['wk']])) $weeks[$r['wk']] = (int)$r['n'];
     }
 } catch (Throwable $e) {}
-$recent = $pdo->query("SELECT id, full_name, lab_name, type, status, avatar_path, created_at FROM members ORDER BY created_at DESC LIMIT 6")->fetchAll();
+$recent = $pdo->query("SELECT id, full_name, lab_name, type, status, avatar_path, created_at FROM members WHERE " . REAL_MEMBER_SQL . " ORDER BY created_at DESC LIMIT 6")->fetchAll();
 
-adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter, $noPhoto, $expiring, $chairless, $pending, $needAttendance, $nextEvents, $weeks, $recent) {
+adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noPhoto, $expiring, $chairless, $pending, $needAttendance, $nextEvents, $weeks, $recent) {
     adminFlash();
     $name = fn($m) => ($m['type'] === 'lab' ? $m['lab_name'] : $m['full_name']) ?: ($m['email'] ?? '—');
     $todos = array_filter([
@@ -49,7 +48,6 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
         ...array_map(fn($e) => ['event-registrations.php?event=' . $e['id'], 'fa-clipboard-check', 'indigo', 'Mark attendance for “' . $e['title'] . '”', $e['open_regs'] . ' registrations still open since ' . date('d M', strtotime($e['event_date'])), 'Open'], $needAttendance),
         $expiring ? ['members.php?tab=attention', 'fa-id-card', 'amber', $expiring . ' ID card' . ($expiring == 1 ? '' : 's') . ' expiring within 60 days', 'Regenerate to extend them', 'View'] : null,
         $noPhoto ? ['members.php?tab=attention', 'fa-camera', 'gray', $noPhoto . ' active member' . ($noPhoto == 1 ? ' has' : 's have') . ' no photo, so no ID card yet', 'Their card is created automatically once they add one', 'View'] : null,
-        $noChapter ? ['members.php?tab=active&chapter=none', 'fa-earth-americas', 'gray', $noChapter . ' active member' . ($noChapter == 1 ? '' : 's') . ' without a chapter', 'Select all → Auto-assign chapter by country', 'Assign'] : null,
         $chairless ? ['sections.php', 'fa-crown', 'gray', $chairless . ' chapter' . ($chairless == 1 ? '' : 's') . ' without a chair', 'Leadership keeps chapters active', 'View'] : null,
     ]);
     $tones = ['amber' => 'bg-amber-100 text-amber-700', 'red' => 'bg-red-100 text-red-700', 'blue' => 'bg-blue-100 text-blue-700', 'indigo' => 'bg-indigo-100 text-indigo-700', 'gray' => 'bg-gray-100 text-gray-600'];
@@ -128,7 +126,7 @@ adminWrap(function() use ($s, $certCount, $unsentCerts, $failedMail, $noChapter,
         <a href="members.php?tab=pending&sort=oldest&review=1" class="flex items-center gap-3 px-5 py-3 hover:bg-gray-50">
           <?= memberAvatarHtml($m['avatar_path'] ?? null, $name($m), 'w-9 h-9 text-sm') ?>
           <span class="flex-1 min-w-0"><span class="block text-sm font-semibold text-gray-900 truncate"><?= ex($name($m)) ?></span><span class="block text-[11px] text-gray-500 truncate"><?= ex(trim(($m['institution'] ?? '') . ($m['country'] ? ' · ' . $m['country'] : ''), ' ·')) ?></span></span>
-          <span class="text-[11px] text-gray-400 whitespace-nowrap"><?= (int)floor((time() - strtotime($m['created_at'])) / 86400) ?>d ago</span>
+          <span class="text-[11px] text-gray-400 whitespace-nowrap"><?= ($d = (int)floor((time() - strtotime($m['created_at'])) / 86400)) === 0 ? 'today' : ($d === 1 ? 'yesterday' : $d . ' days ago') ?></span>
         </a>
         <?php endforeach; ?>
       </div>

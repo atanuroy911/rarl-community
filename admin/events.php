@@ -135,7 +135,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
   <form method="GET" class="relative">
     <input type="hidden" name="tab" value="<?= ex($tab) ?>">
     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-    <input type="search" name="q" value="<?= ex($q) ?>" placeholder="Search events…" class="rarl-input !pl-8 !w-64"/>
+    <input type="search" name="q" value="<?= ex($q) ?>" placeholder="Search events…" class="rarl-input !pl-8 w-full sm:!w-64"/>
   </form>
 </div>
 
@@ -201,11 +201,11 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
       <?php if ($isPast && empty($e['recording_url'])): ?>
       <button type="button" class="text-left text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-2 hover:bg-amber-100" data-edit-event="<?= (int)$e['id'] ?>" data-focus="ev_recording"><i class="fa-solid fa-film"></i> Add the recording link for members</button>
       <?php endif; ?>
-      <div class="flex items-center gap-1.5 mt-auto pt-1">
+      <div class="flex flex-wrap items-center gap-1.5 mt-auto pt-1">
         <a href="event-registrations.php?event=<?= $e['id'] ?>" class="rarl-btn rarl-btn-sm rarl-btn-dark"><i class="fa-solid fa-users"></i> Attendees</a>
         <button type="button" class="rarl-btn rarl-btn-sm" data-edit-event="<?= (int)$e['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</button>
         <div class="ml-auto flex">
-          <button type="button" class="rarl-icon-btn" data-copy="<?= ex(SITE_URL . '/events.php') ?>" title="Copy public events link"><i class="fa-solid fa-link"></i></button>
+          <button type="button" class="rarl-icon-btn" data-copy="<?= ex(SITE_URL . '/events.php#event-' . (int)$e['id']) ?>" title="Copy link to this event (opens its details)"><i class="fa-solid fa-link"></i></button>
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="duplicate_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><button class="rarl-icon-btn" title="Duplicate" data-no-loading><i class="fa-solid fa-copy"></i></button></form>
           <form method="POST"><?= acsrfField() ?><input type="hidden" name="action" value="toggle_active"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= ex($tab) ?>"><button class="rarl-icon-btn" title="<?= $e['is_active'] ? 'Hide from members' : 'Publish' ?>" data-no-loading><i class="fa-solid <?= $e['is_active'] ? 'fa-eye-slash' : 'fa-eye' ?>"></i></button></form>
           <form method="POST" data-confirm="Delete “<?= ex($e['title']) ?>”? This removes its <?= (int)$e['reg_count'] ?> registration(s) too. Issued certificates stay valid."><?= acsrfField() ?><input type="hidden" name="action" value="delete_event"><input type="hidden" name="ev_id" value="<?= $e['id'] ?>"><input type="hidden" name="return_tab" value="<?= ex($tab) ?>"><button class="rarl-icon-btn danger" title="Delete"><i class="fa-solid fa-trash-can"></i></button></form>

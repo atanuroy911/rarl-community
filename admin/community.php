@@ -213,13 +213,12 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
 </div>
 
 <?php elseif ($tab === 'announcements'): ?>
-<div class="grid xl:grid-cols-[420px_minmax(0,1fr)] gap-6 items-start">
-  <form method="POST" class="rarl-card p-6 space-y-4 xl:sticky xl:top-6" id="ann-form">
+<dialog class="rarl-amodal" id="ann-modal" aria-labelledby="ann-modal-t" style="--modal-w:600px"<?= ($edit || !empty($_GET['new'])) ? ' data-autoopen' : '' ?>>
+  <form method="POST" class="rarl-amodal-form" id="ann-form">
     <?= acsrfField() ?><input type="hidden" name="action" value="save_announcement"><input type="hidden" name="ann_id" value="<?= (int)($edit['id'] ?? 0) ?>">
-    <div class="flex items-start justify-between gap-3">
-      <div><h2 class="rarl-card-title"><?= $edit ? 'Edit announcement' : 'New announcement' ?></h2><p class="text-xs text-[color:var(--muted-fg)] mt-0.5">Shown on every member's Home feed and the Updates page.</p></div>
-      <?php if ($edit): ?><a href="community.php?tab=announcements" class="rarl-btn rarl-btn-sm">Cancel</a><?php endif; ?>
-    </div>
+    <div class="rarl-amodal-head"><div class="flex-1 min-w-0"><h2 id="ann-modal-t"><?= $edit ? 'Edit announcement' : 'New announcement' ?></h2><p>Shown on every member's Home feed and the Updates page.</p></div>
+      <button type="button" class="rarl-icon-btn" data-amodal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="rarl-amodal-body space-y-4">
     <div>
       <label class="rarl-label" for="ann_title">Title</label>
       <input id="ann_title" name="ann_title" required maxlength="200" class="rarl-input" value="<?= ex($edit['title'] ?? '') ?>" placeholder="e.g. Call for papers: RARL Symposium"/>
@@ -252,19 +251,26 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
     <p class="text-xs p-3 rounded-[var(--radius)] bg-amber-50 text-amber-800"><i class="fa-solid fa-circle-info"></i> Run <a class="underline font-semibold" href="migrate.php">migration 013</a> to add call-to-action buttons and auto-expiry.</p>
     <?php endif; ?>
     <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="ann_pinned" value="1" <?= !empty($edit['is_pinned']) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> <i class="fa-solid fa-thumbtack text-amber-600"></i> Pin above everything else</label>
-    <div class="flex flex-wrap justify-end gap-2 pt-2 border-t border-[color:var(--border)]">
+    </div>
+    <div class="rarl-amodal-foot">
+      <button type="button" class="rarl-btn me-auto" data-amodal-close>Cancel</button>
       <button name="publish" value="0" class="rarl-btn">Save as draft</button>
       <button name="publish" value="1" class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-bullhorn"></i> <?= $edit && $edit['is_published'] ? 'Update' : 'Publish' ?></button>
     </div>
   </form>
+</dialog>
+<script>document.getElementById('ann-modal').addEventListener('close', function () { if (/[?&](edit|new)=/.test(location.search)) history.replaceState(null, '', 'community.php?tab=announcements'); });</script>
 
   <div class="rarl-card overflow-hidden">
-    <div class="px-5 py-4 border-b border-[color:var(--border)] flex items-center justify-between gap-3">
+    <div class="px-5 py-4 border-b border-[color:var(--border)] flex flex-wrap items-center justify-between gap-3">
       <h2 class="rarl-card-title">All announcements <span class="font-normal text-[color:var(--muted-fg)]"><?= count($announcements) ?></span></h2>
-      <?php if ($announcements): ?><label class="flex items-center gap-1.5 text-xs text-[color:var(--muted-fg)]"><?= bulkSelectAllCheckbox('ann') ?> Select all</label><?php endif; ?>
+      <div class="flex items-center gap-3">
+        <?php if ($announcements): ?><label class="flex items-center gap-1.5 text-xs text-[color:var(--muted-fg)]"><?= bulkSelectAllCheckbox('ann') ?> Select all</label><?php endif; ?>
+        <a href="community.php?tab=announcements&new=1" class="rarl-btn rarl-btn-sm rarl-btn-primary"><i class="fa-solid fa-plus"></i> New announcement</a>
+      </div>
     </div>
     <?php if (!$announcements): ?>
-    <div class="rarl-empty"><i class="fa-solid fa-bullhorn text-2xl mb-2 block"></i>No announcements yet. Write your first one on the left.</div>
+    <div class="rarl-empty"><i class="fa-solid fa-bullhorn text-2xl mb-2 block"></i>No announcements yet. <a class="underline font-semibold" href="community.php?tab=announcements&new=1">Write the first one</a>.</div>
     <?php else: ?>
     <?= bulkFormOpen('ann', ['bulk_group' => 'announcements']) ?>
     <?= bulkBar([
@@ -307,7 +313,6 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
     </ul>
     <?php endif; ?>
   </div>
-</div>
 
 <?php elseif ($tab === 'moderation'): ?>
 <div class="grid grid-cols-1 <?= $comments ? 'xl:grid-cols-2' : '' ?> gap-6">
