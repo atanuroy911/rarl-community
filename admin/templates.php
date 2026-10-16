@@ -205,7 +205,21 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
   <button type="button" onclick="document.getElementById('new-tpl').showModal()" class="px-4 py-2 bg-rarl-red text-white text-sm font-semibold rounded-xl">Create your first template</button>
 </div>
 <?php else: ?>
-<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5" id="tpl-grid">
+<div class="flex items-center justify-end gap-3 mb-3 text-sm text-gray-600">
+  <label for="tpl-size" class="flex items-center gap-2"><i class="fa-solid fa-image text-xs"></i> Thumbnail size</label>
+  <input type="range" id="tpl-size" min="180" max="560" step="20" value="320" class="w-40 accent-rarl-red">
+  <i class="fa-solid fa-image text-lg"></i>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const r = document.getElementById('tpl-size'), g = document.getElementById('tpl-grid');
+  if (!r || !g) return;
+  try { const v = localStorage.getItem('rarl_tpl_size'); if (v) r.value = v; } catch (e) {}
+  const set = () => { g.style.setProperty('--tpl-w', r.value + 'px'); try { localStorage.setItem('rarl_tpl_size', r.value); } catch (e) {} };
+  r.addEventListener('input', set); set();
+});
+</script>
+<div class="grid gap-5" id="tpl-grid" style="grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--tpl-w,320px)),1fr))">
   <?php foreach ($templates as $t): $nFields = count(json_decode($t['config'] ?: '[]', true) ?: []); $used = $usage[(int)$t['id']] ?? 0; ?>
   <div class="tpl-card group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col" data-type="<?= ex($t['type']) ?>">
     <a href="templates.php?edit=<?= $t['id'] ?>" class="block relative bg-[repeating-conic-gradient(#f3f4f6_0_25%,#fff_0_50%)] bg-[length:16px_16px] p-4">

@@ -37,6 +37,18 @@ function premadeTemplates(): array {
                 $qr(4.2, 73, 20),
                 $t('Certificate {cert_no}', 4.2, 93.3, 7, ['align' => 'left', 'color' => '#666666']),
             ])],
+        'webinar-aischolar' => ['name' => 'Webinar — RARL × AiScholar', 'type' => 'certificate', 'bg' => 'cert-webinar-aischolar.jpg', 'w' => 297, 'h' => 167.06,
+            'config' => array_merge([
+                $t('CERTIFICATE OF PARTICIPATION', 50, 21, 26, ['font' => 'playfair', 'color' => '#0d1b4b']),
+                $t('International Webinar 2026', 50, 27.5, 15, ['font' => 'playfair', 'color' => '#c8102e']),
+                $t('PROUDLY PRESENTED TO', 50, 38.5, 9, ['bold' => true, 'color' => '#3b4a63']),
+                $k('name', 50, 42.5, 38, ['font' => 'script', 'color' => '#0d1b4b', 'max_width' => 180]),
+                $t($para, 50, 54, 11.5, ['wrap' => true, 'max_width' => 170, 'color' => '#24324f']),
+                $k('date', 50, 61, 10.5, ['color' => '#24324f']),
+            ], $sig(31, 69, 'Amin Kolahdooz', 'Europe Chapter Chair', '#0d1b4b'), $sig(69, 69, PRESIDENT_NAME, 'RARL President', '#0d1b4b'), [
+                $qr(47.5, 69, 15),
+                $t('No. {cert_no}', 50, 79, 6.5, ['color' => '#3b4a63']),
+            ])],
         'navy-classic' => ['name' => 'Navy & Gold — Classic', 'type' => 'certificate', 'bg' => 'cert-navy-classic.jpg', 'w' => 297, 'h' => 210,
             'config' => array_merge([
                 $t('Certificate', 50, 23, 50, ['font' => 'playfair', 'color' => '#14213f']),
