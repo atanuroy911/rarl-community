@@ -514,6 +514,7 @@ function adminSidebar(string $active = ''): void {
             'newsletter'   => ['newsletter.php',     '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
             'compose'      => ['compose-email.php',  '<i class="fa-solid fa-envelope-open-text"></i>', 'Send email'],
             'email-queue'  => ['email-queue.php',    '<i class="fa-solid fa-paper-plane"></i>', 'Outbox'],
+            'email-check'  => ['email-check.php',    '<i class="fa-solid fa-stethoscope"></i>', 'Email check'],
         ],
         'Settings' => [
             'settings'     => ['settings.php',       '<i class="fa-solid fa-gear"></i>', 'Settings'],

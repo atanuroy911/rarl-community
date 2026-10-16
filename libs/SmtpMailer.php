@@ -12,6 +12,8 @@ class SmtpMailer {
     private string $pass;
     private string $secure; // 'tls' (STARTTLS) or 'ssl' (implicit TLS)
     private int $timeout;
+    /** SMTP conversation of the last send (password hidden), for the admin Email check. */
+    public array $log = [];
 
     public function __construct(string $host, int $port, string $user, string $pass, string $secure = 'tls', int $timeout = 15) {
         $this->host = $host;
@@ -28,6 +30,7 @@ class SmtpMailer {
      */
     public function send(string $fromEmail, string $fromName, string $to, string $toName, string $subject, string $htmlBody, array $attachments = []): void {
         $transport = $this->secure === 'ssl' ? 'ssl://' . $this->host : $this->host;
+        $this->log = [];
         $sock = @stream_socket_client("{$transport}:{$this->port}", $errno, $errstr, $this->timeout);
         if (!$sock) throw new RuntimeException("Connection failed: {$errstr} ({$errno})");
         stream_set_timeout($sock, $this->timeout);
@@ -74,6 +77,7 @@ class SmtpMailer {
             'To: ' . self::encodeHeader($toName) . " <{$to}>",
             'Subject: ' . self::encodeHeader($subject),
             'Date: ' . date('r'),
+            'Message-ID: <' . bin2hex(random_bytes(12)) . '@' . (substr((string)strrchr($fromEmail, '@'), 1) ?: 'localhost') . '>',
             'X-Mailer: RARL-SmtpMailer',
         ];
 
@@ -123,6 +127,7 @@ class SmtpMailer {
             $line = $this->readLine($sock);
             $response .= $line;
         } while (isset($line[3]) && $line[3] === '-');
+        $this->log[] = 'S: ' . trim($response);
         $code = substr($response, 0, 3);
         if (!in_array($code, $codes, true)) {
             throw new RuntimeException("SMTP error, expected " . implode('/', $codes) . ", got: {$response}");
@@ -131,6 +136,8 @@ class SmtpMailer {
     }
 
     private function command($sock, string $cmd, string|array $expectCodes): string {
+        $shown = str_contains($cmd, "\r\n") ? '[message ' . strlen($cmd) . ' bytes]' : ($this->pass !== '' && $cmd === base64_encode($this->pass) ? '[password]' : $cmd);
+        $this->log[] = 'C: ' . $shown;
         fwrite($sock, $cmd . "\r\n");
         return $this->expect($sock, $expectCodes);
     }

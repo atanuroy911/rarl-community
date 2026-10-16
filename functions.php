@@ -347,7 +347,11 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
     if (SMTP_HOST !== '') {
         try {
             $mailer = new SmtpMailer(SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_SECURE);
-            $mailer->send(MAIL_FROM_EMAIL, MAIL_FROM_NAME, $to, $toName, $subject, $htmlBody, $attachments);
+            try {
+                $mailer->send(MAIL_FROM_EMAIL, MAIL_FROM_NAME, $to, $toName, $subject, $htmlBody, $attachments);
+            } finally {
+                $GLOBALS['rarl_mail_log'] = $mailer->log;
+            }
             return true;
         } catch (Throwable $e) {
             error_log('SMTP send failed: ' . $e->getMessage());
@@ -361,7 +365,14 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
     // header set to avoid duplicates, keep the rest (Content-Type, From, etc.)
     $headers = array_values(array_filter($headers, fn($h) => !str_starts_with($h, 'Subject:') && !str_starts_with($h, 'To:')));
     $headers[] = 'Reply-To: ' . MAIL_REPLY_TO;
-    return @mail($to, $subject, $body, implode("\r\n", $headers));
+    // -f sets the envelope sender (Return-Path) to our own address. Without it the
+    // host uses its server account, so SPF/DMARC don't line up with the From
+    // domain and Gmail/Outlook quietly spam or drop the mail, while mail() still
+    // reports success.
+    $params = filter_var(MAIL_FROM_EMAIL, FILTER_VALIDATE_EMAIL) ? '-f' . MAIL_FROM_EMAIL : '';
+    $ok = @mail($to, $subject, $body, implode("\r\n", $headers), $params);
+    if (!$ok) $GLOBALS['rarl_mail_error'] = 'PHP mail() was refused by the server' . (($le = error_get_last()) ? ': ' . $le['message'] : '');
+    return $ok;
 }
 
 // ── Background email queue ─────────────────────────────────
