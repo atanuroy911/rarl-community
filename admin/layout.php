@@ -495,6 +495,7 @@ function adminSidebar(string $active = ''): void {
         'Members' => [
             'members'      => ['members.php',        '<i class="fa-solid fa-users"></i>', 'Members'],
             'publications' => ['publications.php',   '<i class="fa-solid fa-file-lines"></i>', 'Research'],
+            'member-check' => ['member-check.php',   '<i class="fa-solid fa-list-check"></i>', 'Check a list'],
             'import'       => ['import-members.php', '<i class="fa-solid fa-file-import"></i>', 'Import'],
             'sections'     => ['sections.php',       '<i class="fa-solid fa-sitemap"></i>', 'Chapters'],
         ],

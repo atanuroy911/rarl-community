@@ -1105,6 +1105,30 @@ John Doe,john@lab.org"
       data.map(r => '<tr class="' + (r.ok ? '' : 'bg-red-50/60') + '"><td class="px-2.5 py-1.5 text-gray-800">' + (esc(r.name) || '<em class="text-gray-400">—</em>') + '</td><td class="px-2.5 py-1.5 text-gray-500 truncate max-w-[140px]">' + esc(r.email) + '</td><td class="px-2 py-1.5 text-right">' + (r.ok ? '<i class="fa-solid fa-check text-green-500"></i>' : '<span class="text-red-600">' + r.why + '</span>') + '</td></tr>').join('') +
       '</tbody></table></div><p class="text-[10px] text-gray-400 mt-1.5">People who already have a certificate for this event are skipped automatically.</p>';
     pastePrev.innerHTML = html; pastePrev.classList.remove('hidden');
+    markMembers(data.filter(r => r.ok));
+  }
+  // Tag rows that belong to registered members (via Check a list).
+  let memberReq = 0;
+  async function markMembers(list) {
+    const id = ++memberReq;
+    if (!list.length) return;
+    const fd = new FormData();
+    fd.append('acsrf', document.querySelector('#issue-form [name=acsrf]').value);
+    fd.append('json', '1');
+    fd.append('list', list.map(r => r.email).join('
+'));
+    let res;
+    try { res = await (await fetch('member-check.php', {method: 'POST', body: fd})).json(); } catch (e) { return; }
+    if (id !== memberReq) return;
+    const st = {}; res.forEach(r => st[r.email] = r.status);
+    let n = 0;
+    pastePrev.querySelectorAll('tbody tr').forEach(tr => {
+      const td = tr.children[1], s = st[(td?.textContent || '').trim().toLowerCase()];
+      if (!s) return;
+      n++;
+      td.insertAdjacentHTML('beforeend', ' <span class="ml-1 px-1.5 rounded-full text-[10px] font-semibold ' + (s === 'active' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700') + '">' + (s === 'active' ? 'Member' : s) + '</span>');
+    });
+    pastePrev.querySelector('div')?.insertAdjacentHTML('beforeend', '<span class="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 font-semibold">' + n + ' registered · ' + (list.length - n) + ' not</span>');
   }
   pasteArea?.addEventListener('input', () => { clearTimeout(pasteTimer); pasteTimer = setTimeout(() => previewPaste(pasteArea.value), 350); });
 
