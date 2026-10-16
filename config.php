@@ -18,8 +18,8 @@ define('DB_CHARSET', 'utf8mb4');
 // ── Site ───────────────────────────────────────────────────
 define('SITE_NAME',       env('SITE_NAME', 'Robotics & Automation Research Lab (RARL)'));
 define('SITE_TAGLINE',    env('SITE_TAGLINE', 'Robotics & Automation Research Lab'));
-define('SITE_URL',        env('SITE_URL', 'https://rarl-lab.com/membership'));
-define('MAIN_SITE_URL',   env('MAIN_SITE_URL', 'https://rarl-lab.com'));
+define('SITE_URL',        env('SITE_URL', 'https://community.rarl-lab.com/membership'));
+define('MAIN_SITE_URL',   env('MAIN_SITE_URL', 'https://community.rarl-lab.com'));
 define('UPLOADS_PATH',    __DIR__ . '/uploads');
 define('UPLOADS_URL',     SITE_URL . '/uploads');
 

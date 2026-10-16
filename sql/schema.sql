@@ -166,7 +166,7 @@ INSERT INTO `settings` (`key`, `value`) VALUES
 ('community_guidelines','Welcome to the Robotics & Automation Research Lab (RARL). Please be respectful and collaborative.'),
 ('site_name',           'Robotics & Automation Research Lab (RARL)'),
 ('site_tagline',        'Robotics & Automation Research Lab'),
-('site_url',            'https://rarl-lab.com/membership'),
+('site_url',            'https://community.rarl-lab.com/membership'),
 ('require_approval',    '1'),
 ('cert_id_prefix',      'RARL'),
 ('cert_id_counter',     '0')

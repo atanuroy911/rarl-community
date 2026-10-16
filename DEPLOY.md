@@ -26,7 +26,7 @@ In cPanel → **MySQL Databases**:
 ## 2. Upload the files
 
 Decide where this app lives relative to `rarl-lab.com`:
-- **Subfolder** (matches the current default config, `https://rarl-lab.com/membership`):
+- **Subfolder** (matches the current default config, `https://community.rarl-lab.com/membership`):
   upload everything into `public_html/membership/`.
 - **Subdomain** (e.g. `community.rarl-lab.com`): create the subdomain in cPanel, then
   upload into its document root, and change `SITE_URL`/`CERT_VERIFY_URL` in `config.php`
@@ -59,7 +59,7 @@ it in place and deletes the zip. One file over the wire instead of hundreds.
    - `CPANEL_FTP_PASSWORD`
    - `CPANEL_FTP_SERVER_DIR` — the remote path, e.g. `public_html/membership/`
    - `CPANEL_SITE_URL` — the public URL the app is served at, e.g.
-     `https://rarl-lab.com/membership` (used to call `deploy-extract.php` after upload)
+     `https://community.rarl-lab.com/membership` (used to call `deploy-extract.php` after upload)
    - `DEPLOY_TOKEN` — the value generated in step 2
 4. Add the **same** `DEPLOY_TOKEN` value to the server's `.env` (see step 3 below) —
    `deploy-extract.php` compares the token in the request against this before

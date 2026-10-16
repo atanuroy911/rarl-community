@@ -98,7 +98,7 @@ echo htmlHead('Join the Robotics & Automation Research Lab (RARL)', false, ['des
 
 <script src="https://unpkg.com/lottie-web@5.12.2/build/player/lottie.min.js"></script>
 <script>
-  <?php $lottieJson = getLottieJson('https://rarl-lab.com/wp-content/uploads/2026/03/Anima-Bot.json'); ?>
+  <?php $lottieJson = getLottieJson('https://community.rarl-lab.com/wp-content/uploads/2026/03/Anima-Bot.json'); ?>
   <?php if ($lottieJson): ?>
   lottie.loadAnimation({
     container: document.getElementById('rarl-hero-lottie'),
