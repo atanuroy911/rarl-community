@@ -6,7 +6,7 @@ require_once __DIR__ . '/functions.php';
 if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); session_start(); }
 if (!membershipEnabled()) renderMembershipPausedPageAndExit('Join');
 if (!empty($_SESSION['member_id'])) redirect('dashboard.php');
-if (!registrationsOpen()) redirect('register.php');
+if (!canRegister()) redirect('register.php');
 
 $errors = []; $vals = [];
 
@@ -154,7 +154,7 @@ echo htmlHead('Research Lab Registration');
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
           <label class="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Contact Email <span class="text-rarl-red">*</span></label>
-          <input type="email" name="email" value="<?= ex($vals['email'] ?? '') ?>" required
+          <input type="email" name="email" value="<?= ex($vals['email'] ?? ($_SESSION['invite_email'] ?? '')) ?>" required
             placeholder="lab@university.edu" class="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red transition"/>
         </div>
         <div>

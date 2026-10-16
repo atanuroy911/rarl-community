@@ -119,6 +119,19 @@ function certSendEmail(PDO $pdo, array $c, ?string $batch = null): void {
     }
 }
 
+/** Emails a "join RARL" invite to a certificate recipient who is not a member. Returns false if they already are. */
+function certInvite(PDO $pdo, array $c, ?string $batch = null): bool {
+    $chk = $pdo->prepare('SELECT 1 FROM members WHERE email = ?'); $chk->execute([$c['recipient_email']]);
+    if ($chk->fetchColumn()) return false;
+    $memberName = properName($c['recipient_name']);
+    $eventTitle = $c['event_title'] ?? '';
+    $inviteUrl  = inviteUrl($c['recipient_email']);
+    ob_start(); require dirname(__DIR__) . '/emails/member-invite.php'; $body = ob_get_clean();
+    $subject = "You're invited to join RARL";
+    return $batch ? queueEmail($batch, 'Member invites', $c['recipient_email'], $memberName, $subject, $body)
+                  : sendEmail($c['recipient_email'], $memberName, $subject, $body);
+}
+
 // Issues one event certificate. Returns 'issued', 'duplicate' or 'invalid'.
 function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $templateId, bool $send, ?string $batch = null): string {
     if (!$name || !filter_var($email, FILTER_VALIDATE_EMAIL)) return 'invalid';
@@ -369,6 +382,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: ' . $back); exit;
     }
 
+    if ($action === 'invite_cert') {
+        $c = certFetch($pdo, [$_POST['cert_id'] ?? 0])[0] ?? null;
+        $_SESSION['flash'] = $c && certInvite($pdo, $c)
+            ? ['type'=>'success','msg'=>'Invitation sent to ' . $c['recipient_email'] . '.']
+            : ['type'=>'error','msg'=>'Already a member, so no invite was sent.'];
+        header('Location: ' . $back); exit;
+    }
+
     // Regenerate: keep each certificate's design, or replace it with a chosen one.
     $newTpl = null;
     if (($_POST['regen_mode'] ?? '') === 'new') {
@@ -407,6 +428,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         @set_time_limit(0);
         if (!$rows) {
             $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one certificate first.'];
+        } elseif ($bulkOp === 'invite') {
+            $batch = 'invite-' . date('YmdHis'); $sent = 0; $seen = [];
+            foreach ($rows as $c) {
+                $k = strtolower($c['recipient_email']);
+                if (isset($seen[$k])) continue; $seen[$k] = true;
+                if (certInvite($pdo, $c, $batch)) $sent++;
+            }
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} invitation(s)" . ($sent < count($seen) ? ' — existing members were skipped.' : '.')];
         } elseif ($bulkOp === 'zip') {
             if (certZipDownload($rows, count($rows) . ' selected')) exit;
             $_SESSION['flash'] = ['type'=>'error','msg'=>'None of the selected certificates have a PDF yet.'];
@@ -440,7 +469,7 @@ $pages = max(1, (int)ceil($total / $perPage));
 $page  = min($page, $pages);
 // Grouping sorts by the group first so each group's rows sit together.
 $order = ($groupBy === 'event' ? 'COALESCE(e.title, \'~\') ASC, ' : ($groupBy === 'status' ? '(c.pdf_path IS NULL) DESC, (c.emailed_at IS NULL) DESC, ' : '')) . CERT_SORTS[$sort][1];
-$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$ws} ORDER BY {$order} LIMIT " . $perPage . " OFFSET " . (($page - 1) * $perPage));
+$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date, COALESCE(mi.status, me.status) AS member_status FROM certificates c LEFT JOIN events e ON c.event_id = e.id LEFT JOIN members mi ON mi.id = c.member_id LEFT JOIN members me ON c.member_id IS NULL AND me.email = c.recipient_email {$ws} ORDER BY {$order} LIMIT " . $perPage . " OFFSET " . (($page - 1) * $perPage));
 $stmt->execute($params);
 $certificates = $stmt->fetchAll();
 $templates    = $pdo->query("SELECT * FROM certificate_templates WHERE type = 'certificate' ORDER BY is_default DESC, id DESC")->fetchAll();
@@ -693,6 +722,7 @@ John Doe,john@lab.org"
       <div class="px-4 pt-3"><?= bulkBar([
           ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
           ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','confirm'=>'Email the selected certificates again, including ones already sent?'],
+          ['label'=>'<i class="fa-solid fa-user-plus"></i> Invite non-members','op'=>'invite','class'=>'bg-green-700 hover:bg-green-600','confirm'=>'Email a personal join link to the selected people who are not members yet? Existing members are skipped.'],
           ['label'=>'<i class="fa-solid fa-file-zipper"></i> Download ZIP','op'=>'zip','class'=>'bg-gray-700 hover:bg-gray-600','no_loading'=>true],
           ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','attrs'=>'data-regen-bulk'],
           ['label'=>'<i class="fa-solid fa-trash"></i> Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete the selected certificates? Their PDFs are removed and their verification links stop working. This cannot be undone.'],
@@ -705,13 +735,14 @@ John Doe,john@lab.org"
               <th class="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Recipient</th>
               <th class="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Certificate · Issued</th>
               <th class="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Event</th>
+              <th class="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Membership</th>
               <th class="text-left px-3 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Status</th>
               <th class="text-right px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-gray-500">Actions</th>
             </tr>
           </thead>
           <tbody class="divide-y divide-gray-100">
             <?php if (empty($certificates)): ?>
-            <tr><td colspan="6" class="py-14 text-center">
+            <tr><td colspan="7" class="py-14 text-center">
               <div class="w-12 h-12 mx-auto rounded-2xl bg-gray-100 text-gray-400 flex items-center justify-center text-xl mb-2"><i class="fa-solid fa-trophy"></i></div>
               <p class="text-sm text-gray-500"><?= $search || $filterEvent || $filterStatus ? 'No certificates match these filters.' : 'No certificates yet. <a href="certificates.php" class="font-semibold text-rarl-red hover:underline">Issue your first batch</a>' ?></p>
             </td></tr>
@@ -728,7 +759,7 @@ John Doe,john@lab.org"
                 $gLabel = $groupBy === 'status' ? $gk : ($gk === 'membership' ? 'Membership certificates' : ($c['event_title'] ?: 'No event')); ?>
             <tr class="bg-gray-50/80 border-t-2 border-gray-200" data-group-head="<?= ex($gk) ?>">
               <td class="px-4 py-2.5"><input type="checkbox" class="accent-rarl-red w-4 h-4" data-group-select="<?= ex($gk) ?>" aria-label="Select all in <?= ex($gLabel) ?>"/></td>
-              <td colspan="5" class="px-3 py-2.5">
+              <td colspan="6" class="px-3 py-2.5">
                 <div class="flex flex-wrap items-center gap-2">
                   <span class="font-semibold text-gray-900 text-sm"><?= ex($gLabel) ?></span>
                   <span class="text-xs text-gray-500"><?= (int)$groupCounts[$gk] ?> on this page<?= $groupBy === 'event' && $gk !== 'membership' && $c['event_date'] ? ' · ' . date('d M Y', strtotime($c['event_date'])) : '' ?></span>
@@ -752,6 +783,18 @@ John Doe,john@lab.org"
                 <span class="block text-[10px] text-gray-400 mt-0.5 whitespace-nowrap" title="Issued <?= ex($c['issued_at']) ?>">Issued <?= date('d M Y', strtotime($c['issued_at'])) ?></span>
               </td>
               <td class="px-3 py-3 text-[11px] text-gray-600"><?= $isMembership ? '<span class="font-semibold text-purple-600">Membership</span>' : '<span class="line-clamp-2 max-w-[150px] block" title="' . ex($c['event_title'] ?? '') . '">' . ex(mb_strimwidth($c['event_title'] ?? '', 0, 40, '…')) . '</span>' ?></td>
+              <td class="px-3 py-3" data-sort="<?= ex($c['member_status'] ?? 'zz') ?>">
+                <?php $ms = $c['member_status'] ?? null; if ($ms === 'active'): ?>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 whitespace-nowrap"><i class="fa-solid fa-check"></i> Member</span>
+                <?php elseif ($ms): ?>
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 whitespace-nowrap"><?= ex(ucfirst($ms)) ?> member</span>
+                <?php else: ?>
+                <span class="block text-[10px] text-gray-500 whitespace-nowrap">Not a member</span>
+                <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="invite_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
+                  <button type="submit" class="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-green-700 hover:underline whitespace-nowrap"><i class="fa-solid fa-user-plus"></i> Invite</button>
+                </form>
+                <?php endif; ?>
+              </td>
               <td class="px-3 py-3">
                 <?php if (!$c['pdf_path']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-red-700 bg-red-50 px-2 py-0.5 rounded-full"><i class="fa-solid fa-file-circle-exclamation"></i> No PDF</span>
                 <?php elseif ($c['emailed_at']): ?><span class="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-green-700 bg-green-50 px-2 py-0.5 rounded-full" title="<?= ex($c['emailed_at']) ?>"><i class="fa-solid fa-check"></i> Sent <?= date('d M', strtotime($c['emailed_at'])) ?></span>

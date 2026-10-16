@@ -9,6 +9,35 @@
 
 // A per-install secret for signing tokens. Created on first use and kept in
 // settings, so check-in passes stay valid across deploys.
+// ── Member invites ─────────────────────────────────────────
+// Signed link that opens registration for one email, even while registrations are closed.
+const INVITE_DAYS = 30;
+function inviteToken(string $email, ?int $expires = null): string {
+    $email = strtolower(trim($email)); $expires ??= time() + INVITE_DAYS * 86400;
+    $e = rtrim(strtr(base64_encode($email), '+/', '-_'), '=');
+    return $e . '.' . $expires . '.' . substr(hash_hmac('sha256', "invite:{$email}:{$expires}", appSecret()), 0, 24);
+}
+/** Email the token was issued for, or null if invalid/expired. */
+function inviteParse(string $token): ?string {
+    if (!preg_match('/^([A-Za-z0-9_-]+)\.(\d{10})\.([a-f0-9]{24})$/', $token, $m) || (int)$m[2] < time()) return null;
+    $email = base64_decode(strtr($m[1], '-_', '+/'));
+    return $email && hash_equals(inviteToken($email, (int)$m[2]), $token) ? $email : null;
+}
+function inviteUrl(string $email): string {
+    return SITE_URL . '/register.php?invite=' . inviteToken($email);
+}
+/** True when this visitor arrived with a valid invite (remembered for the session). Sets $_SESSION['invite_email']. */
+function inviteActive(): bool {
+    if (!empty($_GET['invite']) && ($email = inviteParse((string)$_GET['invite']))) {
+        $_SESSION['invite_email'] = $email; $_SESSION['invite_until'] = time() + 86400;
+    }
+    return !empty($_SESSION['invite_email']) && ($_SESSION['invite_until'] ?? 0) > time();
+}
+/** Registration is open for this visitor: globally, or via an invite. */
+function canRegister(): bool {
+    return registrationsOpen() || inviteActive();
+}
+
 function appSecret(): string {
     static $s = null;
     if ($s !== null) return $s;

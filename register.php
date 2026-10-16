@@ -9,8 +9,11 @@ if (!empty($_SESSION['member_id'])) redirect('dashboard.php');
 echo htmlHead('Join the Community', false, ['description' => 'Become a member of the Robotics & Automation Research Lab (RARL), UK. Membership is free for researchers and research labs.']);
 ?>
 <?= publicNav() ?>
+<?php if (inviteActive()): ?>
+<div class="bg-green-600 text-white text-sm text-center px-4 py-2.5"><i class="fa-solid fa-envelope-open-text"></i> You've been personally invited to join RARL. Welcome!</div>
+<?php endif; ?>
 
-<?php if (!registrationsOpen()): ?>
+<?php if (!canRegister()): ?>
 <?= closedRegistrationHtml() ?>
 <?php else: ?>
 <section class="min-h-[calc(100vh-68px)] flex items-center justify-center py-16 px-4" style="background:linear-gradient(135deg,<?= BRAND_INK ?> 0%,<?= BRAND_INK_SOFT ?> 100%);">
