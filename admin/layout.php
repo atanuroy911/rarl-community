@@ -8,6 +8,7 @@ function htmlAdminHead(string $title): void {
 <meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>' . htmlspecialchars($title) . ' — RARL Admin</title>
 <meta name="robots" content="noindex,nofollow"/>
+<link rel="icon" href="../favicon.ico?v=2" sizes="48x48"/><link rel="icon" href="../assets/rarl-mark.svg?v=2" type="image/svg+xml"/><link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=2"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={darkMode:"class",theme:{extend:{colors:' . brandTailwindConfigJson() . ',fontFamily:{heading:["' . BRAND_FONT_HEADING . '","' . BRAND_FONT_SANS . '","system-ui","sans-serif"]},boxShadow:{card:"0 1px 2px rgba(16,16,16,.04), 0 1px 12px rgba(16,16,16,.05)"}}}}</script>
 <link href="' . BRAND_FONT_GOOGLE_URL . '" rel="stylesheet"/>
@@ -699,12 +700,14 @@ function adminQueuePill(): void {
     $total = 0; $sent = 0;
     foreach ($sum['batches'] as $b) if ($b['pending'] > 0) { $total += $b['total']; $sent += $b['sent'] + $b['failed'] + $b['cancelled']; }
     echo '<a id="rarl-queue-pill" href="email-queue.php" title="Open email queue"><span class="rarl-spinner" style="margin:0"></span><span class="lbl">Sending emails…</span><span class="bar"><i style="width:0"></i></span></a>';
-    echo '<script>(function(){var pending=' . (int)$sum['pending'] . ',total=' . (int)$total . ',sent=' . (int)$sent . ',busy=false;var pill=document.getElementById("rarl-queue-pill");
-function draw(){if(pending<=0){pill.style.display="none";return;}pill.style.display="flex";pill.querySelector(".lbl").textContent="Sending emails "+sent+"/"+total;pill.querySelector(".bar>i").style.width=(total?Math.round(sent/total*100):0)+"%";}
+    $resume = (int)($sum['hour']['resume_at'] ?? 0);
+    echo '<script>(function(){var pending=' . (int)$sum['pending'] . ',total=' . (int)$total . ',sent=' . (int)$sent . ',resume=' . $resume . ',busy=false;var pill=document.getElementById("rarl-queue-pill");
+function hm(t){var d=new Date(t*1000);return d.toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"});}
+function draw(){if(pending<=0){pill.style.display="none";return;}pill.style.display="flex";pill.querySelector(".rarl-spinner").style.display=resume?"none":"";pill.querySelector(".lbl").textContent=resume?"Hourly email limit reached: "+sent+"/"+total+" sent, continues at "+hm(resume):"Sending emails "+sent+"/"+total;pill.querySelector(".bar>i").style.width=(total?Math.round(sent/total*100):0)+"%";}
 function tick(){if(busy||pending<=0)return;busy=true;var fd=new FormData();fd.append("action","tick");fd.append("acsrf",' . json_encode($GLOBALS['acsrf'] ?? '') . ');
 fetch("email-queue.php",{method:"POST",body:fd,headers:{"X-Requested-With":"fetch"}}).then(function(r){return r.json();}).then(function(d){busy=false;if(!d.ok)return;var t=0,s=0;(d.batches||[]).forEach(function(b){if(+b.pending>0){t+=+b.total;s+=(+b.sent)+(+b.failed)+(+b.cancelled);}});
-var was=pending;pending=d.pending;if(t){total=t;sent=s;}else{sent=total;}draw();if(pending>0)setTimeout(tick,800);else if(was>0&&window.rarlToast)rarlToast("All queued emails have been processed","success");}).catch(function(){busy=false;setTimeout(tick,5000);});}
-window.rarlQueueKick=function(){pending=Math.max(pending,1);tick();};draw();if(pending>0)setTimeout(tick,600);})();</script>';
+var was=pending;pending=d.pending;resume=(d.done&&d.done.paused_until)||(d.hour&&d.hour.resume_at)||0;if(t){total=t;sent=s;}else{sent=total;}draw();if(pending>0)setTimeout(tick,resume?60000:800);else if(was>0&&window.rarlToast)rarlToast("All queued emails have been processed","success");}).catch(function(){busy=false;setTimeout(tick,5000);});}
+window.rarlQueueKick=function(){pending=Math.max(pending,1);tick();};draw();if(pending>0)setTimeout(tick,resume?60000:600);})();</script>';
 }
 
 // ── Form helpers for rebuilt pages ─────────────────────────

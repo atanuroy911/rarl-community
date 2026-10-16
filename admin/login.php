@@ -62,7 +62,7 @@ unset($_SESSION['flash']);
 ?>
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover"/>
 <title>Admin sign in — RARL</title><meta name="robots" content="noindex,nofollow"/>
-<link rel="icon" href="../assets/icons/favicon-32.png"/>
+<link rel="icon" href="../favicon.ico?v=2" sizes="48x48"/><link rel="icon" href="../assets/rarl-mark.svg?v=2" type="image/svg+xml"/><link rel="apple-touch-icon" href="../assets/icons/apple-touch-icon.png?v=2"/>
 <script src="https://cdn.tailwindcss.com"></script>
 <script>tailwind.config={theme:{extend:{colors:<?= brandTailwindConfigJson() ?>,fontFamily:{heading:["<?= BRAND_FONT_HEADING ?>","<?= BRAND_FONT_SANS ?>","system-ui","sans-serif"]}}}}</script>
 <link href="<?= BRAND_FONT_GOOGLE_URL ?>" rel="stylesheet"/>

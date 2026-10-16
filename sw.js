@@ -8,7 +8,7 @@
  *   documents, or Google Translate.
  * Bump VERSION to roll out changes; old caches are deleted on activate.
  */
-const VERSION = 'rarl-v3';
+const VERSION = 'rarl-v4';
 const STATIC = VERSION + '-static';
 const PAGES = VERSION + '-pages';
 const PRECACHE = ['offline.html', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/rarl-mark.svg', 'manifest.webmanifest'];
