@@ -888,8 +888,12 @@ John Doe,john@lab.org"
     document.querySelectorAll('tr[data-group="' + CSS.escape(g.dataset.groupSelect) + '"] .row-check').forEach(c => { c.checked = g.checked; });
     rows().length && fire(rows()[0]);
   }));
+  // Keep the top and group checkboxes in step with the rows, whichever was clicked.
   document.addEventListener('change', e => {
-    if (!e.target.classList.contains('row-check')) return;
+    if (!e.target.classList.contains('row-check') && e.target.id !== 'select-all' && !e.target.dataset.groupSelect) return;
+    const top = document.getElementById('select-all'), rs = rows();
+    if (top && e.target !== top) { top.checked = rs.length && rs.every(c => c.checked); top.indeterminate = !top.checked && rs.some(c => c.checked); }
+    if (top && e.target === top) top.indeterminate = false;
     document.querySelectorAll('[data-group-select]').forEach(g => {
       const rs = [...document.querySelectorAll('tr[data-group="' + CSS.escape(g.dataset.groupSelect) + '"] .row-check')];
       g.checked = rs.length && rs.every(c => c.checked); g.indeterminate = !g.checked && rs.some(c => c.checked);
@@ -1197,8 +1201,7 @@ John Doe,john@lab.org"
     const fd = new FormData();
     fd.append('acsrf', document.querySelector('#issue-form [name=acsrf]').value);
     fd.append('json', '1');
-    fd.append('list', list.map(r => r.email).join('
-'));
+    fd.append('list', list.map(r => r.email).join('\n'));
     let res;
     try { res = await (await fetch('member-check.php', {method: 'POST', body: fd})).json(); } catch (e) { return; }
     if (id !== memberReq) return;
