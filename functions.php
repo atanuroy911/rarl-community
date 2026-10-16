@@ -1833,7 +1833,7 @@ function templateSampleData(string $type): array {
             'cert_no' => 'RARL-2026-SAMPLE', 'verify_url' => CERT_VERIFY_URL . '?id=sample',
         ],
     };
-    $photo = __DIR__ . '/assets/mark.png';
+    $photo = __DIR__ . '/assets/rarl-mark.svg';
     $data['avatar_url']  = BRAND_MARK_PATH;
     $data['avatar_path'] = file_exists($photo) ? $photo : null;
     return $data;

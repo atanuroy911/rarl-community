@@ -23,7 +23,7 @@ define('BRAND_FONT_GOOGLE_URL', 'https://fonts.googleapis.com/css2?family=Inter:
 define('FONTAWESOME_CDN_URL', 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css');
 
 define('BRAND_LOGO_PATH', '/assets/logo.png'); // full lockup: icon + "RARL" wordmark + tagline
-define('BRAND_MARK_PATH', '/assets/mark.png'); // square icon only — nav, sidebar, login cards, certs
+define('BRAND_MARK_PATH', '/assets/rarl-mark.svg'); // square icon only — nav, sidebar, login cards, certs
 
 // Tailwind color keys stay the same across the app (rarl-red, rarl-navy, ...) so that
 // every existing bg-rarl-red / text-rarl-navy class is re-themed just by changing these

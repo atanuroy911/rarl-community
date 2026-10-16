@@ -11,7 +11,7 @@
 const VERSION = 'rarl-v3';
 const STATIC = VERSION + '-static';
 const PAGES = VERSION + '-pages';
-const PRECACHE = ['offline.html', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/mark.png', 'manifest.webmanifest'];
+const PRECACHE = ['offline.html', 'assets/icons/icon-192.png', 'assets/icons/icon-512.png', 'assets/rarl-mark.svg', 'manifest.webmanifest'];
 const NEVER = /\/admin\/|\/(login|logout|impersonate|deploy-extract|download-cert|roster-pdf|unsubscribe)\.php|translate\.google|translate\.googleapis|[?&]ics=/;
 const STATIC_HOSTS = ['cdnjs.cloudflare.com', 'fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.tailwindcss.com', 'cdn.jsdelivr.net', 'unpkg.com'];
 
