@@ -269,6 +269,39 @@ function issueCertificateForAttendance(PDO $pdo, array $event, array $member, ?s
     return true;
 }
 
+/**
+ * Default certificate-email wording per event type. Plain text with placeholders:
+ * {first_name} {name} {event} {date} {cert_no}. Admins can edit it before sending.
+ */
+function certEmailCopy(?string $type): array {
+    $c = [
+        'webinar'     => ['Webinar certificate', 'Thank you for joining us!',
+            'Thank you for attending {event} on {date}. We hope the talk gave you fresh ideas to take into your own research and work. Your Certificate of Participation is ready.',
+            'Recordings of our webinars are posted on the RARL portal, so you can revisit the session anytime.'],
+        'seminar'     => ['Seminar certificate', 'Thank you for being part of the conversation',
+            'Thank you for attending {event} on {date}. Your questions and engagement make these sessions worthwhile. Your Certificate of Participation is ready.',
+            'Keep an eye on the RARL portal for upcoming talks.'],
+        'workshop'    => ['Workshop certificate', 'Well done on completing the workshop!',
+            "Thank you for taking part in {event} on {date}. Hands-on learning takes real effort, and we're glad you put it in. Your certificate is ready.",
+            'Workshop materials and related resources are available in the RARL Learning Hub.'],
+        'conference'  => ['Conference certificate', 'Thank you for joining the conference',
+            'Thank you for participating in {event} on {date}. It was great to have you with the RARL community. Your Certificate of Participation is ready.',
+            'Published papers and session recordings will be shared on the RARL portal.'],
+        'hackathon'   => ['Hackathon certificate', 'Thank you for building with us!',
+            'Thank you for taking on {event} on {date}. Your creativity, teamwork and long hours made the event what it was. Your certificate is ready.',
+            'We would love to see where your project goes next.'],
+        'competition' => ['Competition certificate', 'Thank you for competing!',
+            'Thank you for competing in {event} on {date}. Taking part takes courage and skill, and you showed both. Your certificate is ready.',
+            'Watch the RARL portal for the next challenge.'],
+        'volunteer'   => ['Certificate of appreciation', 'Thank you for your time and help',
+            'Thank you for volunteering with {event} on {date}. Events like this only happen because of people like you. Please accept this certificate with our sincere appreciation.',
+            'We hope to work with you again soon.'],
+    ][$type ?? ''] ?? ['Your certificate', 'Thank you for taking part!',
+            'Thank you for participating in {event} on {date}. Your certificate is ready.',
+            'Stay connected with RARL for upcoming events and opportunities.'];
+    return ['eyebrow' => $c[0], 'headline' => $c[1], 'message' => $c[2], 'closing' => $c[3], 'subject' => certEmailSubject($type, '{event}')];
+}
+
 /** Subject line for a certificate email, worded for the event type. */
 function certEmailSubject(?string $type, string $title): string {
     return match ($type) {
@@ -277,6 +310,21 @@ function certEmailSubject(?string $type, string $title): string {
         'workshop'    => "Well done! Your workshop certificate for {$title}",
         default       => "Thank you for joining {$title} — your certificate",
     };
+}
+
+/** Placeholder values for one recipient. */
+function certEmailVars(string $name, string $event, string $date, string $certNo): array {
+    $plain = fn($v) => html_entity_decode((string)$v, ENT_QUOTES, 'UTF-8');
+    $name = properName($plain($name));
+    $first = explode(' ', preg_replace('/^(dr|prof|mr|mrs|ms|engr)\.?\s+/i', '', $name))[0] ?: $name;
+    return ['{first_name}' => $first, '{name}' => $name, '{event}' => $plain($event), '{date}' => $plain($date) ?: date('d F Y'), '{cert_no}' => $plain($certNo)];
+}
+
+/** Escapes $text, fills placeholders ({event} in bold when $html) and keeps line breaks. */
+function certEmailFill(string $text, array $vars, bool $html = true): string {
+    $out = htmlspecialchars($text, ENT_QUOTES, 'UTF-8');
+    foreach ($vars as $k => $v) $out = str_replace($k, $k === '{event}' && $html ? '<strong>' . htmlspecialchars($v) . '</strong>' : htmlspecialchars($v), $out);
+    return $html ? nl2br($out) : $out;
 }
 
 /** The certificate PDF as an email attachment ([] if the file is missing). */

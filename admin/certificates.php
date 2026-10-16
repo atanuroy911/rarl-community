@@ -91,7 +91,8 @@ function certWritePdf(?array $template, string $uuid, string $name, array $event
 }
 
 // With $batch set, the email is queued (sent in the background) instead of sent inline.
-function certSendEmail(PDO $pdo, array $c, ?string $batch = null): void {
+// $custom: wording edited in the send dialog (subject, headline, message, closing).
+function certSendEmail(PDO $pdo, array $c, ?string $batch = null, array $custom = []): void {
     $verifyUrl  = CERT_VERIFY_URL . '?id=' . $c['uuid'];
     $eventTitle = $c['event_title'] ?? 'RARL';
     $eventDate  = !empty($c['event_date']) ? date('d F Y', strtotime($c['event_date'])) : date('d F Y');
@@ -108,8 +109,11 @@ function certSendEmail(PDO $pdo, array $c, ?string $batch = null): void {
     }
     $attach = certEmailAttachment($c['pdf_path'] ?? '', $certNumber, $memberName);
     $pdfAttached = (bool)$attach;
-    $subject = certEmailSubject($eventType, html_entity_decode((string)$eventTitle, ENT_QUOTES, 'UTF-8'));
+    $subject = trim($custom['subject'] ?? '') !== ''
+        ? html_entity_decode(certEmailFill($custom['subject'], certEmailVars($memberName, $eventTitle, $eventDate, $certNumber), false), ENT_QUOTES, 'UTF-8')
+        : certEmailSubject($eventType, html_entity_decode((string)$eventTitle, ENT_QUOTES, 'UTF-8'));
     ob_start(); require dirname(__DIR__) . '/emails/certificate.php'; $body = ob_get_clean();
+    if (!empty($c['_preview'])) { echo $body; return; }
     if ($batch) {
         queueEmail($batch, 'Certificates — ' . $eventTitle, $c['recipient_email'], $memberName, $subject, $body, $attach, 'cert:' . (int)$c['id']);
         return;
@@ -164,7 +168,7 @@ function certFetch(PDO $pdo, array $ids): array {
     $ids = array_values(array_filter(array_map('intval', $ids)));
     if (!$ids) return [];
     $in = implode(',', array_fill(0, count($ids), '?'));
-    $s = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id=e.id WHERE c.id IN ({$in})");
+    $s = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date, e.type AS event_type FROM certificates c LEFT JOIN events e ON c.event_id=e.id WHERE c.id IN ({$in})");
     $s->execute($ids);
     return $s->fetchAll();
 }
@@ -373,10 +377,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: certificates.php?view=history&event=' . $eventId); exit;
     }
 
+    // Wording edited in the send dialog (only when the admin changed it).
+    $customEmail = !empty($_POST['email_custom']) ? array_map(fn($k) => mb_substr(trim((string)($_POST['email_' . $k] ?? '')), 0, 2000), ['subject' => 'subject', 'headline' => 'headline', 'message' => 'message', 'closing' => 'closing']) : [];
+    if ($action === 'email_preview') {
+        $c = certFetch($pdo, [$_POST['cert_id'] ?? 0])[0] ?? null;
+        if (!$c) { http_response_code(404); exit; }
+        $c['_preview'] = true;
+        $custom = $customEmail ?: array_map(fn($k) => (string)($_POST['email_' . $k] ?? ''), ['subject' => 'subject', 'headline' => 'headline', 'message' => 'message', 'closing' => 'closing']);
+        header('Content-Type: text/html; charset=utf-8');
+        header('X-Email-Subject: ' . rawurlencode(html_entity_decode(certEmailFill($custom['subject'] ?: certEmailSubject($c['event_type'] ?? null, '{event}'), certEmailVars($c['recipient_name'], $c['event_title'] ?? '', !empty($c['event_date']) ? date('d F Y', strtotime($c['event_date'])) : '', $c['certificate_no']), false), ENT_QUOTES, 'UTF-8')));
+        certSendEmail($pdo, $c, null, $custom);
+        exit;
+    }
     if ($action === 'email_cert') {
         foreach (certFetch($pdo, [$_POST['cert_id'] ?? 0]) as $c) {
             if (!$c['pdf_path']) { $_SESSION['flash'] = ['type'=>'error','msg'=>'This certificate has no PDF yet — regenerate it first.']; break; }
-            certSendEmail($pdo, $c);
+            certSendEmail($pdo, $c, null, $customEmail);
             $_SESSION['flash'] = ['type'=>'success','msg'=>'Certificate emailed to ' . $c['recipient_email'] . '.'];
         }
         header('Location: ' . $back); exit;
@@ -449,7 +465,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $sent = 0; $batch = newEmailBatch();
             foreach ($rows as $c) {
                 if (!$c['pdf_path'] || ($bulkOp === 'send' && $c['emailed_at'])) continue;
-                certSendEmail($pdo, $c, $batch); $sent++;
+                certSendEmail($pdo, $c, $batch, $customEmail); $sent++;
             }
             $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} certificate email(s) — sending in the background." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '')];
         } elseif ($bulkOp === 'regen') {
@@ -469,7 +485,7 @@ $pages = max(1, (int)ceil($total / $perPage));
 $page  = min($page, $pages);
 // Grouping sorts by the group first so each group's rows sit together.
 $order = ($groupBy === 'event' ? 'COALESCE(e.title, \'~\') ASC, ' : ($groupBy === 'status' ? '(c.pdf_path IS NULL) DESC, (c.emailed_at IS NULL) DESC, ' : '')) . CERT_SORTS[$sort][1];
-$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date, COALESCE(mi.status, me.status) AS member_status FROM certificates c LEFT JOIN events e ON c.event_id = e.id LEFT JOIN members mi ON mi.id = c.member_id LEFT JOIN members me ON c.member_id IS NULL AND me.email = c.recipient_email {$ws} ORDER BY {$order} LIMIT " . $perPage . " OFFSET " . (($page - 1) * $perPage));
+$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date, e.type AS event_type, COALESCE(mi.status, me.status) AS member_status FROM certificates c LEFT JOIN events e ON c.event_id = e.id LEFT JOIN members mi ON mi.id = c.member_id LEFT JOIN members me ON c.member_id IS NULL AND me.email = c.recipient_email {$ws} ORDER BY {$order} LIMIT " . $perPage . " OFFSET " . (($page - 1) * $perPage));
 $stmt->execute($params);
 $certificates = $stmt->fetchAll();
 $templates    = $pdo->query("SELECT * FROM certificate_templates WHERE type = 'certificate' ORDER BY is_default DESC, id DESC")->fetchAll();
@@ -720,8 +736,8 @@ John Doe,john@lab.org"
       </div>
       <?php endif; ?>
       <div class="px-4 pt-3"><?= bulkBar([
-          ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
-          ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','confirm'=>'Email the selected certificates again, including ones already sent?'],
+          ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500','attrs'=>'data-email-bulk="send"'],
+          ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','attrs'=>'data-email-bulk="resend"'],
           ['label'=>'<i class="fa-solid fa-user-plus"></i> Invite non-members','op'=>'invite','class'=>'bg-green-700 hover:bg-green-600','confirm'=>'Email a personal join link to the selected people who are not members yet? Existing members are skipped.'],
           ['label'=>'<i class="fa-solid fa-file-zipper"></i> Download ZIP','op'=>'zip','class'=>'bg-gray-700 hover:bg-gray-600','no_loading'=>true],
           ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','attrs'=>'data-regen-bulk'],
@@ -771,7 +787,7 @@ John Doe,john@lab.org"
             </tr>
             <?php endif; ?>
             <tr class="hover:bg-gray-50" data-group="<?= ex($gk) ?>">
-              <td class="px-4 py-3"><?= bulkRowCheckbox((int)$c['id']) ?></td>
+              <td class="px-4 py-3" data-etype="<?= ex($c['event_type'] ?? '') ?>" data-has-pdf="<?= $c['pdf_path'] ? 1 : 0 ?>" data-sent="<?= $c['emailed_at'] ? 1 : 0 ?>"><?= bulkRowCheckbox((int)$c['id']) ?></td>
               <td class="px-3 py-3" data-sort="<?= ex($c['recipient_name']) ?>">
                 <div class="flex items-center gap-2.5 min-w-0">
                   <span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red font-bold text-xs flex items-center justify-center flex-shrink-0"><?= ex(mb_strtoupper(mb_substr(preg_replace('/^(dr|prof|mr|mrs|ms)\.?\s+/i', '', $c['recipient_name']), 0, 1))) ?></span>
@@ -807,8 +823,8 @@ John Doe,john@lab.org"
                   <?php endif; ?>
                   <button type="button" class="copy-btn w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" data-copy="<?= ex($verify) ?>" title="Copy verification link"><i class="fa-solid fa-link"></i></button>
                   <?php if ($c['pdf_path']): ?>
-                  <form method="POST" class="inline" <?= $c['emailed_at'] ? 'data-confirm="Email this certificate to ' . ex($c['recipient_email']) . ' again?" data-confirm-ok="Resend"' : '' ?>><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
-                    <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg <?= $c['emailed_at'] ? 'text-gray-500 hover:bg-gray-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100' ?>" title="<?= $c['emailed_at'] ? 'Resend email' : 'Send email' ?>"><i class="fa-solid fa-paper-plane"></i></button>
+                  <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="email_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
+                    <button type="button" data-email-one="<?= $c['id'] ?>" data-email-type="<?= ex($c['event_type'] ?? '') ?>" data-email-to="<?= ex($c['recipient_email']) ?>" data-email-sent="<?= $c['emailed_at'] ? 1 : 0 ?>" class="w-8 h-8 inline-flex items-center justify-center rounded-lg <?= $c['emailed_at'] ? 'text-gray-500 hover:bg-gray-100' : 'text-amber-600 bg-amber-50 hover:bg-amber-100' ?>" title="<?= $c['emailed_at'] ? 'Resend email' : 'Send email' ?>"><i class="fa-solid fa-paper-plane"></i></button>
                   </form>
                   <?php endif; ?>
                   <?php if (!$isMembership): ?>
@@ -1283,6 +1299,109 @@ John Doe,john@lab.org"
       const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; i.className = 'regen-x'; bf.appendChild(i);
     });
     document.getElementById('bulk-op').value = 'regen';
+    dlg.close(); bf.submit();
+  });
+})();
+</script>
+<?php endif; ?>
+
+<?php if ($view === 'history'):
+  $copies = []; foreach (['webinar','seminar','workshop','conference','hackathon','competition','volunteer','other'] as $ty) $copies[$ty] = certEmailCopy($ty);
+  adminModalOpen('email-modal', 'Email certificate', '<span id="em-sub"></span>', ['form' => true, 'width' => '980px', 'form_attrs' => 'id="em-form"']); ?>
+  <input type="hidden" name="action" value="email_cert">
+  <input type="hidden" name="cert_id" id="em-id">
+  <input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
+  <input type="hidden" name="email_custom" id="em-custom" value="">
+  <div class="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-5">
+    <div class="space-y-3">
+      <div><label for="em-subject" class="block text-xs font-semibold text-gray-700 mb-1">Subject</label><input id="em-subject" name="email_subject" class="<?= $input ?>"></div>
+      <div><label for="em-headline" class="block text-xs font-semibold text-gray-700 mb-1">Headline</label><input id="em-headline" name="email_headline" class="<?= $input ?>"></div>
+      <div><label for="em-message" class="block text-xs font-semibold text-gray-700 mb-1">Message</label><textarea id="em-message" name="email_message" rows="6" class="<?= $input ?> resize-y"></textarea></div>
+      <div><label for="em-closing" class="block text-xs font-semibold text-gray-700 mb-1">Closing line</label><textarea id="em-closing" name="email_closing" rows="2" class="<?= $input ?> resize-y"></textarea></div>
+      <div class="text-xs text-gray-500">
+        <p class="mb-1">Insert for each person:</p>
+        <div class="flex flex-wrap gap-1.5">
+          <?php foreach (['{first_name}', '{name}', '{event}', '{date}', '{cert_no}'] as $ph): ?><button type="button" data-ph="<?= $ph ?>" class="px-2 py-0.5 rounded-md bg-gray-100 hover:bg-gray-200 font-mono text-[11px] text-gray-700"><?= $ph ?></button><?php endforeach; ?>
+        </div>
+        <p class="mt-2">The PDF is attached and the LinkedIn and verify buttons are added automatically.</p>
+        <button type="button" id="em-reset" class="mt-2 text-rarl-red font-semibold hover:underline"><i class="fa-solid fa-rotate-left"></i> Reset to default wording</button>
+      </div>
+    </div>
+    <div class="min-w-0">
+      <p class="text-xs font-semibold text-gray-700 mb-1">Preview <span class="font-normal text-gray-500" id="em-pv-who"></span></p>
+      <div class="rounded-xl border border-gray-200 bg-gray-50 overflow-hidden">
+        <div class="px-3 py-2 border-b border-gray-200 bg-white text-xs text-gray-700 truncate"><span class="text-gray-400">Subject:</span> <span id="em-pv-subject"></span></div>
+        <iframe id="em-pv" title="Email preview" class="w-full h-[440px] bg-white" sandbox="allow-same-origin allow-popups"></iframe>
+      </div>
+    </div>
+  </div>
+<?php adminModalClose('<i class="fa-solid fa-paper-plane"></i> <span id="em-go">Send</span>', '', true); ?>
+<script>
+(function () {
+  const dlg = document.getElementById('email-modal'), form = document.getElementById('em-form');
+  if (!dlg) return;
+  const copies = <?= json_encode($copies, JSON_UNESCAPED_UNICODE) ?>;
+  const F = ['subject', 'headline', 'message', 'closing'], el = k => document.getElementById('em-' + k);
+  let bulk = null, previewId = 0, type = 'other', timer, lastField = el('message');
+  const fill = () => { const c = copies[type] || copies.other; F.forEach(k => el(k).value = c[k]); document.getElementById('em-custom').value = ''; };
+  const edited = () => F.some(k => el(k).value !== (copies[type] || copies.other)[k]);
+  async function preview() {
+    if (!previewId) return;
+    const fd = new FormData(form); fd.set('action', 'email_preview'); fd.set('cert_id', previewId);
+    try {
+      const r = await fetch('certificates.php', {method: 'POST', body: fd});
+      document.getElementById('em-pv').srcdoc = await r.text();
+      document.getElementById('em-pv-subject').textContent = decodeURIComponent(r.headers.get('X-Email-Subject') || '');
+    } catch (e) {}
+  }
+  const queue = () => { clearTimeout(timer); timer = setTimeout(preview, 300); };
+  F.forEach(k => el(k).addEventListener('input', () => { document.getElementById('em-custom').value = edited() ? '1' : ''; queue(); }));
+  F.forEach(k => el(k).addEventListener('focus', () => lastField = el(k)));
+  dlg.querySelectorAll('[data-ph]').forEach(b => b.addEventListener('click', () => {
+    const f = lastField, s = f.selectionStart ?? f.value.length;
+    f.value = f.value.slice(0, s) + b.dataset.ph + f.value.slice(f.selectionEnd ?? s);
+    f.focus(); f.selectionStart = f.selectionEnd = s + b.dataset.ph.length; f.dispatchEvent(new Event('input'));
+  }));
+  document.getElementById('em-reset').addEventListener('click', () => { fill(); preview(); });
+  const open = (sub, who, go) => {
+    document.getElementById('em-sub').textContent = sub;
+    document.getElementById('em-pv-who').textContent = who;
+    document.getElementById('em-go').textContent = go;
+    fill(); dlg.showModal(); preview();
+  };
+  document.addEventListener('click', e => {
+    const one = e.target.closest('[data-email-one]');
+    if (one) {
+      e.preventDefault(); bulk = null;
+      previewId = +one.dataset.emailOne; type = one.dataset.emailType || 'other';
+      document.getElementById('em-id').value = previewId;
+      open('To ' + one.dataset.emailTo, '', one.dataset.emailSent === '1' ? 'Resend' : 'Send');
+      return;
+    }
+    const many = e.target.closest('[data-email-bulk]');
+    if (many) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      bulk = many.dataset.emailBulk;
+      const rows = [...document.querySelectorAll('.row-check:checked')].map(c => c.closest('td'));
+      const target = rows.filter(td => td.dataset.hasPdf === '1' && (bulk === 'resend' || td.dataset.sent !== '1'));
+      const allMatching = document.querySelector('#bulk-form [name=all_matching]')?.value === '1';
+      if (!target.length && !allMatching) { rarlToast(bulk === 'send' ? 'All selected certificates were already emailed. Use Resend.' : 'None of the selected certificates have a PDF yet.', 'error'); return; }
+      const first = (target[0] || rows[0]);
+      previewId = +first.querySelector('.row-check').value; type = first.dataset.etype || 'other';
+      const types = new Set(target.map(td => td.dataset.etype || 'other'));
+      const n = allMatching ? document.getElementById('bulk-count').textContent : target.length;
+      open(n + ' recipient' + (n == 1 ? '' : 's') + (types.size > 1 ? ' · mixed event types: each gets its own wording unless you edit it' : ''), '(first recipient)', 'Send ' + n + ' email' + (n == 1 ? '' : 's'));
+    }
+  }, true);
+  form.addEventListener('submit', e => {
+    if (!bulk) return;
+    e.preventDefault();
+    const bf = document.getElementById('bulk-form');
+    bf.querySelectorAll('.em-x').forEach(n => n.remove());
+    ['email_custom', ...F.map(k => 'email_' + k)].forEach(k => {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = form.elements[k].value; i.className = 'em-x'; bf.appendChild(i);
+    });
+    document.getElementById('bulk-op').value = bulk;
     dlg.close(); bf.submit();
   });
 })();

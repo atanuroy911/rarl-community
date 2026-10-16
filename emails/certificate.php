@@ -1,42 +1,15 @@
 <?php
 // Expects: $memberName, $eventTitle, $certNumber, $verifyUrl.
-// Optional: $eventType (events.type), $eventDate (display string), $pdfAttached (bool).
+// Optional: $eventType (events.type), $eventDate (display string), $pdfAttached (bool),
+//           $custom (['headline','message','closing'] edited in the send dialog; placeholders allowed).
 $t = fn($v) => htmlspecialchars(html_entity_decode((string)$v, ENT_QUOTES, 'UTF-8'));
-$eventType   = $eventType ?? 'other';
 $pdfAttached = $pdfAttached ?? false;
-$first       = explode(' ', preg_replace('/^(dr|prof|mr|mrs|ms|engr)\.?\s+/i', '', trim(html_entity_decode((string)$memberName, ENT_QUOTES, 'UTF-8'))))[0] ?: $memberName;
-$title       = '<strong>' . $t($eventTitle) . '</strong>';
-$when        = !empty($eventDate) ? ' on ' . $t($eventDate) : '';
-
-// Thank-you copy per event type: [eyebrow, headline, message, closing].
-$copy = [
-    'webinar'     => ['Webinar certificate', 'Thank you for joining us!',
-        "Thank you for attending {$title}{$when}. We hope the talk gave you fresh ideas to take into your own research and work. Your Certificate of Participation is ready.",
-        'Recordings of our webinars are posted on the RARL portal, so you can revisit the session anytime.'],
-    'seminar'     => ['Seminar certificate', 'Thank you for being part of the conversation',
-        "Thank you for attending {$title}{$when}. Your questions and engagement make these sessions worthwhile. Your Certificate of Participation is ready.",
-        'Keep an eye on the RARL portal for upcoming talks.'],
-    'workshop'    => ['Workshop certificate', 'Well done on completing the workshop!',
-        "Thank you for taking part in {$title}{$when}. Hands-on learning takes real effort, and we're glad you put it in. Your certificate is ready.",
-        'Workshop materials and related resources are available in the RARL Learning Hub.'],
-    'conference'  => ['Conference certificate', 'Thank you for joining the conference',
-        "Thank you for participating in {$title}{$when}. It was great to have you with the RARL community. Your Certificate of Participation is ready.",
-        'Published papers and session recordings will be shared on the RARL portal.'],
-    'hackathon'   => ['Hackathon certificate', 'Thank you for building with us!',
-        "Thank you for taking on {$title}{$when}. Your creativity, teamwork and long hours made the event what it was. Your certificate is ready.",
-        'We would love to see where your project goes next.'],
-    'competition' => ['Competition certificate', 'Thank you for competing!',
-        "Thank you for competing in {$title}{$when}. Taking part takes courage and skill, and you showed both. Your certificate is ready.",
-        'Watch the RARL portal for the next challenge.'],
-    'volunteer'   => ['Certificate of appreciation', 'Thank you for your time and help',
-        "Thank you for volunteering with {$title}{$when}. Events like this only happen because of people like you. Please accept this certificate with our sincere appreciation.",
-        'We hope to work with you again soon.'],
-    'other'       => ['Your certificate', 'Thank you for taking part!',
-        "Thank you for participating in {$title}{$when}. Your certificate is ready.",
-        'Stay connected with RARL for upcoming events and opportunities.'],
-][$eventType] ?? null;
-$copy = $copy ?: [ 'Your certificate', 'Thank you for taking part!', "Thank you for participating in {$title}{$when}. Your certificate is ready.", 'Stay connected with RARL for upcoming events and opportunities.'];
-[$eyebrow, $headline, $message, $closing] = $copy;
+$vars = certEmailVars($memberName, $eventTitle, $eventDate ?? '', $certNumber);
+$copy = array_merge(certEmailCopy($eventType ?? 'other'), array_filter($custom ?? [], fn($v) => trim((string)$v) !== ''));
+$eyebrow  = $t($copy['eyebrow']);
+$headline = certEmailFill($copy['headline'], $vars, false);
+$message  = certEmailFill($copy['message'], $vars);
+$closing  = certEmailFill($copy['closing'], $vars);
 
 // LinkedIn "Add to profile" (promotes RARL as the issuing organisation).
 $linkedin = 'https://www.linkedin.com/profile/add?' . http_build_query([
@@ -57,7 +30,7 @@ $btn = 'display:inline-block; padding:12px 22px; border-radius:8px; font-weight:
   <div style="background: #ffffff; padding: 30px; border-radius: 12px; border: 1px solid #eee;">
     <p style="margin:0 0 4px; font-size:12px; font-weight:bold; letter-spacing:.08em; text-transform:uppercase; color: <?= BRAND_RED ?>;"><?= $eyebrow ?></p>
     <h2 style="margin:0 0 18px; font-size:22px; color:#111;"><?= $headline ?></h2>
-    <p>Dear <?= $t($first) ?>,</p>
+    <p>Dear <?= $t($vars['{first_name}']) ?>,</p>
     <p><?= $message ?></p>
     <?php if ($pdfAttached): ?><p>📎 Your certificate is <strong>attached to this email</strong> as a PDF.</p><?php endif; ?>
 
