@@ -1,6 +1,6 @@
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
   <div style="background: <?= BRAND_INK ?>; padding: 24px; border-radius: 12px 12px 0 0; text-align: center;">
-    <img src="<?= MAIN_SITE_URL . BRAND_MARK_PATH ?>" width="36" height="36" style="border-radius:8px;" alt="RARL"/>
+    <img src="<?= emailLogoUrl() ?>" width="36" height="36" style="border-radius:8px;" alt="RARL"/>
     <div style="color: #fff; font-weight: bold; font-size: 13px; letter-spacing: 1px; margin-top: 8px; text-transform: uppercase; opacity: .8;">Robotics & Automation Research Lab (RARL) — Admin Message</div>
   </div>
 

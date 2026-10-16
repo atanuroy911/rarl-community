@@ -21,7 +21,7 @@
 <body>
   <div class="wrapper">
     <div class="header">
-      <div class="logo"><img src="<?= MAIN_SITE_URL . BRAND_MARK_PATH ?>" width="36" height="36" alt="RARL"/></div>
+      <div class="logo"><img src="<?= emailLogoUrl() ?>" width="36" height="36" alt="RARL"/></div>
       <h1 class="title">Robotics & Automation Research Lab (RARL)</h1>
     </div>
     

@@ -5,7 +5,7 @@ $isToday = $event['event_date'] === date('Y-m-d');
 ?>
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
   <div style="text-align: center; padding: 20px 0;">
-    <img src="<?= MAIN_SITE_URL . BRAND_MARK_PATH ?>" width="40" height="40" style="border-radius:8px;" alt="RARL"/>
+    <img src="<?= emailLogoUrl() ?>" width="40" height="40" style="border-radius:8px;" alt="RARL"/>
   </div>
   <div style="background: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid #eee;">
     <p style="margin:0 0 4px; font-size:12px; font-weight:bold; letter-spacing:.08em; text-transform:uppercase; color: <?= BRAND_RED ?>;"><?= $isToday ? 'Happening today' : 'Tomorrow' ?></p>

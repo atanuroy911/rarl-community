@@ -24,6 +24,10 @@ define('FONTAWESOME_CDN_URL', 'https://cdnjs.cloudflare.com/ajax/libs/font-aweso
 
 define('BRAND_LOGO_PATH', '/assets/logo.png'); // full lockup: icon + "RARL" wordmark + tagline
 define('BRAND_MARK_PATH', '/assets/rarl-mark.svg'); // square icon only — nav, sidebar, login cards, certs
+// Logo for emails: a PNG (Gmail and Outlook don't show SVG), served from this app's own
+// address (SITE_URL), not the main website, which doesn't host these files.
+define('BRAND_EMAIL_LOGO_PATH', '/assets/icons/icon-192.png');
+function emailLogoUrl(): string { return rtrim(SITE_URL, '/') . BRAND_EMAIL_LOGO_PATH; }
 
 // Tailwind color keys stay the same across the app (rarl-red, rarl-navy, ...) so that
 // every existing bg-rarl-red / text-rarl-navy class is re-themed just by changing these
