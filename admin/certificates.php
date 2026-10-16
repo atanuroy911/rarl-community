@@ -154,20 +154,38 @@ function certRegenerate(PDO $pdo, array $c): bool {
 }
 
 // ── Filters (shared by the list and CSV export) ─────────────
+/** WHERE clause + params for the History filters (q, event, status). */
+function certFilterSql(array $f): array {
+    $where = []; $params = [];
+    $ev = (int)($f['event'] ?? 0); $st = $f['status'] ?? ''; $q = trim((string)($f['q'] ?? ''));
+    if ($ev) { $where[] = 'c.event_id = ?'; $params[] = $ev; }
+    if ($st === 'emailed')    $where[] = 'c.emailed_at IS NOT NULL';
+    if ($st === 'unsent')     $where[] = 'c.emailed_at IS NULL';
+    if ($st === 'membership') $where[] = "c.cert_type = 'membership'";
+    if ($st === 'nopdf')      $where[] = 'c.pdf_path IS NULL';
+    if ($q !== '') { $where[] = '(c.recipient_name LIKE ? OR c.recipient_email LIKE ? OR c.certificate_no LIKE ?)'; array_push($params, "%$q%", "%$q%", "%$q%"); }
+    return [$where ? 'WHERE ' . implode(' AND ', $where) : '', $params];
+}
+// Sort key for names that ignores academic/courtesy titles ("Dr. Ada" sorts under A).
+const CERT_NAME_KEY = "CASE WHEN c.recipient_name LIKE 'Dr. %' THEN SUBSTRING(c.recipient_name, 5) WHEN c.recipient_name LIKE 'Dr %' THEN SUBSTRING(c.recipient_name, 4)
+    WHEN c.recipient_name LIKE 'Prof. %' THEN SUBSTRING(c.recipient_name, 7) WHEN c.recipient_name LIKE 'Prof %' THEN SUBSTRING(c.recipient_name, 6)
+    WHEN c.recipient_name LIKE 'Mr. %' OR c.recipient_name LIKE 'Ms. %' THEN SUBSTRING(c.recipient_name, 5) WHEN c.recipient_name LIKE 'Mrs. %' THEN SUBSTRING(c.recipient_name, 6)
+    ELSE c.recipient_name END";
+const CERT_SORTS = [
+    'newest' => ['Newest first', 'c.issued_at DESC, c.id DESC'],
+    'oldest' => ['Oldest first', 'c.issued_at ASC, c.id ASC'],
+    'name'   => ['Name A–Z', CERT_NAME_KEY . ' ASC'],
+    'name_desc' => ['Name Z–A', CERT_NAME_KEY . ' DESC'],
+    'number' => ['Certificate no.', 'c.certificate_no ASC'],
+    'event'  => ['Event', 'e.title ASC, ' . CERT_NAME_KEY . ' ASC'],
+];
 $filterEvent  = (int)($_GET['event'] ?? 0);
 $filterStatus = in_array($_GET['status'] ?? '', ['emailed','unsent','membership','nopdf'], true) ? $_GET['status'] : '';
 $search       = trim($_GET['q'] ?? '');
-$where = []; $params = [];
-if ($filterEvent) { $where[] = 'c.event_id = ?'; $params[] = $filterEvent; }
-if ($filterStatus === 'emailed')    $where[] = 'c.emailed_at IS NOT NULL';
-if ($filterStatus === 'unsent')     $where[] = 'c.emailed_at IS NULL';
-if ($filterStatus === 'membership') $where[] = "c.cert_type = 'membership'";
-if ($filterStatus === 'nopdf')      $where[] = 'c.pdf_path IS NULL';
-if ($search) {
-    $where[] = '(c.recipient_name LIKE ? OR c.recipient_email LIKE ? OR c.certificate_no LIKE ?)';
-    $params  = array_merge($params, ["%$search%","%$search%","%$search%"]);
-}
-$ws = $where ? 'WHERE ' . implode(' AND ', $where) : '';
+$sort         = isset(CERT_SORTS[$_GET['sort'] ?? '']) ? $_GET['sort'] : 'newest';
+$groupBy      = in_array($_GET['group'] ?? '', ['event', 'status'], true) ? $_GET['group'] : '';
+$perPage      = in_array((int)($_GET['per'] ?? 0), [50, 100, 250, 500], true) ? (int)$_GET['per'] : CERT_PER_PAGE;
+[$ws, $params] = certFilterSql(['event' => $filterEvent, 'status' => $filterStatus, 'q' => $search]);
 
 /** Streams the PDFs of $rows as one ZIP ("CERTNO - Name.pdf"). Returns false if none have a PDF. */
 function certZipDownload(array $rows, string $label): bool {
@@ -352,7 +370,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     }
 
     if ($action === 'bulk') {
-        $rows = certFetch($pdo, $_POST['ids'] ?? []);
+        if (($_POST['all_matching'] ?? '') === '1') {
+            parse_str((string)($_POST['return_qs'] ?? ''), $fq);
+            [$fws, $fparams] = certFilterSql($fq);
+            $s = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$fws}");
+            $s->execute($fparams); $rows = $s->fetchAll();
+        } else {
+            $rows = certFetch($pdo, $_POST['ids'] ?? []);
+        }
         $bulkOp = $_POST['bulk_op'] ?? '';
         @set_time_limit(0);
         if (!$rows) {
@@ -386,9 +411,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
 $page  = max(1, (int)($_GET['page'] ?? 1));
 $cnt   = $pdo->prepare("SELECT COUNT(*) FROM certificates c {$ws}"); $cnt->execute($params);
 $total = (int)$cnt->fetchColumn();
-$pages = max(1, (int)ceil($total / CERT_PER_PAGE));
+$pages = max(1, (int)ceil($total / $perPage));
 $page  = min($page, $pages);
-$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$ws} ORDER BY c.issued_at DESC LIMIT " . CERT_PER_PAGE . " OFFSET " . (($page - 1) * CERT_PER_PAGE));
+// Grouping sorts by the group first so each group's rows sit together.
+$order = ($groupBy === 'event' ? 'COALESCE(e.title, \'~\') ASC, ' : ($groupBy === 'status' ? '(c.pdf_path IS NULL) DESC, (c.emailed_at IS NULL) DESC, ' : '')) . CERT_SORTS[$sort][1];
+$stmt  = $pdo->prepare("SELECT c.*, e.title as event_title, e.event_date FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$ws} ORDER BY {$order} LIMIT " . $perPage . " OFFSET " . (($page - 1) * $perPage));
 $stmt->execute($params);
 $certificates = $stmt->fetchAll();
 $templates    = $pdo->query("SELECT * FROM certificate_templates WHERE type = 'certificate' ORDER BY is_default DESC, id DESC")->fetchAll();
@@ -399,12 +426,12 @@ $lastEvent = (int)($_SESSION['cert_last_event'] ?? 0);
 $view = (($_GET['view'] ?? '') === 'history' || $filterEvent || $filterStatus || $search || isset($_GET['page'])) ? 'history' : 'issue';
 $recent = $pdo->query("SELECT e.id, e.title, COUNT(*) n, SUM(c.emailed_at IS NULL) unsent, MAX(c.issued_at) last_at
     FROM certificates c JOIN events e ON e.id = c.event_id GROUP BY e.id, e.title ORDER BY last_at DESC LIMIT 5")->fetchAll();
-$qs = http_build_query(array_filter(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus, 'page' => $page > 1 ? $page : null]));
+$qs = http_build_query(array_filter(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus, 'sort' => $sort !== 'newest' ? $sort : null, 'group' => $groupBy ?: null, 'per' => $perPage !== CERT_PER_PAGE ? $perPage : null, 'page' => $page > 1 ? $page : null]));
 
-adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $filterStatus, $search, $stats, $total, $page, $pages, $lastEvent, $qs, $view, $recent) {
+adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $filterStatus, $search, $stats, $total, $page, $pages, $lastEvent, $qs, $view, $recent, $sort, $groupBy, $perPage) {
     adminFlash();
     $input = 'w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red';
-    $pageUrl = fn(array $over) => 'certificates.php?' . http_build_query(array_filter(array_merge(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus], $over)));
+    $pageUrl = fn(array $over) => 'certificates.php?' . http_build_query(array_filter(array_merge(['view' => 'history', 'q' => $search, 'event' => $filterEvent ?: null, 'status' => $filterStatus, 'sort' => $sort !== 'newest' ? $sort : null, 'group' => $groupBy ?: null, 'per' => $perPage !== CERT_PER_PAGE ? $perPage : null], $over)));
     $defaultTpl = null; foreach ($templates as $t) if ($t['is_default']) $defaultTpl = $t;
 ?>
 
@@ -619,15 +646,31 @@ John Doe,john@lab.org"
         </select>
         <button type="submit" class="px-3 py-2 bg-gray-900 text-white text-xs font-semibold rounded-lg">Search</button>
         <?php if ($search || $filterEvent || $filterStatus): ?><a href="certificates.php?view=history" class="px-2 py-2 text-xs text-gray-500 hover:text-rarl-red">Clear</a><?php endif; ?>
+        <div class="w-full flex flex-wrap items-center gap-2 pt-1 text-xs text-gray-500">
+          <label class="flex items-center gap-1.5">Sort
+            <select name="sort" onchange="this.form.submit()" class="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg"><?php foreach (CERT_SORTS as $k => [$l]): ?><option value="<?= $k ?>" <?= $sort === $k ? 'selected' : '' ?>><?= $l ?></option><?php endforeach; ?></select></label>
+          <label class="flex items-center gap-1.5">Group
+            <select name="group" onchange="this.form.submit()" class="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg"><?php foreach (['' => 'None', 'event' => 'By event', 'status' => 'By status'] as $k => $l): ?><option value="<?= $k ?>" <?= $groupBy === $k ? 'selected' : '' ?>><?= $l ?></option><?php endforeach; ?></select></label>
+          <label class="flex items-center gap-1.5">Show
+            <select name="per" onchange="this.form.submit()" class="px-2.5 py-1.5 text-xs border border-gray-300 rounded-lg"><?php foreach ([50, 100, 250, 500] as $n): ?><option value="<?= $n ?>" <?= $perPage === $n ? 'selected' : '' ?>><?= $n ?> per page</option><?php endforeach; ?></select></label>
+          <span class="ms-auto hidden sm:inline">Tick certificates to email, download, regenerate or delete them together.</span>
+        </div>
       </form>
 
-      <?= bulkFormOpen('', ['return_qs' => $qs]) ?>
+      <?= bulkFormOpen('', ['return_qs' => $qs, 'all_matching' => '0']) ?>
+      <?php if ($total > count($certificates)): ?>
+      <div id="all-matching" hidden class="mx-4 mt-3 px-4 py-2.5 rounded-xl bg-blue-50 text-blue-900 text-xs flex flex-wrap items-center gap-2">
+        <span data-am-text>All <?= count($certificates) ?> on this page are selected.</span>
+        <button type="button" class="font-semibold underline" data-am-on>Select all <?= number_format($total) ?> matching certificates</button>
+        <button type="button" class="font-semibold underline" data-am-off hidden>Clear selection</button>
+      </div>
+      <?php endif; ?>
       <div class="px-4 pt-3"><?= bulkBar([
           ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
           ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','confirm'=>'Email the selected certificates again, including ones already sent?'],
           ['label'=>'<i class="fa-solid fa-file-zipper"></i> Download ZIP','op'=>'zip','class'=>'bg-gray-700 hover:bg-gray-600','no_loading'=>true],
           ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate PDFs','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','confirm'=>'Rebuild the selected PDFs with their current template design?'],
-          ['label'=>'<i class="fa-solid fa-trash"></i> Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected certificates? This cannot be undone.'],
+          ['label'=>'<i class="fa-solid fa-trash"></i> Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete the selected certificates? Their PDFs are removed and their verification links stop working. This cannot be undone.'],
       ]) ?></div>
       <div class="overflow-x-auto">
         <table class="w-full text-sm">
@@ -648,8 +691,30 @@ John Doe,john@lab.org"
               <p class="text-sm text-gray-500"><?= $search || $filterEvent || $filterStatus ? 'No certificates match these filters.' : 'No certificates yet. <a href="certificates.php" class="font-semibold text-rarl-red hover:underline">Issue your first batch</a>' ?></p>
             </td></tr>
             <?php endif; ?>
-            <?php foreach ($certificates as $c): $verify = CERT_VERIFY_URL . '?id=' . $c['uuid']; $isMembership = ($c['cert_type'] ?? 'event') === 'membership'; ?>
-            <tr class="hover:bg-gray-50">
+            <?php
+              $statusOf = fn($c) => !$c['pdf_path'] ? 'Missing PDF' : ($c['emailed_at'] ? 'Emailed' : 'Not sent yet');
+              $groupKey = fn($c) => $groupBy === 'event' ? (($c['cert_type'] ?? '') === 'membership' ? 'membership' : 'e' . (int)$c['event_id']) : ($groupBy === 'status' ? $statusOf($c) : '');
+              $groupCounts = $groupBy ? array_count_values(array_map($groupKey, $certificates)) : [];
+              $lastGroup = null;
+            ?>
+            <?php foreach ($certificates as $c): $verify = CERT_VERIFY_URL . '?id=' . $c['uuid']; $isMembership = ($c['cert_type'] ?? 'event') === 'membership';
+              $gk = $groupKey($c);
+              if ($groupBy && $gk !== $lastGroup): $lastGroup = $gk;
+                $gLabel = $groupBy === 'status' ? $gk : ($gk === 'membership' ? 'Membership certificates' : ($c['event_title'] ?: 'No event')); ?>
+            <tr class="bg-gray-50/80 border-t-2 border-gray-200" data-group-head="<?= ex($gk) ?>">
+              <td class="px-4 py-2.5"><input type="checkbox" class="accent-rarl-red w-4 h-4" data-group-select="<?= ex($gk) ?>" aria-label="Select all in <?= ex($gLabel) ?>"/></td>
+              <td colspan="5" class="px-3 py-2.5">
+                <div class="flex flex-wrap items-center gap-2">
+                  <span class="font-semibold text-gray-900 text-sm"><?= ex($gLabel) ?></span>
+                  <span class="text-xs text-gray-500"><?= (int)$groupCounts[$gk] ?> on this page<?= $groupBy === 'event' && $gk !== 'membership' && $c['event_date'] ? ' · ' . date('d M Y', strtotime($c['event_date'])) : '' ?></span>
+                  <?php if ($groupBy === 'event' && $gk !== 'membership' && $c['event_id']): ?>
+                  <a href="certificates.php?export=zip&event=<?= (int)$c['event_id'] ?>" class="ms-auto inline-flex items-center gap-1.5 text-xs font-semibold text-gray-700 hover:text-rarl-red"><i class="fa-solid fa-file-zipper"></i> Download ZIP</a>
+                  <?php endif; ?>
+                </div>
+              </td>
+            </tr>
+            <?php endif; ?>
+            <tr class="hover:bg-gray-50" data-group="<?= ex($gk) ?>">
               <td class="px-4 py-3"><?= bulkRowCheckbox((int)$c['id']) ?></td>
               <td class="px-3 py-3" data-sort="<?= ex($c['recipient_name']) ?>">
                 <div class="flex items-center gap-2.5 min-w-0">
@@ -694,7 +759,7 @@ John Doe,john@lab.org"
         </table>
       </div>
       <div class="px-4 py-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
-        <span><?= $total ? 'Showing ' . number_format(($page - 1) * CERT_PER_PAGE + 1) . '–' . number_format(min($total, $page * CERT_PER_PAGE)) . ' of ' . number_format($total) : '0 results' ?></span>
+        <span><?= $total ? 'Showing ' . number_format(($page - 1) * $perPage + 1) . '–' . number_format(min($total, $page * $perPage)) . ' of ' . number_format($total) : '0 results' ?></span>
         <?php if ($pages > 1): ?>
         <div class="flex items-center gap-1">
           <a href="<?= ex($pageUrl(['page' => $page - 1])) ?>" class="px-2.5 py-1.5 rounded-lg border border-gray-200 <?= $page <= 1 ? 'pointer-events-none opacity-40' : 'hover:bg-gray-50' ?>"><i class="fa-solid fa-chevron-left"></i></a>
@@ -732,6 +797,41 @@ John Doe,john@lab.org"
   .issue-tab{color:#475569}.issue-tab.on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.12)}
 </style>
 <?= bulkBarScript() ?>
+<script>
+(function () {
+  const rows = () => [...document.querySelectorAll('.row-check')];
+  const fire = el => el.dispatchEvent(new Event('change', {bubbles: true}));
+  // Group checkbox selects that group's rows.
+  document.querySelectorAll('[data-group-select]').forEach(g => g.addEventListener('change', () => {
+    document.querySelectorAll('tr[data-group="' + CSS.escape(g.dataset.groupSelect) + '"] .row-check').forEach(c => { c.checked = g.checked; });
+    rows().length && fire(rows()[0]);
+  }));
+  document.addEventListener('change', e => {
+    if (!e.target.classList.contains('row-check')) return;
+    document.querySelectorAll('[data-group-select]').forEach(g => {
+      const rs = [...document.querySelectorAll('tr[data-group="' + CSS.escape(g.dataset.groupSelect) + '"] .row-check')];
+      g.checked = rs.length && rs.every(c => c.checked); g.indeterminate = !g.checked && rs.some(c => c.checked);
+    });
+  });
+  // "Select all N matching": bulk actions apply to every certificate matching the filters, across pages.
+  const bar = document.getElementById('all-matching'), flag = document.querySelector('#bulk-form [name=all_matching]'), all = document.getElementById('select-all');
+  if (!bar || !flag || !all) return;
+  const count = document.getElementById('bulk-count');
+  function setAll(on) {
+    flag.value = on ? '1' : '0';
+    bar.querySelector('[data-am-on]').hidden = on; bar.querySelector('[data-am-off]').hidden = !on;
+    bar.querySelector('[data-am-text]').textContent = on ? 'All <?= number_format($total) ?> certificates matching your filters are selected.' : 'All <?= count($certificates) ?> on this page are selected.';
+    if (count) count.textContent = on ? '<?= number_format($total) ?>' : rows().filter(c => c.checked).length;
+  }
+  document.addEventListener('change', e => {
+    if (!e.target.classList.contains('row-check') && e.target !== all) return;
+    const allOnPage = rows().length && rows().every(c => c.checked);
+    bar.hidden = !allOnPage; if (!allOnPage) setAll(false); else if (flag.value === '1') setAll(true);
+  });
+  bar.querySelector('[data-am-on]').addEventListener('click', () => setAll(true));
+  bar.querySelector('[data-am-off]').addEventListener('click', () => { rows().forEach(c => { c.checked = false; }); all.checked = false; setAll(false); bar.hidden = true; fire(all); });
+})();
+</script>
 <script>
 (function() {
   // Copy buttons
