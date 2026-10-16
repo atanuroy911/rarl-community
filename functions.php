@@ -254,14 +254,37 @@ function issueCertificateForAttendance(PDO $pdo, array $event, array $member, ?s
     $verifyUrl  = CERT_VERIFY_URL . '?id=' . $uuid;
     $eventTitle = $event['title'];
     $certNumber = $certNo;
-    $memberName = $name;
+    $memberName = properName($name);
+    $eventType  = $event['type'] ?? 'other';
+    $eventDate  = !empty($event['event_date']) ? date('d F Y', strtotime($event['event_date'])) : null;
+    $attach     = certEmailAttachment($pdfPath ?? '', $certNo, $memberName);
+    $pdfAttached = (bool)$attach;
+    $subject    = certEmailSubject($eventType, html_entity_decode((string)$event['title'], ENT_QUOTES, 'UTF-8'));
     ob_start(); require __DIR__ . '/emails/certificate.php'; $body = ob_get_clean();
     if ($batch) {
-        queueEmail($batch, 'Certificates — ' . $event['title'], $email, $name, 'Your RARL Certificate — ' . $event['title'], $body, [], 'cert:' . $certId);
-    } elseif (sendEmail($email, $name, 'Your RARL Certificate — ' . $event['title'], $body)) {
+        queueEmail($batch, 'Certificates — ' . $event['title'], $email, $memberName, $subject, $body, $attach, 'cert:' . $certId);
+    } elseif (sendEmail($email, $memberName, $subject, $body, $attach)) {
         $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$certId]);
     }
     return true;
+}
+
+/** Subject line for a certificate email, worded for the event type. */
+function certEmailSubject(?string $type, string $title): string {
+    return match ($type) {
+        'volunteer'   => "Thank you for volunteering — your certificate for {$title}",
+        'hackathon', 'competition' => "Thank you for taking part — your certificate for {$title}",
+        'workshop'    => "Well done! Your workshop certificate for {$title}",
+        default       => "Thank you for joining {$title} — your certificate",
+    };
+}
+
+/** The certificate PDF as an email attachment ([] if the file is missing). */
+function certEmailAttachment(string $pdfPath, string $certNo, string $name): array {
+    $file = $pdfPath ? UPLOADS_PATH . '/certificates/' . basename($pdfPath) : '';
+    if (!$file || !is_file($file)) return [];
+    $fname = trim(preg_replace('/[^\w .,()&\'-]+/u', '', 'RARL Certificate - ' . html_entity_decode($name, ENT_QUOTES, 'UTF-8'))) . '.pdf';
+    return [['path' => $file, 'filename' => $fname]];
 }
 
 // ── Send email ─────────────────────────────────────────────
@@ -1558,7 +1581,23 @@ function templateFontFamily(array $f): string {
     return TEMPLATE_FONTS[$f['font'] ?? 'helvetica'] ?? 'Helvetica';
 }
 
+/**
+ * Capitalises each part of a person's name: "atanu ROY" -> "Atanu Roy", "dr. jean-luc o'neil" -> "Dr. Jean-Luc O'Neil".
+ * Words already in mixed case (McDonald, DeVries) and short all-caps initials (J.R.) are kept as typed.
+ */
+function properName(string $name): string {
+    $name = trim(preg_replace('/\s+/u', ' ', $name));
+    return preg_replace_callback("/[\p{L}\p{M}]+/u", function ($m) {
+        $w = $m[0];
+        $lower = mb_strtolower($w); $upper = mb_strtoupper($w);
+        if ($w !== $lower && $w !== $upper && mb_substr($w, 0, 1) === mb_strtoupper(mb_substr($w, 0, 1))) return $w; // McDonald: trust it
+        if ($w === $upper && mb_strlen($w) === 1) return $w;          // initial
+        return mb_strtoupper(mb_substr($lower, 0, 1)) . mb_substr($lower, 1);
+    }, $name);
+}
+
 function renderTemplateHtml(array $template, array $data): string {
+    if (isset($data['name'])) $data['name'] = properName((string)$data['name']);
     $bgUrl = SITE_URL . '/uploads/templates/' . rawurlencode($template['background_path']);
     $w = (float)$template['page_width_mm']; $h = (float)$template['page_height_mm'];
     $config = json_decode($template['config'] ?? '[]', true) ?: [];
@@ -1632,6 +1671,7 @@ function templateCoverCrop(string $path, float $targetW, float $targetH, array &
 // Builds the PDF for a template. With $outPath = null the PDF is returned as a
 // string instead of written to disk (used by the designer's live "Test PDF").
 function renderTemplatePdf(array $template, array $data, ?string $outPath): bool|string {
+    if (isset($data['name'])) $data['name'] = properName((string)$data['name']);
     if (!class_exists('FPDF') && file_exists(__DIR__ . '/libs/fpdf/fpdf.php')) {
         require_once __DIR__ . '/libs/fpdf/fpdf.php';
     }

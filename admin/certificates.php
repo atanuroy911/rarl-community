@@ -96,13 +96,25 @@ function certSendEmail(PDO $pdo, array $c, ?string $batch = null): void {
     $eventTitle = $c['event_title'] ?? 'RARL';
     $eventDate  = !empty($c['event_date']) ? date('d F Y', strtotime($c['event_date'])) : date('d F Y');
     $certNumber = $c['certificate_no'];
-    $memberName = $c['recipient_name'];
+    $memberName = properName($c['recipient_name']);
+    $eventType  = $c['event_type'] ?? null;
+    if (!$eventType && !empty($c['event_id'])) {
+        $et = $pdo->prepare('SELECT type FROM events WHERE id = ?'); $et->execute([$c['event_id']]);
+        $eventType = $et->fetchColumn() ?: 'other';
+    }
+    if (empty($c['pdf_path']) && !empty($c['id'])) {
+        $pp = $pdo->prepare('SELECT pdf_path FROM certificates WHERE id = ?'); $pp->execute([$c['id']]);
+        $c['pdf_path'] = $pp->fetchColumn();
+    }
+    $attach = certEmailAttachment($c['pdf_path'] ?? '', $certNumber, $memberName);
+    $pdfAttached = (bool)$attach;
+    $subject = certEmailSubject($eventType, html_entity_decode((string)$eventTitle, ENT_QUOTES, 'UTF-8'));
     ob_start(); require dirname(__DIR__) . '/emails/certificate.php'; $body = ob_get_clean();
     if ($batch) {
-        queueEmail($batch, 'Certificates — ' . $eventTitle, $c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body, [], 'cert:' . (int)$c['id']);
+        queueEmail($batch, 'Certificates — ' . $eventTitle, $c['recipient_email'], $memberName, $subject, $body, $attach, 'cert:' . (int)$c['id']);
         return;
     }
-    if (sendEmail($c['recipient_email'], $c['recipient_name'], 'Your RARL Certificate — ' . $eventTitle, $body)) {
+    if (sendEmail($c['recipient_email'], $memberName, $subject, $body, $attach)) {
         $pdo->prepare("UPDATE certificates SET emailed_at = NOW() WHERE id = ?")->execute([$c['id']]);
     }
 }
@@ -118,6 +130,7 @@ function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $te
     $mem->execute([$email]);
     $memberId = ($mem->fetch() ?: ['id' => null])['id'];
 
+    $name    = properName($name);
     $uuid    = generateUuid();
     $certNo  = nextCertNumber();
     $pdfPath = certWritePdf(certTemplateFor($pdo, $templateId), $uuid, $name, $event, $certNo);
@@ -128,7 +141,8 @@ function certIssue(PDO $pdo, array $event, string $name, string $email, ?int $te
 
     if ($send) {
         certSendEmail($pdo, ['id' => $pdo->lastInsertId(), 'uuid' => $uuid, 'certificate_no' => $certNo, 'recipient_name' => $name,
-            'recipient_email' => $email, 'event_title' => $event['title'], 'event_date' => $event['event_date']], $batch);
+            'recipient_email' => $email, 'event_title' => $event['title'], 'event_date' => $event['event_date'],
+            'event_id' => $event['id'], 'event_type' => $event['type'] ?? null, 'pdf_path' => $pdfPath], $batch);
     }
     return 'issued';
 }
@@ -144,12 +158,15 @@ function certFetch(PDO $pdo, array $ids): array {
 
 // Rebuilds an event certificate PDF from its (or the current default) template —
 // e.g. after fixing a typo in the design. Membership certificates are skipped.
-function certRegenerate(PDO $pdo, array $c): bool {
+// $newTemplate: switch the certificate to this design first (replaces the old one).
+function certRegenerate(PDO $pdo, array $c, ?int $newTemplate = null): bool {
     if (($c['cert_type'] ?? 'event') === 'membership' || empty($c['event_id'])) return false;
+    if ($newTemplate) $c['template_id'] = $newTemplate;
+    $c['recipient_name'] = properName($c['recipient_name']);
     $pdf = certWritePdf(certTemplateFor($pdo, $c['template_id'] ? (int)$c['template_id'] : null), $c['uuid'], $c['recipient_name'],
         ['title' => $c['event_title'], 'event_date' => $c['event_date']], $c['certificate_no']);
     if (!$pdf) return false;
-    $pdo->prepare("UPDATE certificates SET pdf_path = ? WHERE id = ?")->execute([$pdf, $c['id']]);
+    $pdo->prepare("UPDATE certificates SET pdf_path = ?, template_id = ?, recipient_name = ? WHERE id = ?")->execute([$pdf, $c['template_id'] ?: null, $c['recipient_name'], $c['id']]);
     return true;
 }
 
@@ -352,10 +369,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         header('Location: ' . $back); exit;
     }
 
+    // Regenerate: keep each certificate's design, or replace it with a chosen one.
+    $newTpl = null;
+    if (($_POST['regen_mode'] ?? '') === 'new') {
+        $chk = $pdo->prepare("SELECT id FROM certificate_templates WHERE id = ? AND type = 'certificate'");
+        $chk->execute([(int)($_POST['new_template_id'] ?? 0)]);
+        $newTpl = (int)$chk->fetchColumn() ?: null;
+        if (!$newTpl) { $_SESSION['flash'] = ['type'=>'error','msg'=>'Choose the new design to use.']; header('Location: ' . $back); exit; }
+    }
     if ($action === 'regen_cert') {
         $c = certFetch($pdo, [$_POST['cert_id'] ?? 0])[0] ?? null;
-        $_SESSION['flash'] = $c && certRegenerate($pdo, $c)
-            ? ['type'=>'success','msg'=>'PDF regenerated with the current template.']
+        $_SESSION['flash'] = $c && certRegenerate($pdo, $c, $newTpl)
+            ? ['type'=>'success','msg'=>$newTpl ? 'Certificate regenerated with the new design.' : 'PDF regenerated with its current design.']
             : ['type'=>'error','msg'=>'Could not regenerate this certificate (membership certificates are regenerated from the member page).'];
         header('Location: ' . $back); exit;
     }
@@ -400,8 +425,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} certificate email(s) — sending in the background." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '')];
         } elseif ($bulkOp === 'regen') {
             $done = 0;
-            foreach ($rows as $c) if (certRegenerate($pdo, $c)) $done++;
-            $_SESSION['flash'] = ['type'=>'success','msg'=>"Regenerated {$done} PDF(s)" . ($done < count($rows) ? ' (membership certificates skipped).' : '.')];
+            foreach ($rows as $c) if (certRegenerate($pdo, $c, $newTpl)) $done++;
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Regenerated {$done} PDF(s)" . ($newTpl ? ' with the new design' : '') . ($done < count($rows) ? ' (membership certificates skipped).' : '.')];
         }
         header('Location: ' . $back); exit;
     }
@@ -669,7 +694,7 @@ John Doe,john@lab.org"
           ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
           ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','confirm'=>'Email the selected certificates again, including ones already sent?'],
           ['label'=>'<i class="fa-solid fa-file-zipper"></i> Download ZIP','op'=>'zip','class'=>'bg-gray-700 hover:bg-gray-600','no_loading'=>true],
-          ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate PDFs','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','confirm'=>'Rebuild the selected PDFs with their current template design?'],
+          ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','attrs'=>'data-regen-bulk'],
           ['label'=>'<i class="fa-solid fa-trash"></i> Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete the selected certificates? Their PDFs are removed and their verification links stop working. This cannot be undone.'],
       ]) ?></div>
       <div class="overflow-x-auto">
@@ -719,7 +744,7 @@ John Doe,john@lab.org"
               <td class="px-3 py-3" data-sort="<?= ex($c['recipient_name']) ?>">
                 <div class="flex items-center gap-2.5 min-w-0">
                   <span class="w-8 h-8 rounded-full bg-rarl-red/10 text-rarl-red font-bold text-xs flex items-center justify-center flex-shrink-0"><?= ex(mb_strtoupper(mb_substr(preg_replace('/^(dr|prof|mr|mrs|ms)\.?\s+/i', '', $c['recipient_name']), 0, 1))) ?></span>
-                  <div class="min-w-0"><p class="font-medium text-gray-900 text-xs truncate max-w-[150px]"><?= ex($c['recipient_name']) ?></p><p class="text-[10px] text-gray-400 truncate max-w-[150px]"><?= ex($c['recipient_email']) ?></p></div>
+                  <div class="min-w-0"><p class="font-medium text-gray-900 text-xs truncate max-w-[150px]"><?= ex(properName($c['recipient_name'])) ?></p><p class="text-[10px] text-gray-400 truncate max-w-[150px]"><?= ex($c['recipient_email']) ?></p></div>
                 </div>
               </td>
               <td class="px-3 py-3" data-sort="<?= ex($c['issued_at']) ?>">
@@ -744,9 +769,7 @@ John Doe,john@lab.org"
                   </form>
                   <?php endif; ?>
                   <?php if (!$isMembership): ?>
-                  <form method="POST" class="inline"><?= acsrfField() ?><input type="hidden" name="action" value="regen_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
-                    <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Regenerate PDF with current design"><i class="fa-solid fa-rotate"></i></button>
-                  </form>
+                  <button type="button" data-regen="<?= $c['id'] ?>" data-regen-tpl="<?= (int)$c['template_id'] ?>" data-regen-name="<?= ex($c['recipient_name']) ?>" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-900" title="Regenerate certificate"><i class="fa-solid fa-rotate"></i></button>
                   <?php endif; ?>
                   <form method="POST" class="inline" data-confirm="Delete the certificate for <?= ex($c['recipient_name']) ?>? Its verification link will stop working."><?= acsrfField() ?><input type="hidden" name="action" value="delete_cert"><input type="hidden" name="cert_id" value="<?= $c['id'] ?>"><input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
                     <button type="submit" class="w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-red-50 hover:text-red-600" title="Delete"><i class="fa-solid fa-trash-can"></i></button>
@@ -1144,4 +1167,82 @@ John Doe,john@lab.org"
   }, true);
 })();
 </script>
+
+<?php if ($view === 'history'):
+  adminModalOpen('regen-modal', 'Regenerate certificate', '<span id="regen-sub"></span>', ['form' => true, 'width' => '640px', 'form_attrs' => 'id="regen-form"']); ?>
+  <input type="hidden" name="action" value="regen_cert">
+  <input type="hidden" name="cert_id" id="regen-id">
+  <input type="hidden" name="return_qs" value="<?= ex($qs) ?>">
+  <fieldset class="grid sm:grid-cols-2 gap-2">
+    <legend class="sr-only">Design</legend>
+    <label class="flex gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer has-[:checked]:border-rarl-red has-[:checked]:bg-red-50/40">
+      <input type="radio" name="regen_mode" value="keep" checked class="mt-1 accent-rarl-red">
+      <span><span class="block text-sm font-semibold text-gray-900">Existing design</span><span class="block text-xs text-gray-500" id="regen-cur">Rebuild with the design it already uses.</span></span>
+    </label>
+    <label class="flex gap-3 p-3 rounded-xl border border-gray-200 cursor-pointer has-[:checked]:border-rarl-red has-[:checked]:bg-red-50/40">
+      <input type="radio" name="regen_mode" value="new" class="mt-1 accent-rarl-red">
+      <span><span class="block text-sm font-semibold text-gray-900">New design</span><span class="block text-xs text-gray-500">Pick a design to replace the old one.</span></span>
+    </label>
+  </fieldset>
+  <div id="regen-new" class="hidden space-y-2">
+    <label for="regen-tpl" class="block text-sm font-semibold text-gray-800">New design</label>
+    <select name="new_template_id" id="regen-tpl" class="<?= $input ?>">
+      <?php foreach ($templates as $t): ?><option value="<?= $t['id'] ?>"><?= ex($t['name']) ?><?= $t['is_default'] ? ' (default)' : '' ?></option><?php endforeach; ?>
+    </select>
+    <div class="rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
+      <?php foreach ($templates as $t): ?><div data-rthumb="<?= $t['id'] ?>" class="hidden pointer-events-none"><?= renderTemplateHtml($t, templateSampleData('certificate')) ?></div><?php endforeach; ?>
+    </div>
+    <p class="text-xs text-gray-500">The certificate number and verification link stay the same. Re-send the email if recipients need the new PDF.</p>
+  </div>
+<?php adminModalClose('<i class="fa-solid fa-rotate"></i> Regenerate', '', true); ?>
+<script>
+(function () {
+  const dlg = document.getElementById('regen-modal'), form = document.getElementById('regen-form');
+  if (!dlg) return;
+  const names = <?= json_encode((object)array_column(array_map(fn($t) => ['id' => (int)$t['id'], 'n' => html_entity_decode($t['name'], ENT_QUOTES, 'UTF-8')], $templates), 'n', 'id')) ?>;
+  const defId = <?= (int)($defaultTpl['id'] ?? 0) ?>;
+  const sel = document.getElementById('regen-tpl'), box = document.getElementById('regen-new');
+  const sync = () => {
+    box.classList.toggle('hidden', form.regen_mode.value !== 'new');
+    dlg.querySelectorAll('[data-rthumb]').forEach(d => d.classList.toggle('hidden', d.dataset.rthumb !== sel.value));
+  };
+  form.addEventListener('change', sync);
+  let bulk = false;
+  const open = (title, cur) => {
+    document.getElementById('regen-sub').textContent = title;
+    document.getElementById('regen-cur').textContent = cur;
+    form.regen_mode.value = 'keep'; sync();
+    dlg.showModal();
+  };
+  document.addEventListener('click', e => {
+    const one = e.target.closest('[data-regen]');
+    if (one) {
+      bulk = false;
+      document.getElementById('regen-id').value = one.dataset.regen;
+      const tid = +one.dataset.regenTpl || defId;
+      if (names[tid]) sel.value = tid;
+      open(one.dataset.regenName, 'Currently: ' + (names[tid] || 'default design') + '.');
+      return;
+    }
+    const many = e.target.closest('[data-regen-bulk]');
+    if (many) {
+      e.preventDefault(); bulk = true;
+      open(document.getElementById('bulk-count').textContent + ' selected certificates', 'Each keeps the design it already uses.');
+    }
+  }, true);
+  form.addEventListener('submit', e => {
+    if (!bulk) return;
+    // Bulk: send the choice through the selection form.
+    e.preventDefault();
+    const bf = document.getElementById('bulk-form');
+    bf.querySelectorAll('.regen-x').forEach(n => n.remove());
+    [['regen_mode', form.regen_mode.value], ['new_template_id', sel.value]].forEach(([k, v]) => {
+      const i = document.createElement('input'); i.type = 'hidden'; i.name = k; i.value = v; i.className = 'regen-x'; bf.appendChild(i);
+    });
+    document.getElementById('bulk-op').value = 'regen';
+    dlg.close(); bf.submit();
+  });
+})();
+</script>
+<?php endif; ?>
 <?php }, 'certificates', 'Certificates');

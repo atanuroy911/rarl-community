@@ -646,7 +646,7 @@ function bulkBar(array $actions, string $group = ''): string {
             : (isset($a['op']) ? " onclick=\"document.getElementById('bulk-op{$group}').value='" . htmlspecialchars($a['op'], ENT_QUOTES) . "'\"" : '');
         $nameVal = isset($a['name']) ? ' name="' . htmlspecialchars($a['name']) . '" value="' . htmlspecialchars($a['value'] ?? '') . '"' : '';
         $cls = $a['class'] ?? 'bg-gray-700 hover:bg-gray-600';
-        $btns .= '<button type="submit" form="bulk-form' . $group . '"' . $nameVal . $confirmAttr . (!empty($a['no_loading']) ? ' data-no-loading' : '') . ' class="px-3 py-1.5 ' . $cls . ' text-xs font-semibold rounded-lg">' . $a['label'] . '</button>';
+        $btns .= '<button type="submit" form="bulk-form' . $group . '"' . $nameVal . $confirmAttr . (!empty($a['no_loading']) ? ' data-no-loading' : '') . (!empty($a['attrs']) ? ' ' . $a['attrs'] : '') . ' class="px-3 py-1.5 ' . $cls . ' text-xs font-semibold rounded-lg">' . $a['label'] . '</button>';
     }
     return '<div id="bulk-bar' . $group . '" class="hidden sticky top-2 z-20 mb-4 bg-gray-900 text-white rounded-2xl shadow-lg px-5 py-3 flex flex-wrap items-center gap-3">
       <span class="text-sm font-semibold"><span id="bulk-count' . $group . '">0</span> selected</span>
