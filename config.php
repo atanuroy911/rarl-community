@@ -35,6 +35,9 @@ define('SMTP_HOST',   env('SMTP_HOST', ''));
 define('SMTP_PORT',   (int) env('SMTP_PORT', '587'));
 define('SMTP_USER',   env('SMTP_USER', MAIL_FROM_EMAIL));
 define('SMTP_PASS',   env('SMTP_PASS', ''));
+// Hosting providers cap outgoing mail (Namecheap shared hosting: 50 per hour per
+// domain). The outbox stays under this; 0 turns the limit off.
+define('MAIL_HOURLY_LIMIT', max(0, (int) env('MAIL_HOURLY_LIMIT', '50')));
 define('SMTP_SECURE', env('SMTP_SECURE', 'tls')); // 'tls' (STARTTLS, port 587) or 'ssl' (implicit TLS, port 465)
 
 // ── Admin Auth ─────────────────────────────────────────────

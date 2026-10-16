@@ -352,6 +352,7 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
             } finally {
                 $GLOBALS['rarl_mail_log'] = $mailer->log;
             }
+            emailLogSend();
             return true;
         } catch (Throwable $e) {
             error_log('SMTP send failed: ' . $e->getMessage());
@@ -371,8 +372,67 @@ function sendEmail(string $to, string $toName, string $subject, string $htmlBody
     // reports success.
     $params = filter_var(MAIL_FROM_EMAIL, FILTER_VALIDATE_EMAIL) ? '-f' . MAIL_FROM_EMAIL : '';
     $ok = @mail($to, $subject, $body, implode("\r\n", $headers), $params);
+    if ($ok) emailLogSend();
     if (!$ok) $GLOBALS['rarl_mail_error'] = 'PHP mail() was refused by the server' . (($le = error_get_last()) ? ': ' . $le['message'] : '');
     return $ok;
+}
+
+// ── Hourly sending limit ───────────────────────────────────
+// Every email that leaves the site is logged, so bulk sending can stay under the
+// host's hourly cap. A few sends per hour are always left free for password
+// resets and sign-up codes, which are sent immediately, not queued.
+const MAIL_HOURLY_RESERVE = 5;
+
+function emailSendLogReady(): bool {
+    static $ready = null;
+    if ($ready !== null) return $ready;
+    try {
+        db()->exec("CREATE TABLE IF NOT EXISTS `email_send_log` (
+          `id` INT(11) NOT NULL AUTO_INCREMENT, `sent_at` DATETIME NOT NULL,
+          PRIMARY KEY (`id`), KEY `sent_at` (`sent_at`)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+        $ready = true;
+    } catch (Throwable $e) {
+        error_log('email_send_log unavailable: ' . $e->getMessage());
+        $ready = false;
+    }
+    return $ready;
+}
+
+function emailLogSend(): void {
+    if (!emailSendLogReady()) return;
+    try {
+        $pdo = db();
+        $pdo->exec("INSERT INTO email_send_log (sent_at) VALUES (NOW())");
+        if (random_int(1, 50) === 1) $pdo->exec("DELETE FROM email_send_log WHERE sent_at < NOW() - INTERVAL 2 DAY");
+    } catch (Throwable $e) { error_log('email_send_log: ' . $e->getMessage()); }
+}
+
+/** ['limit' => int, 'used' => int, 'budget' => int (queue sends allowed now), 'resume_at' => ?int (unix time)] */
+function emailHourStatus(): array {
+    $limit = MAIL_HOURLY_LIMIT;
+    if ($limit <= 0 || !emailSendLogReady()) return ['limit' => 0, 'used' => 0, 'budget' => PHP_INT_MAX, 'resume_at' => null];
+    $pdo = db();
+    $used = (int)$pdo->query("SELECT COUNT(*) FROM email_send_log WHERE sent_at > NOW() - INTERVAL 1 HOUR")->fetchColumn();
+    $cap = max(1, $limit - MAIL_HOURLY_RESERVE);
+    $budget = max(0, $cap - $used);
+    $resume = null;
+    if ($budget === 0) {
+        // The queue may send again once enough of the last hour's sends age out.
+        $offset = max(0, $used - $cap);
+        $at = $pdo->query("SELECT UNIX_TIMESTAMP(sent_at) FROM email_send_log WHERE sent_at > NOW() - INTERVAL 1 HOUR ORDER BY sent_at ASC LIMIT 1 OFFSET {$offset}")->fetchColumn();
+        $resume = $at ? (int)$at + 3600 + 5 : time() + 300;
+    }
+    return ['limit' => $limit, 'used' => $used, 'budget' => $budget, 'resume_at' => $resume];
+}
+
+/** Rough "about 3 hours" for $n queued emails at the current limit, or '' when there is no limit. */
+function emailQueueEta(int $n): string {
+    if (MAIL_HOURLY_LIMIT <= 0 || $n <= 0) return '';
+    $perHour = max(1, MAIL_HOURLY_LIMIT - MAIL_HOURLY_RESERVE);
+    if ($n <= $perHour) return '';
+    $hours = (int)ceil($n / $perHour);
+    return " Your host allows {$perHour} per hour, so this takes about {$hours} hour" . ($hours > 1 ? 's' : '') . '.';
 }
 
 // ── Background email queue ─────────────────────────────────
@@ -441,6 +501,9 @@ function emailQueueRunHook(string $hook): void {
 function processEmailQueue(int $limit = 8, int $maxSeconds = 15): array {
     $done = ['sent' => 0, 'failed' => 0];
     if (!emailQueueReady()) return $done;
+    $hour = emailHourStatus();
+    if ($hour['budget'] <= 0) return $done + ['paused_until' => $hour['resume_at']];
+    $limit = min($limit, $hour['budget']);
     $pdo = db();
     $claim = bin2hex(random_bytes(8));
     // Rows stuck in "sending" (a tab closed mid-batch) are retried after 5 minutes.
@@ -477,13 +540,13 @@ function processEmailQueue(int $limit = 8, int $maxSeconds = 15): array {
 
 // Progress of all batches that still have work (or finished in the last hour).
 function emailQueueSummary(): array {
-    if (!emailQueueReady()) return ['pending' => 0, 'batches' => []];
+    if (!emailQueueReady()) return ['pending' => 0, 'batches' => [], 'hour' => emailHourStatus()];
     $pdo = db();
     $pending = (int)$pdo->query("SELECT COUNT(*) FROM email_queue WHERE status IN ('queued','sending')")->fetchColumn();
     $batches = $pdo->query("SELECT batch, MAX(batch_label) label, COUNT(*) total, SUM(status='sent') sent, SUM(status='failed') failed,
         SUM(status IN ('queued','sending')) pending, SUM(status='cancelled') cancelled, MIN(created_at) created_at, MAX(sent_at) last_sent
         FROM email_queue GROUP BY batch HAVING pending > 0 OR MAX(created_at) > NOW() - INTERVAL 1 HOUR ORDER BY MIN(id) DESC LIMIT 10")->fetchAll();
-    return ['pending' => $pending, 'batches' => $batches];
+    return ['pending' => $pending, 'batches' => $batches, 'hour' => emailHourStatus()];
 }
 
 // ── Flash messages ─────────────────────────────────────────
@@ -672,9 +735,10 @@ function htmlHead(string $title, bool $isAdmin = false, array $meta = []): strin
   {$seo}
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
   <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)"/>
-  <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32"/>
+  <link rel="icon" href="favicon.ico?v=2" sizes="48x48"/>
+  <link rel="icon" href="assets/rarl-mark.svg?v=2" type="image/svg+xml"/>
   <link rel="manifest" href="manifest.webmanifest"/>
-  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png"/>
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png?v=2"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-title" content="RARL"/>

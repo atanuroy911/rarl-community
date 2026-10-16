@@ -75,6 +75,14 @@ adminWrap(function() use ($ready, $rows, $counts, $batches, $filter) {
   </div>
 </div>
 
+<?php $hour = emailHourStatus(); if ($hour['limit'] > 0): $cap = max(1, $hour['limit'] - MAIL_HOURLY_RESERVE); ?>
+<div class="rarl-card p-4 mb-4 text-sm flex flex-wrap items-center gap-x-4 gap-y-2 <?= $hour['resume_at'] ? 'border-amber-300 bg-amber-50' : '' ?>">
+  <span class="font-semibold"><i class="fa-solid fa-gauge-high"></i> Sent in the last hour: <?= min($hour['used'], $hour['limit']) ?> / <?= $hour['limit'] ?></span>
+  <span class="text-gray-600">Bulk emails use up to <?= $cap ?> per hour; <?= MAIL_HOURLY_RESERVE ?> are kept for password resets and sign-up codes.</span>
+  <?php if ($hour['resume_at']): ?><span class="font-semibold text-amber-800">Paused: continues at <?= date('H:i', $hour['resume_at']) ?> (server time).</span><?php endif; ?>
+  <span class="w-full text-xs text-gray-500">To keep sending when no admin page is open, add a cPanel cron job every 5 minutes: <code>php <?= ex(dirname(__DIR__)) ?>/cron-email-queue.php</code>. Change the limit with MAIL_HOURLY_LIMIT in .env.</span>
+</div>
+<?php endif; ?>
 <?php if (!$ready): ?>
 <div class="rarl-card p-6 text-sm text-red-700">The email queue table could not be created. Run <a href="migrate.php" class="underline font-semibold">Migrations</a>; until then emails are sent immediately.</div>
 <?php else: ?>

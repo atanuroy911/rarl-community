@@ -467,7 +467,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
                 if (!$c['pdf_path'] || ($bulkOp === 'send' && $c['emailed_at'])) continue;
                 certSendEmail($pdo, $c, $batch, $customEmail); $sent++;
             }
-            $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} certificate email(s) — sending in the background." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '')];
+            $_SESSION['flash'] = ['type'=>'success','msg'=>"Queued {$sent} certificate email(s) — sending in the background." . ($bulkOp === 'send' && $sent < count($rows) ? ' Already-sent ones were skipped.' : '') . emailQueueEta($sent)];
         } elseif ($bulkOp === 'regen') {
             $done = 0;
             foreach ($rows as $c) if (certRegenerate($pdo, $c, $newTpl)) $done++;
