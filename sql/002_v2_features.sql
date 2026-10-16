@@ -35,7 +35,7 @@ INSERT INTO `membership_plans` (`slug`,`name`,`tagline`,`description`,`audience`
 ('free',         'Free',         'Open to every researcher',      'Full community access at no cost — individuals and labs alike.', 'both',       NULL,    1),
 ('student',      'Student',      'For students and trainees',     'For PhD/MSc/BSc students and early-career researchers.',          'individual', 0.00,    2),
 ('organization', 'Organization', 'For labs & institutions',       'For research labs and institutions joining as an organization.',  'lab',        2500.00, 3)
-ON DUPLICATE KEY UPDATE `name` = VALUES(`name`), `tagline` = VALUES(`tagline`), `description` = VALUES(`description`), `audience` = VALUES(`audience`), `display_order` = VALUES(`display_order`);
+ON DUPLICATE KEY UPDATE `name` = `name`; -- keep plans edited in Admin → Plans (re-runs must not reset them)
 
 -- ── members: new columns ────────────────────────────────────
 ALTER TABLE `members`

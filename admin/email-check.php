@@ -22,9 +22,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk() && ($_POST['action'] 
               . '<h2 style="margin:16px 0 8px">Test email from RARL Community</h2>'
               . '<p>If you can read this, email from <b>' . htmlspecialchars(SITE_URL) . '</b> is being delivered.</p>'
               . '<p style="color:#666;font-size:13px">Sent ' . date('d M Y, H:i') . ' via ' . (SMTP_HOST !== '' ? 'SMTP (' . htmlspecialchars(SMTP_HOST) . ')' : 'PHP mail()') . '.</p></div>';
+        // Optionally attach a real certificate PDF, to compare with/without an attachment.
+        $attach = [];
+        if (!empty($_POST['with_pdf'])) {
+            $pdfName = $pdo->query("SELECT pdf_path FROM certificates WHERE pdf_path IS NOT NULL AND pdf_path <> '' ORDER BY id DESC LIMIT 1")->fetchColumn();
+            $pdfFile = $pdfName ? UPLOADS_PATH . '/certificates/' . basename($pdfName) : '';
+            if ($pdfFile && is_file($pdfFile)) $attach = [['path' => $pdfFile, 'filename' => 'Test certificate.pdf']];
+        }
         $t0 = microtime(true);
-        $ok = sendEmail($to, '', 'RARL Community — test email', $body);
+        $ok = sendEmail($to, '', 'RARL Community — test email' . ($attach ? ' (with PDF)' : ''), $body, $attach);
         $result = ['ok' => $ok, 'to' => $to, 'ms' => (int)((microtime(true) - $t0) * 1000),
+                   'pdf' => $attach ? round(filesize($attach[0]['path']) / 1024) . ' KB PDF attached' : (!empty($_POST['with_pdf']) ? 'No certificate PDF found to attach' : ''),
                    'msg' => $ok ? null : ($GLOBALS['rarl_mail_error'] ?? 'The mail server refused the message.'),
                    'log' => $GLOBALS['rarl_mail_log'] ?? []];
     }
@@ -63,18 +71,19 @@ adminWrap(function () use ($result, $recentFailed, $recentSent) {
 
   <section class="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
     <h2 class="font-semibold text-gray-900 mb-2">Send a test email</h2>
-    <form method="post" class="flex flex-col sm:flex-row gap-2" data-loading>
+    <form method="post" id="test-form" class="flex flex-col sm:flex-row gap-2" data-loading>
       <?= acsrfField() ?><input type="hidden" name="action" value="test">
       <label class="sr-only" for="to">Send to</label>
       <input id="to" name="to" type="email" required value="<?= ex($result['to'] ?? '') ?>" placeholder="you@gmail.com" class="flex-1 min-h-[44px] px-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rarl-red/25 focus:border-rarl-red">
       <button class="min-h-[44px] px-5 bg-rarl-red hover:bg-rarl-dark text-white text-sm font-bold rounded-xl"><i class="fa-solid fa-paper-plane"></i> Send test</button>
     </form>
-    <p class="text-xs text-gray-500 mt-2">Try a Gmail address and check its Spam folder too.</p>
+    <label class="flex items-center gap-2 text-sm text-gray-700 mt-2"><input type="checkbox" name="with_pdf" value="1" form="test-form" class="accent-rarl-red" <?= !empty($_POST['with_pdf']) ? 'checked' : '' ?>> Attach a certificate PDF, like certificate emails do</label>
+    <p class="text-xs text-gray-500 mt-1">Send one test with and one without the PDF to a Gmail address, and check Spam too. If only the plain one arrives, the attachment is the problem.</p>
 
     <?php if ($result): ?>
     <div class="mt-4 rounded-xl p-4 text-sm <?= $result['ok'] ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800' ?>">
       <?php if ($result['ok']): ?>
-        <p class="font-semibold"><i class="fa-solid fa-circle-check"></i> The mail server accepted the message (<?= (int)$result['ms'] ?> ms).</p>
+        <p class="font-semibold"><i class="fa-solid fa-circle-check"></i> The mail server accepted the message (<?= (int)$result['ms'] ?> ms<?= !empty($result['pdf']) ? ', ' . ex($result['pdf']) : '' ?>).</p>
         <p class="mt-1">If it doesn&rsquo;t arrive within a few minutes (check Spam), the server is accepting mail it then can&rsquo;t deliver. <?= $smtp ? 'Check the mailbox&rsquo;s sent and bounced mail in cPanel or Webmail.' : 'Switch to SMTP (see below).' ?></p>
       <?php else: ?>
         <p class="font-semibold"><i class="fa-solid fa-triangle-exclamation"></i> Not sent</p>

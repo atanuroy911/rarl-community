@@ -8,7 +8,7 @@
 
 INSERT INTO `settings` (`key`, `value`) VALUES
   ('custom_roster_pdf_path', 'member-list-20260801to20260884.pdf')
-ON DUPLICATE KEY UPDATE `value` = 'member-list-20260801to20260884.pdf';
+ON DUPLICATE KEY UPDATE `value` = `value`; -- keep a roster PDF uploaded later
 
 UPDATE `settings` SET `value` = '884'
 WHERE `key` = 'id_card_counter' AND CAST(`value` AS UNSIGNED) < 884;
