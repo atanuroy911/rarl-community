@@ -36,6 +36,13 @@ Options -Indexes
   </FilesMatch>
 </IfModule>
 
+# Search engines: /sitemap.xml and /robots.txt are generated from the database.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^sitemap\.xml$ sitemap.php [L]
+  RewriteRule ^robots\.txt$ robots.php [L]
+</IfModule>
+
 # Don't leak the Apache/PHP version in response headers
 ServerSignature Off
 

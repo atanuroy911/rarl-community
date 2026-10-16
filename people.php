@@ -11,7 +11,7 @@ $leaders = chapterLeaders();
 $byRegion = [];
 foreach ($leaders as $c) $byRegion[$c['continent']][] = $c;
 
-echo htmlHead('Our People');
+echo htmlHead('Our People', false, ['description' => 'Meet the leadership and regional chapter chairs of the Robotics & Automation Research Lab (RARL), an international robotics research community.']);
 ?>
 <?= publicNav('people') ?>
 

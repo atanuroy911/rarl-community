@@ -36,6 +36,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
     $action = $_POST['action'] ?? '';
 
+    if ($action === 'install_premade') {
+        $id = installPremadeTemplate((string)($_POST['slug'] ?? ''), !empty($_POST['make_default']));
+        $_SESSION['flash'] = $id ? ['type' => 'success', 'msg' => 'Design added. Open it to change the wording, signers or colours.'] : ['type' => 'error', 'msg' => 'That design could not be added.'];
+        header('Location: templates.php' . ($id ? '?edit=' . $id : '')); exit;
+    }
+
     if ($action === 'create_template') {
         $name = clean($_POST['name'] ?? '');
         $type = in_array($_POST['type'] ?? '', ['id_card','membership'], true) ? $_POST['type'] : 'certificate';
@@ -157,8 +163,33 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
     <h1 class="text-2xl font-black text-gray-900 mb-1">Templates</h1>
     <p class="text-gray-500 text-sm">Design the certificates and ID cards members receive. What you see in the designer is exactly what gets generated.</p>
   </div>
-  <button type="button" onclick="document.getElementById('new-tpl').showModal()" class="px-4 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl shadow-sm"><i class="fa-solid fa-plus"></i> New template</button>
+  <div class="flex gap-2">
+    <button type="button" onclick="document.getElementById('premade').showModal()" class="px-4 py-2.5 bg-white border border-gray-300 hover:border-gray-500 text-gray-800 font-semibold text-sm rounded-xl"><i class="fa-solid fa-swatchbook"></i> Premade designs</button>
+    <button type="button" onclick="document.getElementById('new-tpl').showModal()" class="px-4 py-2.5 bg-rarl-red hover:bg-rarl-dark text-white font-semibold text-sm rounded-xl shadow-sm"><i class="fa-solid fa-plus"></i> Upload your own</button>
+  </div>
 </div>
+
+<dialog id="premade" class="rarl-amodal" style="--modal-w:980px" aria-labelledby="premade-t">
+  <div class="rarl-amodal-head"><div class="flex-1"><h2 id="premade-t">Premade designs</h2><p>Ready-to-use RARL designs. Add one, then edit its wording, signers and colours in the designer.</p></div>
+    <button type="button" class="rarl-icon-btn" data-amodal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
+  <div class="rarl-amodal-body">
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      <?php foreach (premadeTemplates() as $slug => $d): ?>
+      <form method="POST" class="rounded-xl border border-gray-200 overflow-hidden flex flex-col">
+        <?= acsrfField() ?><input type="hidden" name="action" value="install_premade"><input type="hidden" name="slug" value="<?= ex($slug) ?>">
+        <img src="../assets/templates/<?= ex($d['bg']) ?>" alt="" loading="lazy" class="w-full aspect-[<?= $d['w'] ?>/<?= $d['h'] ?>] object-cover bg-gray-100"/>
+        <div class="p-3 flex-1 flex flex-col gap-2">
+          <p class="font-semibold text-sm"><?= ex($d['name']) ?></p>
+          <p class="text-xs text-gray-500"><?= ex($TYPE_LABELS[$d['type']] ?? $d['type']) ?></p>
+          <label class="flex items-center gap-2 text-xs text-gray-600"><input type="checkbox" name="make_default" value="1" class="accent-rarl-red"> Use for all new <?= $d['type'] === 'id_card' ? 'ID cards' : ($d['type'] === 'membership' ? 'membership certificates' : 'event certificates') ?></label>
+          <button class="mt-auto rarl-btn rarl-btn-sm rarl-btn-primary"><i class="fa-solid fa-plus"></i> Add design</button>
+        </div>
+      </form>
+      <?php endforeach; ?>
+    </div>
+    <p class="text-xs text-gray-500 mt-4">Background artwork is vector (SVG) in <code>assets/templates/src</code> and can be edited in Figma, Illustrator or Inkscape.</p>
+  </div>
+</dialog>
 
 <div class="flex flex-wrap gap-2 mb-5" id="tpl-tabs">
   <?php foreach (['all' => 'All'] + $TYPE_LABELS as $k => $label): $n = $k === 'all' ? count($templates) : ($counts[$k] ?? 0); ?>
@@ -353,6 +384,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
   #stage-inner{display:flex;align-items:center;justify-content:center;min-width:100%;min-height:100%;padding:40px;box-sizing:border-box;width:max-content}
   #canvas{position:relative;flex-shrink:0;background:#fff;box-shadow:0 10px 40px rgba(15,23,42,.18);user-select:none;touch-action:none}
   #canvas>img.bg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  <?= templateFontFaceCss('../assets/fonts/') ?>
   .fld{position:absolute;cursor:move;white-space:nowrap;line-height:1.134}
   .fld.img{display:block}
   .fld.img>img{width:100%;height:100%;display:block;pointer-events:none}
@@ -521,7 +553,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
       <div id="p-textprops" class="space-y-3.5">
         <div class="grid grid-cols-[1fr_76px] gap-2">
           <div><label class="tpl-label">Font</label>
-            <select id="p-font" class="tpl-input"><option value="helvetica">Helvetica (sans)</option><option value="times">Times (serif)</option><option value="courier">Courier (mono)</option></select></div>
+            <select id="p-font" class="tpl-input"><option value="montserrat">Montserrat (modern)</option><option value="playfair">Playfair (elegant serif)</option><option value="script">Great Vibes (signature)</option><option value="helvetica">Helvetica (sans)</option><option value="times">Times (serif)</option><option value="courier">Courier (mono)</option></select></div>
           <div><label class="tpl-label">Size (pt)</label><input type="number" step="0.5" min="3" max="200" id="p-size" class="tpl-input"/></div>
         </div>
         <div class="flex gap-2">
@@ -548,6 +580,7 @@ adminWrap(function() use ($templates, $edit, $usage, $FIELD_KEYS, $TYPE_LABELS, 
         <div>
           <label class="tpl-label">Max width (mm) <span class="font-normal text-gray-400">— shrinks long text to fit · 0 = off</span></label>
           <div class="flex gap-2"><input type="number" step="1" min="0" id="p-maxw" class="tpl-input"/><button type="button" id="p-maxw-auto" class="tpl-btn border border-gray-200 !h-[30px] whitespace-nowrap" title="Use the space available from the anchor to the page margin">Auto</button></div>
+          <label class="flex items-center gap-2 mt-2 text-[11px] text-gray-600"><input type="checkbox" id="p-wrap" class="accent-rarl-red"> Wrap onto several lines (for sentences)</label>
         </div>
       </div>
       <div id="p-imgprops" class="space-y-3">
@@ -603,7 +636,8 @@ const PW = <?= (float)$edit['page_width_mm'] ?>, PH = <?= (float)$edit['page_hei
 const IS_CARD = <?= $edit['type'] === 'id_card' ? 'true' : 'false' ?>;
 const LABELS = Object.assign(<?= json_encode($keys) ?>, {custom_text: 'Custom text', signature: 'Image'});
 const IMAGE_KEYS = ['qr', 'avatar', 'signature'];
-const FONT_CSS = {helvetica: 'Helvetica, Arial, sans-serif', times: '"Times New Roman", Times, serif', courier: '"Courier New", Courier, monospace'};
+const FONT_CSS = {helvetica: 'Helvetica, Arial, sans-serif', times: '"Times New Roman", Times, serif', courier: '"Courier New", Courier, monospace',
+  montserrat: 'RarlMontserrat, sans-serif', playfair: 'RarlPlayfair, Georgia, serif', script: 'RarlScript, cursive'};
 const PT_MM = 25.4 / 72;
 const SAFE = IS_CARD ? 3 : 5;
 const BRAND = ['#111111', '#ffffff', '<?= BRAND_RED ?>', '#1f2937', '#6b7280', '#b45309', '#1e3a8a'];
@@ -705,7 +739,10 @@ function render() {
       el.textContent = textOf(f);
       if (f.key === 'custom_text' && !f.text) el.style.opacity = .55;
       const mw = +f.max_width || 0;
-      if (mw > 0) {
+      if (mw > 0 && f.wrap) {
+        // Paragraph box: wraps inside max width, like the PDF's MultiCell.
+        Object.assign(el.style, {whiteSpace: 'normal', width: mw * scale + 'px', lineHeight: 1.3, textAlign: f.align || 'left'});
+      } else if (mw > 0) {
         // Mirror the PDF's shrink-to-fit so the designer shows the real result.
         let size = +f.font_size || 12;
         el.style.whiteSpace = 'nowrap';
@@ -801,6 +838,7 @@ function renderProps() {
     setVal('p-font', f.font || 'helvetica'); setVal('p-size', f.font_size || 12);
     setVal('p-color', f.color || '#111111'); setVal('p-color-hex', f.color || '#111111');
     setVal('p-maxw', f.max_width || 0);
+    $('p-wrap').checked = !!f.wrap;
     document.querySelectorAll('#p-style button').forEach(b => b.classList.toggle('on', !!f[b.dataset.style]));
     document.querySelectorAll('#p-align button').forEach(b => b.classList.toggle('on', (f.align || 'left') === b.dataset.v));
   } else {
@@ -825,6 +863,7 @@ $('p-color').addEventListener('input', () => updateSel(f => f.color = $('p-color
 $('p-color').addEventListener('change', commit);
 $('p-color-hex').addEventListener('change', () => { let v = $('p-color-hex').value.trim(); if (!v.startsWith('#')) v = '#' + v; if (/^#[0-9a-f]{6}$/i.test(v)) updateSel(f => f.color = v.toLowerCase()); });
 $('p-maxw').addEventListener('change', () => updateSel(f => f.max_width = Math.max(0, num('p-maxw') || 0)));
+$('p-wrap').addEventListener('change', () => updateSel(f => { f.wrap = $('p-wrap').checked; if (f.wrap && !(+f.max_width > 0)) f.max_width = Math.round(PW * 0.6); }));
 $('p-maxw-auto').addEventListener('click', () => updateSel(f => {
   const x = xmm(f), avail = f.align === 'center' ? 2 * Math.min(x - SAFE, PW - SAFE - x) : f.align === 'right' ? x - SAFE : PW - SAFE - x;
   f.max_width = Math.max(10, Math.round(avail));

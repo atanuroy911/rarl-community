@@ -31,6 +31,7 @@ if (PHP_SAPI !== 'cli' && !headers_sent()) {
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: strict-origin-when-cross-origin');
     header('Cross-Origin-Opener-Policy: same-origin');
+    header('Permissions-Policy: camera=(self), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()');
     header("Content-Security-Policy: "
         . "default-src 'self'; "
         . "base-uri 'self'; "
@@ -530,8 +531,48 @@ function rarlFontSizeCss(): string {
 }
 
 // ── Shared HTML head ───────────────────────────────────────
-function htmlHead(string $title, bool $isAdmin = false): string {
+// ── Search & share metadata ────────────────────────────────
+// $meta: description, image (absolute URL), type (og:type), noindex (bool).
+// Private member pages are never indexed.
+const RARL_PRIVATE_PAGES = ['dashboard.php', 'membership.php', 'profile.php', 'chapter.php', 'search.php', 'impersonate.php', 'reset-password.php', 'verify-email.php', 'verify-linked-email.php', 'reverify.php', 'unsubscribe.php'];
+function seoHeadHtml(string $title, array $meta): string {
+    $base = rtrim(SITE_URL, '/');
+    $page = basename(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH)) ?: 'index.php';
+    // Canonical: the page plus only the query keys that change its content.
+    $keep = array_intersect_key($_GET, array_flip(['v', 'id', 'tab', 'event', 'cat']));
+    $canonical = $base . '/' . $page . ($keep ? '?' . http_build_query($keep) : '');
+    $desc = trim($meta['description'] ?? '') ?: 'The Robotics & Automation Research Lab (RARL), UK: a free international membership for robotics and AI researchers, with webinars, learning resources, verified certificates and member ID cards.';
+    $desc = mb_strimwidth(preg_replace('/\s+/', ' ', $desc), 0, 300, '…');
+    $img = $meta['image'] ?? ($base . '/assets/og-image.jpg');
+    $noindex = !empty($meta['noindex']) || in_array($page, RARL_PRIVATE_PAGES, true);
+    $e = fn($v) => htmlspecialchars((string)$v, ENT_QUOTES, 'UTF-8');
+    $ld = json_encode([
+        '@context' => 'https://schema.org',
+        '@graph' => [
+            ['@type' => 'ResearchOrganization', '@id' => MAIN_SITE_URL . '#org', 'name' => 'Robotics & Automation Research Lab (RARL)', 'alternateName' => 'RARL',
+             'url' => MAIN_SITE_URL, 'logo' => $base . '/assets/icons/icon-512.png', 'email' => MAIL_REPLY_TO,
+             'address' => ['@type' => 'PostalAddress', 'streetAddress' => 'Queens Building', 'addressLocality' => 'Leicester', 'postalCode' => 'LE1 9BH', 'addressCountry' => 'GB']],
+            ['@type' => 'WebSite', 'name' => 'RARL Community', 'url' => $base . '/', 'publisher' => ['@id' => MAIN_SITE_URL . '#org'],
+             'potentialAction' => ['@type' => 'SearchAction', 'target' => $base . '/search.php?q={q}', 'query-input' => 'required name=q']],
+        ],
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+    return '<meta name="description" content="' . $e($desc) . '"/>'
+        . ($noindex ? '<meta name="robots" content="noindex, follow"/>' : '<meta name="robots" content="index, follow, max-image-preview:large"/>')
+        . '<link rel="canonical" href="' . $e($canonical) . '"/>'
+        . '<meta property="og:site_name" content="RARL Community"/><meta property="og:type" content="' . $e($meta['type'] ?? 'website') . '"/>'
+        . '<meta property="og:title" content="' . $e($title) . '"/><meta property="og:description" content="' . $e($desc) . '"/>'
+        . '<meta property="og:url" content="' . $e($canonical) . '"/><meta property="og:image" content="' . $e($img) . '"/>'
+        . '<meta property="og:image:alt" content="' . $e($title) . '"/><meta property="og:locale" content="en_GB"/>'
+        . '<meta name="twitter:card" content="summary_large_image"/><meta name="twitter:title" content="' . $e($title) . '"/>'
+        . '<meta name="twitter:description" content="' . $e($desc) . '"/><meta name="twitter:image" content="' . $e($img) . '"/>'
+        . '<script type="application/ld+json">' . $ld . '</script>';
+}
+
+function htmlHead(string $title, bool $isAdmin = false, array $meta = []): string {
+    scheduleBackgroundJobs();
     $fullTitle  = htmlspecialchars($title) . ' — ' . SITE_NAME;
+    $plain      = html_entity_decode($title, ENT_QUOTES);
+    $seo        = seoHeadHtml($plain . (str_contains($plain, 'RARL') ? '' : ' — RARL'), $meta);
     $colorsJson = brandTailwindConfigJson();
     $fontUrl    = BRAND_FONT_GOOGLE_URL;
     $faUrl      = FONTAWESOME_CDN_URL;
@@ -546,6 +587,7 @@ function htmlHead(string $title, bool $isAdmin = false): string {
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>{$fullTitle}</title>
+  {$seo}
   <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)"/>
   <meta name="theme-color" content="#030712" media="(prefers-color-scheme: dark)"/>
   <link rel="icon" href="assets/icons/favicon-32.png" sizes="32x32"/>
@@ -856,6 +898,8 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
 
 // ── Install / migrations — see migrations.php ──────────────
 require_once __DIR__ . '/migrations.php';
+require_once __DIR__ . '/extras.php';
+require_once __DIR__ . '/premade-templates.php';
 
 function dbTablesExist(): bool {
     try {
@@ -1457,7 +1501,30 @@ function generateIdCardPDF(array $member, string $sectionName, string $chairName
 // Optional text props: font (helvetica|times|courier), italic, uppercase,
 // max_width (mm — text shrinks to fit, so long names never overflow).
 // custom_text may contain {tokens} (e.g. "Awarded to {name}") merged from $data.
-const TEMPLATE_FONTS = ['helvetica' => 'Helvetica', 'times' => 'Times', 'courier' => 'Courier'];
+const TEMPLATE_FONTS = ['helvetica' => 'Helvetica', 'times' => 'Times', 'courier' => 'Courier',
+                        'montserrat' => 'Montserrat', 'playfair' => 'Playfair', 'script' => 'GreatVibes'];
+// Embedded fonts (libs/fpdf/font, generated from assets/fonts with FPDF's makefont).
+// Each has a regular and a bold file; there are no italics, so italic is ignored.
+const TEMPLATE_EMBEDDED_FONTS = [
+    'Montserrat' => ['' => 'montserrat-400.php', 'B' => 'montserrat-800.php'],
+    'Playfair'   => ['' => 'playfair-display-700.php', 'B' => 'playfair-display-700.php'],
+    'GreatVibes' => ['' => 'great-vibes-400.php', 'B' => 'great-vibes-400.php'],
+];
+/** Registers an embedded font with FPDF on first use; returns the style FPDF can actually draw. */
+function templatePdfFont($pdf, string $family, string $style): string {
+    if (!isset(TEMPLATE_EMBEDDED_FONTS[$family])) return $style;
+    $style = str_contains($style, 'B') ? 'B' : '';
+    $pdf->AddFont($family, $style, TEMPLATE_EMBEDDED_FONTS[$family][$style]); // no-op if already registered on this PDF
+    return $style;
+}
+/** @font-face rules so on-screen previews use the same fonts as the PDF. */
+function templateFontFaceCss(string $base = ''): string {
+    $base = $base ?: rtrim(SITE_URL, '/') . '/assets/fonts/';
+    return "@font-face{font-family:'RarlMontserrat';src:url('{$base}montserrat-400.ttf')}"
+         . "@font-face{font-family:'RarlMontserrat';font-weight:bold;src:url('{$base}montserrat-800.ttf')}"
+         . "@font-face{font-family:'RarlPlayfair';src:url('{$base}playfair-display-700.ttf')}"
+         . "@font-face{font-family:'RarlScript';src:url('{$base}great-vibes-400.ttf')}";
+}
 const TEMPLATE_IMAGE_KEYS = ['qr', 'avatar', 'signature'];
 
 function templateFieldValue(string $key, array $data): string {
@@ -1495,11 +1562,12 @@ function renderTemplateHtml(array $template, array $data): string {
     $bgUrl = SITE_URL . '/uploads/templates/' . rawurlencode($template['background_path']);
     $w = (float)$template['page_width_mm']; $h = (float)$template['page_height_mm'];
     $config = json_decode($template['config'] ?? '[]', true) ?: [];
-    $cssFonts = ['Helvetica' => 'Helvetica,Arial,sans-serif', 'Times' => '"Times New Roman",Times,serif', 'Courier' => '"Courier New",Courier,monospace'];
+    $cssFonts = ['Helvetica' => 'Helvetica,Arial,sans-serif', 'Times' => '"Times New Roman",Times,serif', 'Courier' => '"Courier New",Courier,monospace',
+                 'Montserrat' => 'RarlMontserrat,Montserrat,sans-serif', 'Playfair' => 'RarlPlayfair,Georgia,serif', 'GreatVibes' => 'RarlScript,cursive'];
     // 1mm expressed in container-width units, so sizes match the PDF at any width.
     $mm = 100 / $w;
 
-    $html = '<div style="position:relative;width:100%;max-width:900px;aspect-ratio:' . $w . '/' . $h . ';container-type:inline-size;background:#fff;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);">';
+    $html = '<style>' . templateFontFaceCss() . '</style><div style="position:relative;width:100%;max-width:900px;aspect-ratio:' . $w . '/' . $h . ';container-type:inline-size;background:#fff;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.15);">';
     $html .= '<img src="' . htmlspecialchars($bgUrl) . '" alt="" style="position:absolute;inset:0;width:100%;height:100%;object-fit:fill;" />';
 
     foreach ($config as $f) {
@@ -1526,10 +1594,12 @@ function renderTemplateHtml(array $template, array $data): string {
         $style    = (!empty($f['bold']) ? 'font-weight:bold;' : '') . (!empty($f['italic']) ? 'font-style:italic;' : '');
         $transform = $align === 'center' ? 'translateX(-50%)' : ($align === 'right' ? 'translateX(-100%)' : 'none');
         $maxW = (float)($f['max_width'] ?? 0);
+        $wrap = !empty($f['wrap']) && $maxW > 0;
         $html .= sprintf(
-            '<div style="position:absolute;left:calc(%s%% + %scqw);top:%s%%;transform:%s;font-family:%s;font-size:%scqw;line-height:1.134;color:%s;%swhite-space:nowrap;%s">%s</div>',
-            $x, $mm, $y, $transform, $cssFonts[templateFontFamily($f)], $sizeMm * $mm, htmlspecialchars($color), $style,
-            $maxW > 0 ? 'max-width:' . ($maxW * $mm) . 'cqw;overflow:hidden;text-overflow:clip;' : '',
+            '<div style="position:absolute;left:calc(%s%% + %scqw);top:%s%%;transform:%s;font-family:%s;font-size:%scqw;line-height:%s;color:%s;%s%s">%s</div>',
+            $x, $mm, $y, $transform, $cssFonts[templateFontFamily($f)], $sizeMm * $mm, $wrap ? '1.3' : '1.134', htmlspecialchars($color), $style,
+            $wrap ? 'white-space:normal;width:' . ($maxW * $mm) . 'cqw;text-align:' . $align . ';'
+                  : 'white-space:nowrap;' . ($maxW > 0 ? 'max-width:' . ($maxW * $mm) . 'cqw;overflow:hidden;text-overflow:clip;' : ''),
             htmlspecialchars(templateFieldText($f, $data))
         );
     }
@@ -1616,11 +1686,19 @@ function renderTemplatePdf(array $template, array $data, ?string $outPath): bool
         $align = $f['align'] ?? 'left';
         $style = (!empty($f['bold']) ? 'B' : '') . (!empty($f['italic']) ? 'I' : '');
         $family = templateFontFamily($f);
+        $style = templatePdfFont($pdf, $family, $style);
         $pdf->SetFont($family, $style, $fontSize);
         $pdf->SetTextColor((int)$r, (int)$g, (int)$b);
         $text = fpdfEnc(templateFieldText($f, $data));
-        // Shrink-to-fit: long names step the font down until they fit max_width.
         $maxW = (float)($f['max_width'] ?? 0);
+        // Wrapped paragraph (e.g. "for receiving the … award in …"): a text box max_width wide.
+        if (!empty($f['wrap']) && $maxW > 0) {
+            $bx = $align === 'center' ? $x - $maxW / 2 : ($align === 'right' ? $x - $maxW : $x);
+            $pdf->SetXY($bx, $y);
+            $pdf->MultiCell($maxW, $fontSize * 0.3528 * 1.3, $text, 0, ['left' => 'L', 'center' => 'C', 'right' => 'R'][$align] ?? 'L');
+            continue;
+        }
+        // Shrink-to-fit: long names step the font down until they fit max_width.
         if ($maxW > 0) {
             while ($fontSize > 4 && $pdf->GetStringWidth($text) > $maxW) {
                 $fontSize -= 0.5;
@@ -2244,18 +2322,23 @@ HTML;
 // The portal promotes RARL itself: tabs lead to what RARL offers, never to
 // other members.
 function memberNavItems(bool $isMember): array {
+    // 4th item: shown in the phone tab bar (max 5); the rest appear from large screens up.
     return $isMember ? [
-        'dashboard'  => ['dashboard.php',  'fa-house',          'Home'],
-        'community'  => ['community.php',  'fa-newspaper',      'Updates'],
-        'events'     => ['events.php',     'fa-calendar-days',  'Events'],
-        'resources'  => ['resources.php',  'fa-graduation-cap', 'Learning'],
-        'membership' => ['membership.php', 'fa-id-card',        'Membership'],
+        'dashboard'    => ['dashboard.php',    'fa-house',          'Home',       true],
+        'community'    => ['community.php',    'fa-newspaper',      'Updates',    true],
+        'events'       => ['events.php',       'fa-calendar-days',  'Events',     true],
+        'videos'       => ['videos.php',       'fa-circle-play',    'Videos',     false],
+        'resources'    => ['resources.php',    'fa-graduation-cap', 'Learning',   true],
+        'publications' => ['publications.php', 'fa-file-lines',     'Research',   false],
+        'membership'   => ['membership.php',   'fa-id-card',        'Membership', true],
     ] : [
-        'home'       => ['index.php',      'fa-house',          'Home'],
-        'community'  => ['community.php',  'fa-newspaper',      'Updates'],
-        'events'     => ['events.php',     'fa-calendar-days',  'Events'],
-        'resources'  => ['resources.php',  'fa-graduation-cap', 'Learning'],
-        'directory'  => ['directory.php',  'fa-earth-americas', 'Roster'],
+        'home'         => ['index.php',        'fa-house',          'Home',       true],
+        'events'       => ['events.php',       'fa-calendar-days',  'Events',     true],
+        'videos'       => ['videos.php',       'fa-circle-play',    'Videos',     true],
+        'resources'    => ['resources.php',    'fa-graduation-cap', 'Learning',   true],
+        'publications' => ['publications.php', 'fa-file-lines',     'Research',   true],
+        'community'    => ['community.php',    'fa-newspaper',      'Updates',    false],
+        'directory'    => ['directory.php',    'fa-earth-americas', 'Roster',     false],
     ];
 }
 
@@ -2274,13 +2357,13 @@ function publicNav(string $active = ''): string {
     $homeHref = $items[array_key_first($items)][0];
 
     $nav = ''; $tabBar = ''; $mobileNav = '';
-    foreach ($items as $key => [$href, $icon, $label]) {
+    foreach ($items as $key => [$href, $icon, $label, $inTabBar]) {
         $on  = $key === $active;
         $cur = $on ? ' aria-current="page"' : '';
-        $nav .= '<a href="' . $href . '"' . $cur . ' class="relative flex flex-col items-center justify-center gap-1 px-3 lg:px-4 h-16 ' . ($on ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white') . '">'
+        $nav .= '<a href="' . $href . '"' . $cur . ' class="relative ' . ($inTabBar ? 'flex' : 'hidden lg:flex') . ' flex-col items-center justify-center gap-1 px-2.5 xl:px-4 h-16 ' . ($on ? 'text-gray-900 dark:text-white' : 'text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white') . '">'
               . '<i class="fa-solid ' . $icon . ' text-[17px] leading-none"></i><span class="text-[11px] font-medium leading-none">' . $label . '</span>'
               . ($on ? '<span class="absolute bottom-0 inset-x-2 h-0.5 rounded-full bg-rarl-red"></span>' : '') . '</a>';
-        $tabBar .= '<a href="' . $href . '"' . $cur . ' class="flex-1 flex flex-col items-center justify-center gap-1 py-2 ' . ($on ? 'text-rarl-red' : 'text-gray-500 dark:text-gray-400') . '"><i class="fa-solid ' . $icon . ' text-lg leading-none"></i><span class="text-[10px] font-medium leading-none">' . $label . '</span></a>';
+        if ($inTabBar) $tabBar .= '<a href="' . $href . '"' . $cur . ' class="flex-1 flex flex-col items-center justify-center gap-1 py-2 ' . ($on ? 'text-rarl-red' : 'text-gray-500 dark:text-gray-400') . '"><i class="fa-solid ' . $icon . ' text-lg leading-none"></i><span class="text-[10px] font-medium leading-none">' . $label . '</span></a>';
         $mobileNav .= '<a href="' . $href . '" class="flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-800 ' . ($on ? 'text-rarl-red font-semibold' : 'text-gray-700 dark:text-gray-300') . '"><i class="fa-solid ' . $icon . ' w-5 text-center"></i>' . $label . '</a>';
     }
 
@@ -2315,6 +2398,8 @@ function publicNav(string $active = ''): string {
     </div>
     <div class="border-t border-gray-100 dark:border-gray-800 py-1.5">
       <p class="px-4 py-1 text-[11px] font-semibold uppercase tracking-wider text-gray-500">About RARL</p>
+      <a href="videos.php" role="menuitem" class="{$menuItem} lg:hidden"><i class="fa-solid fa-circle-play"></i> Videos</a>
+      <a href="publications.php" role="menuitem" class="{$menuItem} lg:hidden"><i class="fa-solid fa-file-lines"></i> Research &amp; your papers</a>
       <a href="people.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-people-group"></i> Leadership &amp; chapters</a>
       <a href="partners.php" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-handshake"></i> Partner with us</a>
       <a href="{$mainUrl}" target="_blank" rel="noopener" role="menuitem" class="{$menuItem}"><i class="fa-solid fa-arrow-up-right-from-square"></i> rarl-lab.com</a>
@@ -2498,6 +2583,17 @@ function rarlFeedItems(?int $sectionId, bool $isMember, int $limit = 20, string 
         foreach ($st as $n) $items[] = ['kind' => 'newsletter', 'at' => $n['sent_at'], 'pinned' => false, 'row' => $n];
     });
 
+    if (videosReady()) $try(function () use ($pdo, &$items, $isMember, $q, $like) {
+        $sql = 'SELECT * FROM videos WHERE is_published = 1' . ($isMember ? '' : " AND access_level = 'public'") . ($q !== '' ? ' AND (title LIKE ? OR description LIKE ?)' : '') . ' ORDER BY created_at DESC LIMIT 20';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like] : []);
+        foreach ($st as $v) $items[] = ['kind' => 'video', 'at' => $v['created_at'], 'pinned' => false, 'row' => $v];
+    });
+    if (publicationsReady()) $try(function () use ($pdo, &$items, $q, $like) {
+        $sql = "SELECT p.*, m.full_name, m.lab_name, m.type AS mtype FROM publications p JOIN members m ON m.id = p.member_id WHERE p.status = 'approved'" . ($q !== '' ? ' AND (p.title LIKE ? OR p.authors LIKE ? OR p.venue LIKE ?)' : '') . ' ORDER BY p.approved_at DESC LIMIT 20';
+        $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like, $like] : []);
+        foreach ($st as $p) $items[] = ['kind' => 'publication', 'at' => $p['approved_at'] ?: $p['created_at'], 'pinned' => false, 'row' => $p];
+    });
+
     usort($items, fn($a, $b) => [$b['pinned'], strtotime((string)$b['at'])] <=> [$a['pinned'], strtotime((string)$a['at'])]);
     return array_slice($items, 0, $limit);
 }
@@ -2551,6 +2647,17 @@ function renderFeedItem(array $it): string {
                  . '<span class="min-w-0"><span class="block font-semibold text-gray-900 dark:text-white group-hover:text-rarl-red">' . $h($r['title']) . '</span>'
                  . '<span class="block text-xs text-gray-500 mt-0.5">' . $h($r['category_name']) . ($r['access_level'] === 'member' ? ' · <i class="fa-solid fa-lock"></i> Members' : '') . '</span>'
                  . ($r['description'] ? '<span class="block text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">' . $h($r['description']) . '</span>' : '') . '</span></a></article>';
+        case 'video':
+            return '<article class="' . $card . '">' . $head('fa-circle-play', 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300', 'New video')
+                 . '<a href="videos.php?v=' . (int)$r['id'] . '" class="group block -mx-5 -mb-5 mt-1"><span class="relative block aspect-video bg-black overflow-hidden"><img src="' . $h(youtubeThumb($r['youtube_id'])) . '" alt="" loading="lazy" class="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"/>'
+                 . '<span class="absolute inset-0 m-auto w-16 h-16 rounded-full bg-black/60 group-hover:bg-rarl-red text-white flex items-center justify-center text-2xl"><i class="fa-solid fa-play ps-1"></i></span></span>'
+                 . '<span class="block px-5 py-4 font-heading font-bold text-gray-900 dark:text-white group-hover:text-rarl-red">' . $h($r['title']) . '</span></a></article>';
+        case 'publication':
+            $by = $r['mtype'] === 'lab' ? $r['lab_name'] : $r['full_name'];
+            return '<article class="' . $card . '">' . $head('fa-file-lines', 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300', 'New paper by a member')
+                 . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug"><a href="' . $h($r['url']) . '" target="_blank" rel="noopener" class="hover:text-rarl-red">' . $h($r['title']) . '</a></h3>'
+                 . '<p class="text-sm text-gray-600 dark:text-gray-400 mt-1">' . $h($by) . ($r['venue'] ? ' · ' . $h($r['venue']) : '') . ($r['year'] ? ' · ' . (int)$r['year'] : '') . '</p>'
+                 . '<a href="publications.php?id=' . (int)$r['id'] . '" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red">See all member research</a></article>';
         case 'newsletter':
             return '<article class="' . $card . '">' . $head('fa-envelope-open-text', 'bg-amber-50 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300', 'Newsletter')
                  . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug">' . $h($r['subject']) . '</h3>'

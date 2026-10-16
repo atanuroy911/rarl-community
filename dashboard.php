@@ -155,7 +155,7 @@ echo htmlHead('Home');
       <p class="text-sm text-gray-500"><?= $greeting ?>, <span class="font-semibold text-gray-900 dark:text-white"><?= $h($firstName) ?></span></p>
       <h2 id="feed-title" class="font-heading font-bold text-xl text-gray-900 dark:text-white mt-0.5">What's new from RARL</h2>
       <div class="flex gap-2 mt-3 overflow-x-auto -mx-1 px-1 pb-1" role="tablist" aria-label="Filter updates">
-        <?php foreach (['' => 'All', 'announcement' => 'Announcements', 'event' => 'Events', 'resource' => 'Learning', 'post' => 'Team updates', 'newsletter' => 'Newsletters'] as $k => $label):
+        <?php foreach (['' => 'All', 'announcement' => 'Announcements', 'event' => 'Events', 'resource' => 'Learning', 'video' => 'Videos', 'publication' => 'Research', 'post' => 'Team updates', 'newsletter' => 'Newsletters'] as $k => $label):
           if ($k !== '' && empty($kinds[$k])) continue; ?>
         <button type="button" role="tab" data-filter="<?= $k ?>" aria-selected="<?= $k === '' ? 'true' : 'false' ?>" class="feed-chip flex-shrink-0 px-3.5 py-1.5 rounded-full text-sm font-semibold border transition-colors"><?= $label ?><?php if ($k !== ''): ?> <span class="opacity-60"><?= $kinds[$k] ?></span><?php endif; ?></button>
         <?php endforeach; ?>
@@ -193,6 +193,7 @@ echo htmlHead('Home');
               <a href="events.php#event-<?= (int)$e['id'] ?>" class="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-rarl-red">Details</a>
               <?php elseif ($mine): ?>
               <span class="text-xs font-semibold text-green-700 dark:text-green-400"><i class="fa-solid fa-check"></i> You're going</span>
+              <?php if ($e['my_status'] === 'registered' && !$e['online_url']): ?> · <a href="events.php#pass-<?= (int)$e['id'] ?>" class="text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-qrcode"></i> Pass</a><?php endif; ?>
               <?php if ($e['online_url'] && $e['event_date'] === date('Y-m-d')): ?> · <a href="<?= $h($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs font-semibold text-rarl-red hover:underline">Join now</a><?php endif; ?>
               <?php elseif ($full): ?>
               <span class="text-xs font-semibold text-gray-500">Fully booked</span>
@@ -205,6 +206,12 @@ echo htmlHead('Home');
         </li>
         <?php endforeach; ?>
       </ul>
+    </section>
+
+    <section class="rarl-panel p-4">
+      <h2 class="text-sm font-bold text-gray-900 dark:text-white">Your RARL affiliation</h2>
+      <p class="text-xs text-gray-500 mt-0.5">Add it to your papers, then <a href="publications.php" class="text-rarl-red font-semibold hover:underline">submit them</a> to be featured.</p>
+      <?= affiliationBoxHtml() ?>
     </section>
 
     <?php if ($leaders): ?>

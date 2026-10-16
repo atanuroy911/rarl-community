@@ -33,7 +33,7 @@ if ($catSlug) {
 $typeIcons = ['youtube_playlist'=>'<i class="fa-solid fa-play"></i>','youtube_video'=>'<i class="fa-solid fa-film"></i>','article'=>'<i class="fa-solid fa-file-lines"></i>','book'=>'<i class="fa-solid fa-book"></i>','tool'=>'<i class="fa-solid fa-wrench"></i>','course'=>'<i class="fa-solid fa-graduation-cap"></i>','other'=>'<i class="fa-solid fa-link"></i>'];
 $typeLabels = ['youtube_playlist'=>'YouTube Playlist','youtube_video'=>'YouTube Video','article'=>'Article','book'=>'Free Book','tool'=>'Tool','course'=>'Course','other'=>'Resource'];
 
-echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
+echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub', false, ['description' => 'Curated courses, talks, books and tools on robotics, AI and automation, organised by topic by the Robotics & Automation Research Lab (RARL).']);
 ?>
 <?= publicNav('resources') ?>
 
@@ -47,6 +47,11 @@ echo htmlHead($activecat ? $activecat['name'] . ' Resources' : 'Learning Hub');
 </section>
 
 <div class="max-w-6xl mx-auto px-6 py-8">
+  <a href="videos.php" class="group flex items-center gap-4 p-4 mb-8 rounded-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:border-rarl-red/40">
+    <span class="w-12 h-12 rounded-xl bg-red-50 dark:bg-red-900/30 text-red-600 flex items-center justify-center text-xl flex-shrink-0"><i class="fa-brands fa-youtube"></i></span>
+    <span class="flex-1"><span class="block font-semibold text-gray-900 dark:text-white group-hover:text-rarl-red">Webinar recordings</span><span class="block text-sm text-gray-500">Watch past RARL webinars and talks.</span></span>
+    <i class="fa-solid fa-arrow-right text-gray-400 group-hover:text-rarl-red"></i>
+  </a>
 
   <?php if (!$activecat): ?>
   <!-- Category grid -->

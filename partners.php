@@ -12,7 +12,7 @@ foreach ($pdo->query("SELECT `key`,`value` FROM settings WHERE `key` LIKE 'partn
 $memberBenefits  = array_filter(array_map('trim', explode("\n", $set['partner_benefits_member']  ?? '')));
 $partnerBenefits = array_filter(array_map('trim', explode("\n", $set['partner_benefits_partner'] ?? '')));
 
-echo htmlHead('Partner With Us');
+echo htmlHead('Partner With Us', false, ['description' => 'Partner with the Robotics & Automation Research Lab (RARL): support open, collaborative robotics and automation research worldwide.']);
 ?>
 <?= publicNav('partners') ?>
 

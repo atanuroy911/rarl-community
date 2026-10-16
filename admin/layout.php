@@ -492,29 +492,34 @@ function adminSidebar(string $active = ''): void {
         'Overview' => [
             'index' => ['index.php', '<i class="fa-solid fa-chart-simple"></i>', 'Dashboard'],
         ],
-        'Members & Community' => [
+        'Members' => [
             'members'      => ['members.php',        '<i class="fa-solid fa-users"></i>', 'Members'],
-            'import'       => ['import-members.php',  '<i class="fa-solid fa-file-import"></i>', 'Import Members'],
-            'community'    => ['community.php',       '<i class="fa-solid fa-comment"></i>', 'Community'],
-            'people'       => ['people.php',           '<i class="fa-solid fa-people-group"></i>', 'People'],
-            'sections'     => ['sections.php',         '<i class="fa-solid fa-sitemap"></i>', 'Chapters'],
+            'publications' => ['publications.php',   '<i class="fa-solid fa-file-lines"></i>', 'Research'],
+            'import'       => ['import-members.php', '<i class="fa-solid fa-file-import"></i>', 'Import'],
+            'sections'     => ['sections.php',       '<i class="fa-solid fa-sitemap"></i>', 'Chapters'],
         ],
-        'Content & Events' => [
-            'events'       => ['events.php',        '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
-            'certificates' => ['certificates.php',  '<i class="fa-solid fa-trophy"></i>', 'Certificates'],
-            'templates'    => ['templates.php',     '<i class="fa-solid fa-image"></i>', 'Templates'],
-            'resources'    => ['resources.php',     '<i class="fa-solid fa-graduation-cap"></i>', 'Learning'],
+        'Publish' => [
+            'community'    => ['community.php',      '<i class="fa-solid fa-bullhorn"></i>', 'Updates'],
+            'events'       => ['events.php',         '<i class="fa-solid fa-calendar-days"></i>', 'Events'],
+            'videos'       => ['videos.php',         '<i class="fa-brands fa-youtube"></i>', 'Videos'],
+            'resources'    => ['resources.php',      '<i class="fa-solid fa-graduation-cap"></i>', 'Learning'],
+            'people'       => ['people.php',         '<i class="fa-solid fa-people-group"></i>', 'Leadership'],
         ],
-        'Outreach' => [
-            'newsletter'   => ['newsletter.php',    '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
-            'compose'      => ['compose-email.php', '<i class="fa-solid fa-envelope-open-text"></i>', 'Compose Email'],
-            'email-queue'  => ['email-queue.php',   '<i class="fa-solid fa-paper-plane"></i>', 'Email Queue'],
-            'partnerships' => ['partnerships.php',  '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
+        'Certificates & cards' => [
+            'certificates' => ['certificates.php',   '<i class="fa-solid fa-award"></i>', 'Certificates'],
+            'templates'    => ['templates.php',      '<i class="fa-solid fa-swatchbook"></i>', 'Designs'],
         ],
-        'Configuration' => [
-            'plans'    => ['plans.php',    '<i class="fa-solid fa-graduation-cap"></i>', 'Plans'],
-            'migrate'  => ['migrate.php',  '<i class="fa-solid fa-database"></i>', 'Database'],
-            'settings' => ['settings.php', '<i class="fa-solid fa-gear"></i>', 'Settings'],
+        'Email' => [
+            'newsletter'   => ['newsletter.php',     '<i class="fa-solid fa-envelope"></i>', 'Newsletter'],
+            'compose'      => ['compose-email.php',  '<i class="fa-solid fa-envelope-open-text"></i>', 'Send email'],
+            'email-queue'  => ['email-queue.php',    '<i class="fa-solid fa-paper-plane"></i>', 'Outbox'],
+        ],
+        'Settings' => [
+            'settings'     => ['settings.php',       '<i class="fa-solid fa-gear"></i>', 'Settings'],
+            'security'     => ['security.php',       '<i class="fa-solid fa-shield-halved"></i>', 'Security'],
+            'partnerships' => ['partnerships.php',   '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
+            'plans'        => ['plans.php',          '<i class="fa-solid fa-id-badge"></i>', 'Plans'],
+            'migrate'      => ['migrate.php',        '<i class="fa-solid fa-database"></i>', 'Database'],
         ],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
@@ -533,12 +538,14 @@ function adminSidebar(string $active = ''): void {
     $counts = [];
     try { $counts['members'] = (int)db()->query("SELECT COUNT(*) FROM members WHERE status = 'pending' AND email_verified_at IS NOT NULL")->fetchColumn(); } catch (Throwable $e) {}
     $counts['migrate'] = count(pendingMigrations());
+    try { if (publicationsReady()) $counts['publications'] = (int)db()->query("SELECT COUNT(*) FROM publications WHERE status = 'pending'")->fetchColumn(); } catch (Throwable $e) {}
+    if (!adminTwoFactorEnabled()) $counts['security'] = '!';
     foreach ($groups as $groupLabel => $items) {
         echo '<div class="rarl-nav-group-label">' . htmlspecialchars($groupLabel) . '</div>';
         foreach ($items as $key => [$href, $icon, $label]) {
             $n = $counts[$key] ?? 0;
             echo '<a href="' . $href . ($key === 'members' && $n ? '?status=pending' : '') . '" class="app-nav-item"' . ($key === $active ? ' aria-current="page"' : '') . '>' . $icon . '<span class="truncate">' . $label . '</span>'
-               . ($n ? '<span class="rarl-nav-count" title="' . $n . ' awaiting approval">' . $n . '</span>' : '') . '</a>';
+               . ($n ? '<span class="rarl-nav-count" title="' . ex(['members' => $n . ' awaiting approval', 'publications' => $n . ' paper(s) to review', 'migrate' => $n . ' database update(s) waiting', 'security' => 'Two-step verification is off'][$key] ?? '') . '">' . $n . '</span>' : '') . '</a>';
         }
     }
     echo '</nav>
@@ -557,6 +564,7 @@ function adminSidebar(string $active = ''): void {
 }
 
 function adminWrap(callable $content, string $page = '', string $title = ''): void {
+    scheduleBackgroundJobs();
     htmlAdminHead($title);
     echo '<div class="flex min-h-screen">';
     adminSidebar($page);

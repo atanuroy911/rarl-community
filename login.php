@@ -63,7 +63,7 @@ try {
 } catch (Throwable $e) {}
 $countriesShown = max($stats['countries'], (int)setting('stat_countries', '0'));
 
-echo htmlHead('Sign in');
+echo htmlHead('Sign in', false, ['description' => 'Sign in to your RARL membership: updates, events, learning, your member ID card and certificates.']);
 $tones = ['blue' => 'bg-blue-50 border-blue-200 text-blue-900 dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-100', 'amber' => 'bg-amber-50 border-amber-200 text-amber-900 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-100', 'gray' => 'bg-gray-50 border-gray-200 text-gray-800 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100'];
 ?>
 <?= publicNav() ?>

@@ -8,7 +8,7 @@ if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); 
 if (!empty($_SESSION['member_id'])) redirect('dashboard.php');
 $loggedInMember = null;
 
-echo htmlHead('Join the Robotics & Automation Research Lab (RARL)');
+echo htmlHead('Join the Robotics & Automation Research Lab (RARL)', false, ['description' => 'Join the Robotics & Automation Research Lab (RARL), UK: a free international membership for robotics and AI researchers with webinars, learning, verified certificates and a member ID card.']);
 ?>
 <?= publicNav('home') ?>
 

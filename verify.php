@@ -22,7 +22,7 @@ if ($cert) {
     $qrDataUri = 'data:image/png;base64,' . base64_encode(ob_get_clean());
 }
 
-echo htmlHead('Verify Certificate');
+echo htmlHead('Verify Certificate', false, ['description' => 'Check that a Robotics & Automation Research Lab (RARL) certificate is genuine.']);
 ?>
 <?= publicNav() ?>
 

@@ -86,7 +86,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrfCheck() && $isActiveMember) {
 }
 
 // ── Event lists ──
-$tab = ($_GET['tab'] ?? 'upcoming') === 'past' ? 'past' : 'upcoming';
+$shared = null;
+if (!empty($_GET['event'])) {
+    $se = $pdo->prepare("SELECT * FROM events WHERE id = ? AND is_active = 1" . ($isActiveMember ? '' : " AND visibility = 'public'"));
+    $se->execute([(int)$_GET['event']]);
+    $shared = $se->fetch() ?: null;
+}
+$tab = ($_GET['tab'] ?? ($shared && $shared['event_date'] && $shared['event_date'] < date('Y-m-d') ? 'past' : 'upcoming')) === 'past' ? 'past' : 'upcoming';
 $visibilityFilter = $isActiveMember ? "" : "AND visibility = 'public'";
 if ($tab === 'upcoming') {
     $events = $pdo->query("SELECT * FROM events WHERE is_active = 1 {$visibilityFilter}
@@ -118,7 +124,20 @@ $typeIcons = ['workshop' => 'fa-screwdriver-wrench', 'webinar' => 'fa-video', 'h
 $typesPresent = array_values(array_unique(array_column($events, 'type')));
 $coverUrl = fn($e) => empty($e['cover_image']) ? null : (str_starts_with((string)$e['cover_image'], 'http') ? $e['cover_image'] : UPLOADS_URL . '/events/' . $e['cover_image']);
 
-echo htmlHead('Events & Webinars');
+// Recordings linked to these events (Admin → Videos).
+$eventVideos = [];
+if ($events && videosReady()) {
+    $ids = implode(',', array_map('intval', array_column($events, 'id')));
+    foreach ($pdo->query("SELECT id, event_id, youtube_id, access_level FROM videos WHERE is_published = 1 AND event_id IN ($ids) ORDER BY created_at") as $v) $eventVideos[(int)$v['event_id']] ??= $v;
+}
+$sharedCover = $shared ? $coverUrl($shared) : null;
+echo htmlHead($shared ? html_entity_decode($shared['title'], ENT_QUOTES) : 'Events & Webinars', false, [
+    'description' => $shared
+        ? trim(($shared['event_date'] ? date('l, d F Y', strtotime($shared['event_date'])) . ($shared['event_time'] ? ', ' . date('g:i A', strtotime($shared['event_time'])) : '') . ' · ' : '') . ($shared['online_url'] && !$shared['location'] ? 'Online · ' : '') . mb_strimwidth(html_entity_decode(strip_tags((string)$shared['description']), ENT_QUOTES), 0, 180, '…'))
+        : 'Free webinars, workshops and conferences on robotics, AI and automation from the Robotics & Automation Research Lab (RARL). Register in one click.',
+    'image' => $sharedCover && str_starts_with($sharedCover, 'http') ? $sharedCover : ($sharedCover ? rtrim(SITE_URL, '/') . '/' . ltrim(str_replace(UPLOADS_URL, 'uploads', $sharedCover), '/') : null),
+    'type' => $shared ? 'event' : 'website',
+]);
 ?>
 <?= publicNav('events') ?>
 <div class="bg-[#f4f2ee] dark:bg-gray-950 min-h-screen">
@@ -240,13 +259,15 @@ echo htmlHead('Events & Webinars');
 
       <div class="sticky bottom-0 -mx-5 sm:-mx-7 -mb-5 sm:-mb-7 mt-6 px-5 sm:px-7 py-4 bg-white/95 dark:bg-gray-900/95 backdrop-blur border-t border-gray-100 dark:border-gray-800 flex flex-wrap items-center gap-2">
         <?php if ($tab === 'past'): ?>
-          <?php if ($e['recording_url'] && $isActiveMember): ?><a href="<?= ex($e['recording_url']) ?>" target="_blank" rel="noopener" class="ev-btn ev-btn-primary"><i class="fa-solid fa-play"></i> Watch recording</a>
+          <?php if (!empty($eventVideos[$id]) && ($eventVideos[$id]['access_level'] === 'public' || $isActiveMember)): ?><a href="videos.php?v=<?= (int)$eventVideos[$id]['id'] ?>" class="ev-btn ev-btn-primary"><i class="fa-solid fa-play"></i> Watch recording</a>
+          <?php elseif ($e['recording_url'] && $isActiveMember): ?><a href="<?= ex($e['recording_url']) ?>" target="_blank" rel="noopener" class="ev-btn ev-btn-primary"><i class="fa-solid fa-play"></i> Watch recording</a>
           <?php elseif ($e['recording_url']): ?><a href="<?= $isMember ? 'membership.php' : 'register.php' ?>" class="ev-btn ev-btn-primary"><i class="fa-solid fa-lock"></i> <?= $isMember ? 'Recording for active members' : 'Join free to watch' ?></a>
           <?php else: ?><span class="text-sm text-gray-500">No recording for this event.</span><?php endif; ?>
         <?php elseif ($locked && !$isMember): ?><a href="register.php" class="ev-btn ev-btn-primary"><i class="fa-solid fa-lock"></i> Join free to register</a><a href="login.php?next=<?= rawurlencode('events.php#event-' . $id) ?>" class="ev-btn">Sign in</a>
         <?php elseif (!$isMember): ?><a href="login.php?next=<?= rawurlencode('events.php#event-' . $id) ?>" class="ev-btn ev-btn-primary">Sign in to register</a><a href="register.php" class="ev-btn">Join free</a>
         <?php elseif (!$isActiveMember): ?><span class="text-sm text-amber-800 dark:text-amber-300"><i class="fa-solid fa-hourglass-half"></i> Registration opens once your membership is approved.</span>
         <?php elseif ($mine): ?>
+          <?php if ($myState === 'registered' && !$e['online_url']): ?><button type="button" data-modal="pass-<?= $id ?>" class="ev-btn ev-btn-primary"><i class="fa-solid fa-qrcode"></i> Check-in pass</button><?php endif; ?>
           <?php if ($e['online_url']): ?><a href="<?= ex($e['online_url']) ?>" target="_blank" rel="noopener" class="ev-btn ev-btn-primary"><i class="fa-solid fa-video"></i> Join link</a><?php endif; ?>
           <form method="POST" data-confirm="Cancel your registration for this event?"><?= csrfField() ?><input type="hidden" name="action" value="cancel_rsvp"><input type="hidden" name="event_id" value="<?= $id ?>"><button class="ev-btn" onclick="return confirm('Cancel your registration for this event?')">Cancel registration</button></form>
         <?php elseif ($isFull): ?><span class="ev-btn opacity-60 cursor-not-allowed">Fully booked</span>
@@ -258,13 +279,38 @@ echo htmlHead('Events & Webinars');
           <a href="events.php?ics=<?= $id ?>" class="ev-icon" title="Add to calendar (Apple, Outlook)" aria-label="Download calendar file"><i class="fa-regular fa-calendar-plus"></i></a>
           <a href="<?= ex($gcal) ?>" target="_blank" rel="noopener" class="ev-icon" title="Add to Google Calendar" aria-label="Add to Google Calendar"><i class="fa-brands fa-google"></i></a>
           <?php endif; ?>
-          <button type="button" class="ev-icon" data-share-url="<?= ex(SITE_URL . '/events.php#event-' . $id) ?>" data-share-title="<?= ex($e['title']) ?>" title="Share" aria-label="Share event"><i class="fa-solid fa-share-nodes"></i></button>
+          <button type="button" class="ev-icon" data-share-url="<?= ex(SITE_URL . '/events.php?event=' . $id) ?>" data-share-title="<?= ex($e['title']) ?>" title="Share" aria-label="Share event"><i class="fa-solid fa-share-nodes"></i></button>
         </span>
       </div>
     </div>
   </div>
 </dialog>
 <?php endforeach; ?>
+
+<?php // Check-in passes: one per event this member is registered for.
+if ($isActiveMember):
+  $meRow = $pdo->prepare('SELECT full_name, lab_name, type, member_code, avatar_path FROM members WHERE id = ?'); $meRow->execute([$myMemberId]); $meRow = $meRow->fetch();
+  $meName = $meRow ? ($meRow['type'] === 'lab' ? $meRow['lab_name'] : $meRow['full_name']) : '';
+  foreach ($events as $e): if (($myRegistrations[(int)$e['id']] ?? null) !== 'registered' || $e['online_url']) continue; $id = (int)$e['id']; ?>
+<dialog class="rarl-modal" id="pass-<?= $id ?>" aria-labelledby="pass-<?= $id ?>-t">
+  <div class="rarl-modal-panel" style="--modal-w:24rem">
+    <button type="button" class="rarl-modal-close" data-modal-close aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    <div class="p-6 pt-8 text-center">
+      <p class="text-xs font-semibold uppercase tracking-wider text-rarl-red">Check-in pass</p>
+      <h2 id="pass-<?= $id ?>-t" class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug mt-1"><?= ex($e['title']) ?></h2>
+      <p class="text-sm text-gray-500"><?= $e['event_date'] ? date('D, d M Y', strtotime($e['event_date'])) . ($e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '') : '' ?></p>
+      <div class="mt-5 mx-auto w-64 max-w-full aspect-square rounded-2xl bg-white p-3 shadow-inner ring-1 ring-gray-200">
+        <img src="<?= qrDataUri(checkinUrl($id, $myMemberId), 8, 1) ?>" alt="Check-in QR code for <?= ex($meName) ?>" class="w-full h-full [image-rendering:pixelated]"/>
+      </div>
+      <div class="mt-4 flex items-center justify-center gap-3">
+        <?= memberAvatarHtml($meRow['avatar_path'] ?? null, (string)$meName, 'w-10 h-10 text-sm') ?>
+        <div class="text-start"><p class="font-semibold text-gray-900 dark:text-white leading-tight"><?= ex($meName) ?></p><?php if (!empty($meRow['member_code'])): ?><p class="font-mono text-xs text-gray-500 notranslate" translate="no">#<?= ex($meRow['member_code']) ?></p><?php endif; ?></div>
+      </div>
+      <p class="text-xs text-gray-500 mt-4 leading-relaxed">Show this to the RARL team at the venue. Turn your screen brightness up. Your certificate is issued as soon as you're scanned.</p>
+    </div>
+  </div>
+</dialog>
+<?php endforeach; endif; ?>
 
 <style>
   .ev-chip{display:inline-flex;align-items:center;gap:.4rem;flex-shrink:0;padding:.45rem .9rem;border-radius:999px;border:1px solid #d1d5db;background:#fff;color:#374151;font-size:.875rem;font-weight:600}
@@ -295,6 +341,7 @@ echo htmlHead('Events & Webinars');
       try { if (navigator.share) await navigator.share({title: b.dataset.shareTitle, url: url}); else { await navigator.clipboard.writeText(url); b.innerHTML = '<i class="fa-solid fa-check text-green-600"></i>'; setTimeout(function () { b.innerHTML = '<i class="fa-solid fa-share-nodes"></i>'; }, 1600); } } catch (e) {}
     });
   });
+  <?php if ($shared): ?>document.addEventListener('DOMContentLoaded', function () { if (document.getElementById('event-<?= (int)$shared['id'] ?>')) rarlModal.open('event-<?= (int)$shared['id'] ?>'); });<?php endif; ?>
   // A link to an event on the other tab (e.g. a past event from the feed) switches tabs.
   (function () {
     var m = location.hash.match(/^#event-(\d+)$/), other = <?= json_encode($otherTabIds) ?>;

@@ -63,6 +63,7 @@ try {
         foreach ($results as $file => $r) {
             echo ($r['ok'] ? "Migrated {$file} ({$r['statements']} changes, {$r['ms']} ms)" : "FAILED {$file}: {$r['error']}") . "\n";
         }
+        foreach (seedPremadeTemplates() as $name) echo "Added design: {$name}\n";
     }
 } catch (Throwable $e) {
     echo "Migration step skipped: " . $e->getMessage() . "\n";

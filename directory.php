@@ -10,7 +10,7 @@ if (!membershipEnabled()) renderMembershipPausedPageAndExit('Membership Roster')
 
 $customRosterPdf = setting('custom_roster_pdf_path', '');
 
-echo htmlHead('Membership Roster');
+echo htmlHead('Membership Roster', false, ['description' => 'The official public roster of Robotics & Automation Research Lab (RARL) members around the world.']);
 ?>
 <?= publicNav('directory') ?>
 

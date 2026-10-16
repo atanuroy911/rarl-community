@@ -209,7 +209,7 @@ if ($isMember) {
 }
 $upcomingEvents = $pdo->query("SELECT id, title, event_date FROM events WHERE is_active = 1 AND (event_date IS NULL OR event_date >= CURDATE()) ORDER BY event_date ASC LIMIT 3")->fetchAll();
 
-echo htmlHead('Updates');
+echo htmlHead('Updates', false, ['description' => 'News, announcements and highlights from the Robotics & Automation Research Lab (RARL) team.']);
 $tab = ($_GET['tab'] ?? '') === 'announcements' || !$isMember ? 'announcements' : 'posts';
 ?>
 <?= publicNav('community') ?>

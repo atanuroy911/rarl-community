@@ -407,6 +407,7 @@
     
     //##########################################################################    
     
+    #[\AllowDynamicProperties]
     class QRencode {
     
         public $casesensitive = true;

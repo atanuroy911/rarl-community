@@ -29,6 +29,7 @@ const RARL_MIGRATIONS = [
     '012_email_queue.sql'                   => 'Background email queue for bulk sends',
     '013_announcement_controls.sql'         => 'Announcement button link and expiry date',
     '014_performance_indexes.sql'           => 'Indexes for faster member, event and feed pages',
+    '015_videos_publications.sql'           => 'Videos (YouTube recordings) and member publications',
 ];
 
 // MySQL/MariaDB error codes that mean "this change is already in place".

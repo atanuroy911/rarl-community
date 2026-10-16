@@ -180,6 +180,12 @@ echo htmlHead('My Membership');
         <a href="assets/JOINRARL.pdf" target="_blank" rel="noopener" class="flex items-center justify-center gap-2 mt-5 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red"><i class="fa-solid fa-file-pdf"></i> Welcome letter</a>
       </section>
 
+      <section class="rarl-panel p-5">
+        <h2 class="font-heading font-bold text-lg text-gray-900 dark:text-white">Use the RARL affiliation</h2>
+        <p class="text-sm text-gray-500 mt-1">As a member you can list RARL on your papers. Published one? <a href="publications.php" class="text-rarl-red font-semibold hover:underline">Submit it</a> and we'll feature it.</p>
+        <?= affiliationBoxHtml() ?>
+      </section>
+
       <section class="rarl-panel p-5 text-sm">
         <h2 class="text-sm font-bold text-gray-900 dark:text-white mb-2">Need help?</h2>
         <p class="text-gray-500">Wrong details on a certificate or card, or a membership question?</p>

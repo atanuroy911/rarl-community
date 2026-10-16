@@ -47,10 +47,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $vals[] = $id;
             $pdo->prepare("UPDATE events SET {$set} WHERE id = ?")->execute($vals);
             $_SESSION['flash'] = ['type'=>'success','msg'=>'Event updated.'];
+            if (!$cover && !empty($_POST['auto_cover'])) {
+                $made = generateEventCover(['id' => $id] + $f, $_POST['cover_style'] ?? 'blue');
+                if ($made) {
+                    $cur = $pdo->prepare('SELECT cover_image FROM events WHERE id = ?'); $cur->execute([$id]); $c = $cur->fetchColumn();
+                    if ($c && $c !== $made) @unlink(UPLOADS_PATH . '/events/' . basename($c));
+                    $pdo->prepare('UPDATE events SET cover_image = ? WHERE id = ?')->execute([$made, $id]);
+                }
+            }
         } else {
             $f['cover_image'] = $cover;
             $cols = implode(', ', array_keys($f));
             $pdo->prepare("INSERT INTO events ({$cols}) VALUES (" . implode(',', array_fill(0, count($f), '?')) . ")")->execute(array_values($f));
+            $newId = (int)$pdo->lastInsertId();
+            if (!$cover && !empty($_POST['auto_cover']) && ($made = generateEventCover(['id' => $newId] + $f, $_POST['cover_style'] ?? 'blue'))) {
+                $pdo->prepare('UPDATE events SET cover_image = ? WHERE id = ?')->execute([$made, $newId]);
+            }
             $msg = 'Event created.';
             if (!empty($_POST['announce'])) {
                 // announcements.content is rendered as plain escaped text elsewhere, so keep this plain too.
@@ -203,6 +215,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
       <?php endif; ?>
       <div class="flex flex-wrap items-center gap-1.5 mt-auto pt-1">
         <a href="event-registrations.php?event=<?= $e['id'] ?>" class="rarl-btn rarl-btn-sm rarl-btn-dark"><i class="fa-solid fa-users"></i> Attendees</a>
+        <?php if (empty($e['online_url']) && (!$isPast || $e['event_date'] >= date('Y-m-d', strtotime('-2 days')))): ?><a href="checkin.php" class="rarl-btn rarl-btn-sm" title="Scan check-in passes"><i class="fa-solid fa-qrcode"></i> Check-in</a><?php endif; ?>
         <button type="button" class="rarl-btn rarl-btn-sm" data-edit-event="<?= (int)$e['id'] ?>"><i class="fa-solid fa-pen"></i> Edit</button>
         <div class="ml-auto flex">
           <button type="button" class="rarl-icon-btn" data-copy="<?= ex(SITE_URL . '/events.php#event-' . (int)$e['id']) ?>" title="Copy link to this event (opens its details)"><i class="fa-solid fa-link"></i></button>
@@ -232,6 +245,14 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
         <input type="file" name="ev_cover" accept=".jpg,.jpeg,.png,.webp" class="sr-only" data-no-chip/>
       </label>
       <label class="hidden items-center gap-2 text-xs text-gray-600" id="ev-remove-cover"><input type="checkbox" name="remove_cover" value="1" class="accent-rarl-red"/> Remove current cover</label>
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2 p-3 rounded-[var(--radius)] bg-[color:var(--muted)]" id="ev-auto">
+        <label class="flex items-center gap-2 text-sm font-medium"><input type="checkbox" name="auto_cover" value="1" class="accent-rarl-red w-4 h-4"/> <span id="ev-auto-label">Make a cover for me</span></label>
+        <span class="flex items-center gap-2 text-xs ms-auto">Style
+          <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="cover_style" value="blue" checked class="accent-rarl-red"/> <span class="w-5 h-3.5 rounded-sm bg-gradient-to-r from-sky-100 to-blue-500 ring-1 ring-black/10"></span> Blue</label>
+          <label class="flex items-center gap-1 cursor-pointer"><input type="radio" name="cover_style" value="red" class="accent-rarl-red"/> <span class="w-5 h-3.5 rounded-sm bg-gradient-to-r from-red-500 to-red-900 ring-1 ring-black/10"></span> Red</label>
+        </span>
+        <p class="w-full text-xs text-[color:var(--muted-fg)]">Uses the RARL webinar style with the title, type and date. Ignored if you upload an image.</p>
+      </div>
       <div><label class="rarl-label">Title *</label><input name="ev_title" required class="rarl-input" placeholder="e.g. ROS 2 Hands-on Workshop"/></div>
       <div class="grid grid-cols-2 gap-3">
         <div><label class="rarl-label">Type</label><select name="ev_type" class="rarl-input"><?php foreach (EVENT_TYPES as $t): ?><option value="<?= $t ?>"><?= ucfirst($t) ?></option><?php endforeach; ?></select></div>
@@ -280,6 +301,8 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $today) {
     set('ev_speaker', e?.speaker); set('ev_capacity', e?.capacity); set('ev_desc', e?.desc); set('ev_recording', e?.recording);
     show(e?.cover);
     document.getElementById('ev-remove-cover').style.display = e?.cover ? 'flex' : 'none';
+    form.elements.auto_cover.checked = !e?.cover;
+    document.getElementById('ev-auto-label').textContent = e?.cover ? 'Replace with a new generated cover' : 'Make a cover for me';
     document.getElementById('ev-announce').style.display = e ? 'none' : '';
     document.getElementById('ev-form-title').textContent = e ? 'Edit event' : 'New event';
     document.getElementById('ev-submit').innerHTML = e ? '<i class="fa-solid fa-check"></i> Save changes' : '<i class="fa-solid fa-check"></i> Create event';
