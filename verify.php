@@ -14,13 +14,9 @@ if ($uuid) {
     $cert = $stmt->fetch();
 }
 
-$qrDataUri = '';
-if ($cert) {
-    if (!class_exists('QRcode')) require_once __DIR__ . '/libs/phpqrcode/qrlib.php';
-    ob_start();
-    QRcode::png(CERT_VERIFY_URL . '?id=' . $cert['uuid'], false, QR_ECLEVEL_L, 4, 2);
-    $qrDataUri = 'data:image/png;base64,' . base64_encode(ob_get_clean());
-}
+// Rendered through a temp file: QRcode::png(..., false) would also send an
+// "image/png" header, turning this whole page into a broken image in browsers.
+$qrDataUri = $cert ? qrDataUri(CERT_VERIFY_URL . '?id=' . $cert['uuid'], 4, 2) : '';
 
 echo htmlHead('Verify Certificate', false, ['description' => 'Check that a Robotics & Automation Research Lab (RARL) certificate is genuine.']);
 ?>
