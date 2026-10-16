@@ -169,6 +169,45 @@ if ($search) {
 }
 $ws = $where ? 'WHERE ' . implode(' AND ', $where) : '';
 
+/** Streams the PDFs of $rows as one ZIP ("CERTNO - Name.pdf"). Returns false if none have a PDF. */
+function certZipDownload(array $rows, string $label): bool {
+    if (!class_exists('ZipArchive')) return false;
+    $tmp = tempnam(sys_get_temp_dir(), 'rcz');
+    $zip = new ZipArchive();
+    if ($zip->open($tmp, ZipArchive::OVERWRITE) !== true) return false;
+    $added = 0; $used = [];
+    foreach ($rows as $r) {
+        $file = $r['pdf_path'] ? UPLOADS_PATH . '/certificates/' . basename($r['pdf_path']) : '';
+        if (!$file || !is_file($file)) continue;
+        $name = trim(preg_replace('/[^\w .,()&\'-]+/u', '', html_entity_decode($r['certificate_no'] . ' - ' . $r['recipient_name'], ENT_QUOTES, 'UTF-8'))) ?: 'certificate-' . $r['id'];
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION)) ?: 'pdf';
+        $entry = $name . '.' . $ext;
+        for ($n = 2; isset($used[strtolower($entry)]); $n++) $entry = "$name ($n).$ext";
+        $used[strtolower($entry)] = true;
+        $zip->addFile($file, $entry); $added++;
+    }
+    $zip->close();
+    if (!$added) { @unlink($tmp); return false; }
+    $fname = 'RARL certificates - ' . trim(preg_replace('/[^\w .,()&-]+/u', '', html_entity_decode($label, ENT_QUOTES, 'UTF-8'))) . ' - ' . date('Y-m-d') . '.zip';
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $fname . '"; filename*=UTF-8\'\'' . rawurlencode($fname));
+    header('Content-Length: ' . filesize($tmp));
+    readfile($tmp); @unlink($tmp);
+    return true;
+}
+
+if (($_GET['export'] ?? '') === 'zip') {
+    @set_time_limit(0);
+    $stmt = $pdo->prepare("SELECT c.*, e.title AS event_title FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$ws} ORDER BY c.recipient_name");
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll();
+    $label = $filterEvent && $rows ? ($rows[0]['event_title'] ?: 'event') : ($filterStatus === 'membership' ? 'membership' : 'all');
+    if (certZipDownload($rows, $label)) exit;
+    $_SESSION['flash'] = ['type' => 'error', 'msg' => $rows ? 'None of these certificates have a PDF yet. Regenerate them first.' : 'No certificates issued for this yet.'];
+    header('Location: certificates.php' . ($filterEvent ? '?view=history&event=' . $filterEvent : '?view=history')); exit;
+}
+
 if (($_GET['export'] ?? '') === 'csv') {
     $stmt = $pdo->prepare("SELECT c.*, e.title as event_title FROM certificates c LEFT JOIN events e ON c.event_id = e.id {$ws} ORDER BY c.issued_at DESC");
     $stmt->execute($params);
@@ -318,6 +357,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
         @set_time_limit(0);
         if (!$rows) {
             $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one certificate first.'];
+        } elseif ($bulkOp === 'zip') {
+            if (certZipDownload($rows, count($rows) . ' selected')) exit;
+            $_SESSION['flash'] = ['type'=>'error','msg'=>'None of the selected certificates have a PDF yet.'];
         } elseif ($bulkOp === 'delete') {
             foreach ($rows as $r) {
                 if ($r['pdf_path']) @unlink(UPLOADS_PATH . '/certificates/' . basename($r['pdf_path']));
@@ -370,7 +412,7 @@ adminWrap(function() use ($events, $certificates, $templates, $filterEvent, $fil
   <div><h1 class="text-2xl font-black text-gray-900">Certificates</h1><p class="text-gray-500 text-sm mt-0.5"><?= $view === 'issue' ? 'Choose an event and who gets a certificate, then issue.' : 'Everyone you have issued a certificate to, and whether it was emailed.' ?></p></div>
   <div class="flex gap-2">
     <a href="templates.php" class="rarl-btn"><i class="fa-solid fa-pen-ruler"></i> Design templates</a>
-    <?php if ($view === 'history'): ?><a href="<?= ex($pageUrl(['export' => 'csv'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-csv"></i> Export</a><?php endif; ?>
+    <?php if ($view === 'history'): ?><a href="<?= ex($pageUrl(['export' => 'zip'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-zipper"></i> Download ZIP</a><a href="<?= ex($pageUrl(['export' => 'csv'])) ?>" class="rarl-btn"><i class="fa-solid fa-file-csv"></i> Export</a><?php endif; ?>
   </div>
 </div>
 
@@ -504,9 +546,16 @@ John Doe,john@lab.org"
           <span><span class="font-semibold text-gray-800">Email certificates now</span><span class="block text-xs text-gray-500">Untick to review first, then send from the list.</span></span>
         </label>
 
-        <button type="submit" id="issue-btn" class="w-full min-h-[48px] py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition shadow">
-          <i class="fa-solid fa-trophy"></i> <span>Generate & issue</span>
-        </button>
+        <div class="flex flex-col sm:flex-row gap-2">
+          <button type="submit" id="issue-btn" class="flex-1 min-h-[48px] py-3 bg-rarl-red hover:bg-rarl-dark text-white font-bold text-sm rounded-xl transition shadow">
+            <i class="fa-solid fa-trophy"></i> <span>Generate & issue</span>
+          </button>
+          <a id="zip-btn" href="certificates.php?export=zip" aria-disabled="true" title="Download every certificate already issued for the selected event"
+            class="min-h-[48px] px-5 inline-flex items-center justify-center gap-2 rounded-xl border border-gray-300 bg-white text-sm font-bold text-gray-800 hover:border-gray-500 aria-disabled:opacity-50 aria-disabled:pointer-events-none">
+            <i class="fa-solid fa-file-zipper"></i> <span>Download ZIP</span>
+          </a>
+        </div>
+        <p class="text-xs text-gray-500 -mt-1" id="zip-note">Download ZIP gets the certificates already issued for the selected event, ready to print or share.</p>
       </form>
   </div>
 
@@ -576,6 +625,7 @@ John Doe,john@lab.org"
       <div class="px-4 pt-3"><?= bulkBar([
           ['label'=>'<i class="fa-solid fa-paper-plane"></i> Send unsent','op'=>'send','class'=>'bg-amber-600 hover:bg-amber-500'],
           ['label'=>'<i class="fa-solid fa-envelope"></i> Resend','op'=>'resend','class'=>'bg-gray-700 hover:bg-gray-600','confirm'=>'Email the selected certificates again, including ones already sent?'],
+          ['label'=>'<i class="fa-solid fa-file-zipper"></i> Download ZIP','op'=>'zip','class'=>'bg-gray-700 hover:bg-gray-600','no_loading'=>true],
           ['label'=>'<i class="fa-solid fa-rotate"></i> Regenerate PDFs','op'=>'regen','class'=>'bg-blue-600 hover:bg-blue-500','confirm'=>'Rebuild the selected PDFs with their current template design?'],
           ['label'=>'<i class="fa-solid fa-trash"></i> Delete','op'=>'delete','class'=>'bg-red-600 hover:bg-red-500','confirm'=>'Delete all selected certificates? This cannot be undone.'],
       ]) ?></div>
@@ -692,6 +742,13 @@ John Doe,john@lab.org"
   // Tabs: CSV vs single recipient vs all members
   const form = document.getElementById('issue-form'), actionInput = document.getElementById('issue-action');
   const btnLabel = document.querySelector('#issue-btn span');
+  // Download ZIP follows the selected event.
+  (function () {
+    const sel = document.querySelector('#issue-form [name=event_id]'), zip = document.getElementById('zip-btn');
+    if (!sel || !zip) return;
+    const sync = () => { const v = sel.value; zip.href = 'certificates.php?export=zip&event=' + encodeURIComponent(v); zip.setAttribute('aria-disabled', v ? 'false' : 'true'); };
+    sel.addEventListener('change', sync); sync();
+  })();
   let pickMode = 'all', pickN = 0, pickLoadedFor = null;
   let csvRows = 0, allMembersNew = 0, countXhr = null, csvMode = 'upload';
   try { csvMode = localStorage.getItem('rarl-csv-mode') || 'upload'; } catch(e) {}
