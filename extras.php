@@ -195,6 +195,7 @@ function scheduleBackgroundJobs(): void {
             ignore_user_abort(true);
             sendEventReminders();
             if (function_exists('processEmailQueue') && emailQueueReady()) processEmailQueue(10, 20);
+            if (function_exists('membershipCertAutoRegen') && membershipCertAutoRegen()) regenerateOutdatedMembershipCerts(15, 20);
         } catch (Throwable $e) { error_log('background jobs: ' . $e->getMessage()); }
     });
 }

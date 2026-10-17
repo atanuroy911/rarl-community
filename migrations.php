@@ -30,6 +30,7 @@ const RARL_MIGRATIONS = [
     '013_announcement_controls.sql'         => 'Announcement button link and expiry date',
     '014_performance_indexes.sql'           => 'Indexes for faster member, event and feed pages',
     '015_videos_publications.sql'           => 'Videos (YouTube recordings) and member publications',
+    '016_membership_cert_settings.sql'      => 'Membership certificates: manual by default, kept up to date with the design',
 ];
 
 // MySQL/MariaDB error codes that mean "this change is already in place".

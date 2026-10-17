@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     queueEmail($batch, 'Membership approvals', $member['email'], $memberName, 'Your RARL Membership is Approved!', $body, [], 'welcome:' . (int)$member['id']);
                 }
                 issueIdCard((int)$member['id']);
-                issueMembershipCertificate((int)$member['id']);
+                if (membershipCertAutoIssue()) issueMembershipCertificate((int)$member['id']);
             }
             $reply('success', count($rows) . ' member(s) approved. Welcome emails are sending in the background.');
         }

@@ -177,7 +177,13 @@ function certFetch(PDO $pdo, array $ids): array {
 // e.g. after fixing a typo in the design. Membership certificates are skipped.
 // $newTemplate: switch the certificate to this design first (replaces the old one).
 function certRegenerate(PDO $pdo, array $c, ?int $newTemplate = null): bool {
-    if (($c['cert_type'] ?? 'event') === 'membership' || empty($c['event_id'])) return false;
+    if (($c['cert_type'] ?? 'event') === 'membership') {
+        if (!$newTemplate) return regenerateMembershipCertificate($c);
+        $t = $pdo->prepare("SELECT * FROM certificate_templates WHERE id = ? AND type = 'membership'");
+        $t->execute([$newTemplate]);
+        return ($tpl = $t->fetch()) ? regenerateMembershipCertificate($c, $tpl) : false;
+    }
+    if (empty($c['event_id'])) return false;
     if ($newTemplate) $c['template_id'] = $newTemplate;
     $c['recipient_name'] = properName($c['recipient_name']);
     $pdf = certWritePdf(certTemplateFor($pdo, $c['template_id'] ? (int)$c['template_id'] : null), $c['uuid'], $c['recipient_name'],

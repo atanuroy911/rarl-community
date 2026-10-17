@@ -14,6 +14,7 @@
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 require __DIR__ . '/functions.php';
 $reminders = sendEventReminders();   // the day before each event
+$regen = membershipCertAutoRegen() ? regenerateOutdatedMembershipCerts(50, 40) : 0; // design changed
 $deadline = time() + 50;
 $total = ['sent' => 0, 'failed' => 0];
 while (time() < $deadline) {
@@ -21,4 +22,4 @@ while (time() < $deadline) {
     $total['sent'] += $r['sent']; $total['failed'] += $r['failed'];
     if ($r['sent'] + $r['failed'] === 0) break;
 }
-echo date('c') . " reminders={$reminders} sent={$total['sent']} failed={$total['failed']}\n";
+echo date('c') . " reminders={$reminders} certs_updated={$regen} sent={$total['sent']} failed={$total['failed']}\n";

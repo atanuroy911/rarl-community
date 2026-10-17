@@ -2135,11 +2135,60 @@ function deleteMemberCascade(int $memberId): bool {
     return $pdo->prepare('DELETE FROM members WHERE id = ?')->execute([$memberId]);
 }
 
-// Issues (once) a "Certificate of Membership" for a member — unlike ID cards,
-// no photo is required, so this can fire the moment a member is activated.
-// Uses the admin's default 'membership' template if one is set; otherwise
-// falls back to a simple plain design (generatePlainMembershipCertPDF).
-// No-op if the member already has one. Returns true if a cert now exists.
+// ── Membership certificates ─────────────────────────────────
+// Issued manually by default (Admin → Membership certificates); automatic issue
+// on approval is a setting. Each certificate records a fingerprint of the
+// design it was made with (design_sig), so when the default membership design
+// changes the outdated ones can be regenerated — keeping their number and
+// verification link.
+
+function membershipCertAutoIssue(): bool { return setting('membership_cert_auto', '0') === '1'; }
+function membershipCertAutoRegen(): bool { return setting('membership_cert_autoregen', '1') === '1'; }
+
+/** Fingerprint of a design: template, layout, background and page size ('plain-v1' = built-in fallback). */
+function membershipDesignSig(?array $tpl): string {
+    if (!$tpl) return 'plain-v1';
+    return substr(sha1($tpl['id'] . '|' . ($tpl['config'] ?? '') . '|' . ($tpl['background_path'] ?? '') . '|' . $tpl['page_width_mm'] . 'x' . $tpl['page_height_mm']), 0, 40);
+}
+
+/** Template data for one member's certificate. */
+function membershipCertData(array $m, string $certNo, string $uuid): array {
+    $pdo = db();
+    $sectionName = '';
+    if (!empty($m['section_id'])) {
+        $s = $pdo->prepare('SELECT name FROM regional_sections WHERE id = ?');
+        $s->execute([$m['section_id']]);
+        $sectionName = $s->fetchColumn() ?: '';
+    }
+    return [
+        'name' => $m['type'] === 'lab' ? ($m['lab_name'] ?: $m['full_name']) : $m['full_name'],
+        'member_code' => $m['member_code'] ?: '', 'section' => $sectionName ?: '—',
+        'since_date' => date('d F Y', strtotime($m['created_at'])), 'cert_no' => $certNo,
+        'signer1' => setting('idcard_signer1_name', 'RARL President'),
+        'verify_url' => CERT_VERIFY_URL . '?id=' . $uuid,
+        '_section' => $sectionName,
+    ];
+}
+
+/** Writes a new PDF for a member's certificate; returns the file name or null. */
+function renderMembershipCertPdf(array $m, string $uuid, string $certNo, ?array $tpl): ?string {
+    $certDir = UPLOADS_PATH . '/certificates/';
+    if (!is_dir($certDir)) mkdir($certDir, 0755, true);
+    // A fresh file name on every render, so browsers never show a cached old design.
+    $pdfFile = 'membercert_' . str_replace('-', '', $uuid) . '_' . substr(bin2hex(random_bytes(3)), 0, 6) . '.pdf';
+    $data = membershipCertData($m, $certNo, $uuid);
+    try {
+        if ($tpl) renderTemplatePdf($tpl, $data, $certDir . $pdfFile);
+        else generatePlainMembershipCertPDF($certDir . $pdfFile, $data['name'], $certNo, $m['created_at'], $data['_section'], $uuid);
+    } catch (Throwable $e) {
+        error_log('Membership certificate render failed for member ' . $m['id'] . ': ' . $e->getMessage());
+        return null;
+    }
+    return is_file($certDir . $pdfFile) ? $pdfFile : null;
+}
+
+// Issues (once) a "Certificate of Membership" for a member with the default
+// membership design. No-op if the member already has one. True if one now exists.
 function issueMembershipCertificate(int $memberId): bool {
     $pdo = db();
     $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
@@ -2151,44 +2200,75 @@ function issueMembershipCertificate(int $memberId): bool {
     $dup->execute([$memberId]);
     if ($dup->fetch()) return true; // already issued, not an error
 
-    $name = $m['type'] === 'lab' ? $m['lab_name'] : $m['full_name'];
-    $sectionName = '';
-    if ($m['section_id']) {
-        $s = $pdo->prepare('SELECT name FROM regional_sections WHERE id = ?');
-        $s->execute([$m['section_id']]);
-        $sectionName = $s->fetchColumn() ?: '';
-    }
-
     $uuid = generateUuid();
     $certNo = nextCertNumber();
-    $certDir = UPLOADS_PATH . '/certificates/';
-    if (!is_dir($certDir)) mkdir($certDir, 0755, true);
-    $pdfFile = 'membercert_' . str_replace('-', '', $uuid) . '.pdf';
-    $pdfFull = $certDir . $pdfFile;
-    $verifyUrl = CERT_VERIFY_URL . '?id=' . $uuid;
-
-    try {
-        $template = getDefaultTemplate('membership');
-        if ($template) {
-            renderTemplatePdf($template, [
-                'name' => $name, 'member_code' => $m['member_code'] ?: '', 'section' => $sectionName ?: '—',
-                'since_date' => date('d F Y', strtotime($m['created_at'])), 'cert_no' => $certNo,
-                'signer1' => setting('idcard_signer1_name', 'RARL President'),
-                'verify_url' => $verifyUrl,
-            ], $pdfFull);
-        } else {
-            generatePlainMembershipCertPDF($pdfFull, $name, $certNo, $m['created_at'], $sectionName, $uuid);
-        }
-    } catch (Throwable $e) {
-        error_log('Membership certificate generation failed for member ' . $memberId . ': ' . $e->getMessage());
-        return false;
-    }
-
+    $tpl = getDefaultTemplate('membership');
+    $pdfFile = renderMembershipCertPdf($m, $uuid, $certNo, $tpl);
+    if (!$pdfFile) return false;
+    $name = $m['type'] === 'lab' ? ($m['lab_name'] ?: $m['full_name']) : $m['full_name'];
     $pdo->prepare(
-        'INSERT INTO certificates (uuid, certificate_no, member_id, cert_type, recipient_name, recipient_email, event_id, pdf_path)
-         VALUES (?,?,?,"membership",?,?,NULL,?)'
-    )->execute([$uuid, $certNo, $memberId, $name, $m['email'], $pdfFile]);
+        'INSERT INTO certificates (uuid, certificate_no, member_id, cert_type, recipient_name, recipient_email, event_id, template_id, design_sig, pdf_path)
+         VALUES (?,?,?,"membership",?,?,NULL,?,?,?)'
+    )->execute([$uuid, $certNo, $memberId, properName((string)$name), $m['email'], $tpl['id'] ?? null, membershipDesignSig($tpl), $pdfFile]);
     return true;
+}
+
+/** Re-renders one membership certificate with $tpl (default design if null). Same number and link. */
+function regenerateMembershipCertificate(array $c, ?array $tpl = null): bool {
+    $pdo = db();
+    $s = $pdo->prepare('SELECT * FROM members WHERE id = ?');
+    $s->execute([(int)$c['member_id']]);
+    $m = $s->fetch();
+    if (!$m) return false;
+    $tpl ??= getDefaultTemplate('membership');
+    $pdfFile = renderMembershipCertPdf($m, $c['uuid'], $c['certificate_no'], $tpl);
+    if (!$pdfFile) return false;
+    $name = $m['type'] === 'lab' ? ($m['lab_name'] ?: $m['full_name']) : $m['full_name'];
+    $pdo->prepare('UPDATE certificates SET pdf_path = ?, template_id = ?, design_sig = ?, recipient_name = ?, recipient_email = ? WHERE id = ?')
+        ->execute([$pdfFile, $tpl['id'] ?? null, membershipDesignSig($tpl), properName((string)$name), $m['email'], $c['id']]);
+    if (!empty($c['pdf_path']) && $c['pdf_path'] !== $pdfFile) @unlink(UPLOADS_PATH . '/certificates/' . basename($c['pdf_path']));
+    return true;
+}
+
+/** Counts for the admin page: active members, with/without a certificate, outdated. */
+function membershipCertStats(): array {
+    $pdo = db();
+    $sig = membershipDesignSig(getDefaultTemplate('membership'));
+    $active = (int)$pdo->query("SELECT COUNT(*) FROM members WHERE status = 'active' AND " . REAL_MEMBER_SQL)->fetchColumn();
+    $issued = (int)$pdo->query("SELECT COUNT(*) FROM certificates WHERE cert_type = 'membership'")->fetchColumn();
+    $missing = (int)$pdo->query("SELECT COUNT(*) FROM members m WHERE m.status = 'active' AND " . str_replace('email', 'm.email', REAL_MEMBER_SQL) . "
+        AND NOT EXISTS (SELECT 1 FROM certificates c WHERE c.member_id = m.id AND c.cert_type = 'membership')")->fetchColumn();
+    $o = $pdo->prepare("SELECT COUNT(*) FROM certificates WHERE cert_type = 'membership' AND member_id IS NOT NULL AND (design_sig IS NULL OR design_sig <> ?)");
+    $o->execute([$sig]);
+    return ['active' => $active, 'issued' => $issued, 'missing' => $missing, 'outdated' => (int)$o->fetchColumn(), 'sig' => $sig];
+}
+
+/** Regenerates up to $limit outdated membership certificates. Returns how many were done. */
+function regenerateOutdatedMembershipCerts(int $limit = 10, int $maxSeconds = 20): int {
+    $pdo = db();
+    $tpl = getDefaultTemplate('membership');
+    $sig = membershipDesignSig($tpl);
+    $s = $pdo->prepare("SELECT * FROM certificates WHERE cert_type = 'membership' AND member_id IS NOT NULL AND (design_sig IS NULL OR design_sig <> ?) ORDER BY id LIMIT " . max(1, $limit));
+    $s->execute([$sig]);
+    $done = 0; $start = time();
+    foreach ($s->fetchAll() as $c) {
+        if (time() - $start > $maxSeconds) break;
+        if (regenerateMembershipCertificate($c, $tpl)) $done++;
+        else $pdo->prepare('UPDATE certificates SET design_sig = ? WHERE id = ?')->execute([$sig, $c['id']]); // member gone: don't retry forever
+    }
+    return $done;
+}
+
+/** Issues certificates to up to $limit active members who have none. Returns how many. */
+function issueMissingMembershipCerts(int $limit = 10, int $maxSeconds = 20): int {
+    $ids = db()->query("SELECT m.id FROM members m WHERE m.status = 'active' AND " . str_replace('email', 'm.email', REAL_MEMBER_SQL) . "
+        AND NOT EXISTS (SELECT 1 FROM certificates c WHERE c.member_id = m.id AND c.cert_type = 'membership') ORDER BY m.id LIMIT " . max(1, $limit))->fetchAll(PDO::FETCH_COLUMN);
+    $done = 0; $start = time();
+    foreach ($ids as $id) {
+        if (time() - $start > $maxSeconds) break;
+        if (issueMembershipCertificate((int)$id)) $done++;
+    }
+    return $done;
 }
 
 // Plain fallback "Certificate of Membership" — used whenever no admin
@@ -2362,7 +2442,7 @@ function completeApproval(int $memberId): void {
         $pdo->prepare('UPDATE members SET discord_invited = 1 WHERE id = ?')->execute([$memberId]);
     }
     issueIdCard($memberId);
-    issueMembershipCertificate($memberId);
+    if (membershipCertAutoIssue()) issueMembershipCertificate($memberId);
 }
 
 // ── Language menu (Google Translate) ───────────────────────

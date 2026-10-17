@@ -509,6 +509,7 @@ function adminSidebar(string $active = ''): void {
         ],
         'Certificates & cards' => [
             'certificates' => ['certificates.php',   '<i class="fa-solid fa-award"></i>', 'Certificates'],
+            'membership-certs' => ['membership-certificates.php', '<i class="fa-solid fa-id-badge"></i>', 'Membership certs'],
             'templates'    => ['templates.php',      '<i class="fa-solid fa-swatchbook"></i>', 'Designs'],
         ],
         'Email' => [
