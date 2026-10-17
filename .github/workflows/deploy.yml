@@ -14,9 +14,7 @@ jobs:
   # Quality gate: nothing reaches the live site unless every check passes.
   checks:
     name: Checks (${{ matrix.db }})
-    runs-on: ubuntu-latest
-    # MySQL 8 reports problems without blocking (the server runs MariaDB); MariaDB must pass.
-    continue-on-error: ${{ matrix.db == 'mysql:8.0' }}
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +40,7 @@ jobs:
       MAIN_SITE_URL: http://127.0.0.1:8123
       APP_DEBUG: '1'   # show PHP warnings so the smoke test can catch them
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
 
       - uses: shivammathur/setup-php@v2
         with:
@@ -50,7 +48,7 @@ jobs:
           extensions: pdo_mysql, mbstring, gd, zip, fileinfo, openssl, curl
           coverage: none
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.0.0
         with:
           node-version: '22'
 
@@ -70,10 +68,10 @@ jobs:
   deploy:
     needs: checks
     if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7.0.1
 
       - name: Build deploy.zip
         run: |
@@ -94,7 +92,7 @@ jobs:
           cp deploy-extract.php /tmp/deploy-stage/deploy-extract.php
 
       - name: Upload deploy.zip + extractor over FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: SamKirkland/FTP-Deploy-Action@v4.4.0
         with:
           server: ${{ secrets.CPANEL_FTP_SERVER }}
           username: ${{ secrets.CPANEL_FTP_USERNAME }}
