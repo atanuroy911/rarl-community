@@ -3,10 +3,70 @@ name: Deploy to cPanel
 on:
   push:
     branches: [main]
+  pull_request:
   workflow_dispatch: {}
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
+  # Quality gate: nothing reaches the live site unless every check passes.
+  checks:
+    name: Checks (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        db: ['mysql:8.0', 'mariadb:10.11']
+    services:
+      db:
+        image: ${{ matrix.db }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MARIADB_ROOT_PASSWORD: root
+          MYSQL_DATABASE: rarl_ci
+          MARIADB_DATABASE: rarl_ci
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot || mariadb-admin ping -h 127.0.0.1 -proot"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DB_HOST: 127.0.0.1
+      DB_NAME: rarl_ci
+      DB_USER: root
+      DB_PASS: root
+      SITE_URL: http://127.0.0.1:8123
+      MAIN_SITE_URL: http://127.0.0.1:8123
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.1'   # same as the server
+          extensions: pdo_mysql, mbstring, gd, zip, fileinfo, openssl, curl
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: PHP syntax (every file)
+        run: |
+          find . -name '*.php' -not -path './libs/*' -print0 | xargs -0 -n1 -P4 php -l > /tmp/lint.txt || { grep -v '^No syntax errors' /tmp/lint.txt; exit 1; }
+          echo "$(wc -l < /tmp/lint.txt) files OK"
+
+      - name: Database builds from schema.sql and re-syncs cleanly
+        run: php tests/ci-db.php
+
+      - name: Smoke test every page (PHP errors and inline scripts)
+        run: |
+          export ADMIN_PASSWORD_HASH="$(php -r 'echo password_hash("ci-admin", PASSWORD_DEFAULT);')"
+          bash tests/smoke.sh
+
   deploy:
+    needs: checks
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -18,6 +78,7 @@ jobs:
           zip -rq /tmp/deploy-stage/deploy.zip . \
             -x ".git/*" ".git*" \
             -x ".github/*" ".github/**" \
+            -x "tests/*" "tests/**" \
             -x "node_modules/*" "node_modules/**" \
             -x "libs/phpqrcode/cache/*" "libs/phpqrcode/cache/**" \
             -x "uploads/avatars/*" "uploads/avatars/**" \
