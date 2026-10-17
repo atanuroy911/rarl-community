@@ -67,4 +67,31 @@ error_reporting(E_ALL);
 ini_set('display_errors', env('APP_DEBUG', '0') === '1' ? '1' : '0');
 ini_set('log_errors', 1);
 
+// Visitors never see a blank page or a PHP message: an uncaught error shows a
+// short "something went wrong" page with a reference code, and the full error
+// is logged with that code so it can be found in the server's error log.
+if (PHP_SAPI !== 'cli' && env('APP_DEBUG', '0') !== '1') {
+    $rarlErrorPage = function (string $ref): void {
+        if (!headers_sent()) { http_response_code(500); header('Content-Type: text/html; charset=UTF-8'); header('Cache-Control: no-store'); }
+        echo '<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Something went wrong</title><meta name="robots" content="noindex">'
+           . '<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f9fafb;color:#111827}'
+           . '.c{max-width:440px;margin:24px;padding:32px;background:#fff;border:1px solid #e5e7eb;border-radius:16px;text-align:center}h1{font-size:20px;margin:0 0 8px}p{color:#4b5563;line-height:1.6;margin:0 0 16px}'
+           . 'a{display:inline-block;padding:10px 18px;background:#CC0703;color:#fff;border-radius:10px;text-decoration:none;font-weight:600}code{font-size:12px;color:#6b7280}</style></head>'
+           . '<body><div class="c"><h1>Something went wrong</h1><p>Sorry, this page could not be loaded. Please try again in a moment. If it keeps happening, let us know and mention the code below.</p>'
+           . '<a href="/">Go to the home page</a><p style="margin:16px 0 0"><code>Reference ' . htmlspecialchars($ref) . '</code></p></div></body></html>';
+    };
+    set_exception_handler(function (Throwable $e) use ($rarlErrorPage) {
+        $ref = strtoupper(bin2hex(random_bytes(4)));
+        error_log("[ref {$ref}] Uncaught " . get_class($e) . ': ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString());
+        $rarlErrorPage($ref);
+    });
+    register_shutdown_function(function () use ($rarlErrorPage) {
+        $err = error_get_last();
+        if (!$err || !in_array($err['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) return;
+        $ref = strtoupper(bin2hex(random_bytes(4)));
+        error_log("[ref {$ref}] Fatal: {$err['message']} in {$err['file']}:{$err['line']}");
+        $rarlErrorPage($ref);
+    });
+}
+
 require_once __DIR__ . '/brand.php';
