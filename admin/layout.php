@@ -496,6 +496,7 @@ function adminSidebar(string $active = ''): void {
         'Members' => [
             'members'      => ['members.php',        '<i class="fa-solid fa-users"></i>', 'Members'],
             'publications' => ['publications.php',   '<i class="fa-solid fa-file-lines"></i>', 'Research'],
+            'standing'     => ['standing.php',       '<i class="fa-solid fa-chart-line"></i>', 'Standing'],
             'member-check' => ['member-check.php',   '<i class="fa-solid fa-list-check"></i>', 'Check a list'],
             'import'       => ['import-members.php', '<i class="fa-solid fa-file-import"></i>', 'Import'],
             'sections'     => ['sections.php',       '<i class="fa-solid fa-sitemap"></i>', 'Chapters'],
@@ -508,8 +509,9 @@ function adminSidebar(string $active = ''): void {
             'people'       => ['people.php',         '<i class="fa-solid fa-people-group"></i>', 'Leadership'],
         ],
         'Certificates & cards' => [
-            'certificates' => ['certificates.php',   '<i class="fa-solid fa-award"></i>', 'Certificates'],
-            'membership-certs' => ['membership-certificates.php', '<i class="fa-solid fa-id-badge"></i>', 'Membership certs'],
+            'certificates' => ['certificates.php',   '<i class="fa-solid fa-award"></i>', 'Event certificates'],
+            'membership-certs' => ['membership-certificates.php', '<i class="fa-solid fa-certificate"></i>', 'Membership certificates'],
+            'id-cards'     => ['id-cards.php',       '<i class="fa-solid fa-id-card"></i>', 'ID cards'],
             'templates'    => ['templates.php',      '<i class="fa-solid fa-swatchbook"></i>', 'Designs'],
         ],
         'Email' => [

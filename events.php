@@ -279,6 +279,7 @@ echo htmlHead($shared ? html_entity_decode($shared['title'], ENT_QUOTES) : 'Even
           <a href="events.php?ics=<?= $id ?>" class="ev-icon" title="Add to calendar (Apple, Outlook)" aria-label="Download calendar file"><i class="fa-regular fa-calendar-plus"></i></a>
           <a href="<?= ex($gcal) ?>" target="_blank" rel="noopener" class="ev-icon" title="Add to Google Calendar" aria-label="Add to Google Calendar"><i class="fa-brands fa-google"></i></a>
           <?php endif; ?>
+          <a href="share.php?type=event&amp;id=<?= $id ?>" target="_blank" rel="noopener" class="ev-icon" title="Share on LinkedIn<?= $isActiveMember ? ' (counts towards your membership)' : '' ?>" aria-label="Share on LinkedIn"><i class="fa-brands fa-linkedin-in"></i></a>
           <button type="button" class="ev-icon" data-share-url="<?= ex(SITE_URL . '/events.php?event=' . $id) ?>" data-share-title="<?= ex($e['title']) ?>" title="Share" aria-label="Share event"><i class="fa-solid fa-share-nodes"></i></button>
         </span>
       </div>

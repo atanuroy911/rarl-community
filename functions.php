@@ -69,15 +69,17 @@ function db(): PDO {
 }
 
 // ── Settings helper ────────────────────────────────────────
+// Values are cached for the request; settingSet() keeps the cache in step.
 function setting(string $key, string $default = ''): string {
-    static $cache = [];
+    $cache = &$GLOBALS['rarl_settings_cache'];
     if (!isset($cache[$key])) {
         $s = db()->prepare('SELECT value FROM settings WHERE `key` = ?');
         $s->execute([$key]);
         $row = $s->fetch();
-        $cache[$key] = $row ? $row['value'] : $default;
+        if (!$row) return $default; // not stored: don't cache, so a later settingSet is seen
+        $cache[$key] = $row['value'];
     }
-    return $cache[$key] ?? $default;
+    return $cache[$key];
 }
 
 // ── Input sanitizers ───────────────────────────────────────
@@ -1046,6 +1048,7 @@ function countryFieldHtml(string $selected, string $uid, bool $required = true):
 require_once __DIR__ . '/migrations.php';
 require_once __DIR__ . '/extras.php';
 require_once __DIR__ . '/premade-templates.php';
+require_once __DIR__ . '/standing.php';
 
 function dbTablesExist(): bool {
     try {
@@ -2002,7 +2005,8 @@ function createChairAccountIfMissing(string $chairEmail, string $chairName): boo
 }
 
 // Generates (or regenerates) a member's ID card, assigning member_code if needed. Returns true on success.
-function issueIdCard(int $memberId): bool {
+// $keepDates: re-render with the current design but keep the issue/expiry dates (design refresh, not a renewal).
+function issueIdCard(int $memberId, bool $keepDates = false): bool {
     $pdo  = db();
     $stmt = $pdo->prepare('SELECT * FROM members WHERE id = ?');
     $stmt->execute([$memberId]);
@@ -2043,6 +2047,10 @@ function issueIdCard(int $memberId): bool {
     }
     if (!$pdfFile) return false;
 
+    if ($keepDates && !empty($m['id_card_issued_at'])) {
+        $pdo->prepare('UPDATE members SET member_code=?, id_card_path=? WHERE id=?')->execute([$m['member_code'], $pdfFile, $memberId]);
+        return true;
+    }
     $pdo->prepare('UPDATE members SET member_code=?, id_card_path=?, id_card_issued_at=CURDATE(), id_card_expires_at=DATE_ADD(CURDATE(), INTERVAL 3 YEAR) WHERE id=?')
         ->execute([$m['member_code'], $pdfFile, $memberId]);
     return true;

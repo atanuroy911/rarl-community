@@ -85,6 +85,19 @@ SELECT
   SHA2(CONCAT(UUID(), NOW()), 256), 0, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM `members` WHERE `email` = 'community-team@rarl.internal');
 
+-- Membership standing (activity rules). Off until an admin turns it on.
+INSERT INTO `settings` (`key`, `value`) VALUES
+  ('standing_enabled', '0'),
+  ('standing_window_days', '180'),
+  ('standing_target_points', '3'),
+  ('standing_pts_event', '3'),
+  ('standing_pts_share', '1'),
+  ('standing_pts_paper', '5'),
+  ('standing_pts_login', '1'),
+  ('standing_grace_days', '14'),
+  ('standing_new_member_days', '90')
+ON DUPLICATE KEY UPDATE `value` = `value`;
+
 -- from 016_membership_cert_settings.sql
 INSERT INTO `settings` (`key`, `value`) VALUES
   ('membership_cert_auto', '0'),

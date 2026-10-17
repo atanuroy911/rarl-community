@@ -171,6 +171,18 @@ CREATE TABLE IF NOT EXISTS `event_registrations` (
   KEY `member_id` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `member_activity` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `member_id` int(11) NOT NULL,
+  `kind` varchar(30) NOT NULL COMMENT 'share_linkedin',
+  `ref_type` varchar(20) NOT NULL DEFAULT '',
+  `ref_id` int(11) NOT NULL DEFAULT 0,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `one_per_item` (`member_id`,`kind`,`ref_type`,`ref_id`),
+  KEY `idx_member_kind` (`member_id`,`kind`,`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `members` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `uuid` char(36) NOT NULL COMMENT 'Public-facing ID',
@@ -220,6 +232,9 @@ CREATE TABLE IF NOT EXISTS `members` (
   `directory_visible` tinyint(1) NOT NULL DEFAULT 1,
   `open_to_mentor` tinyint(1) NOT NULL DEFAULT 0,
   `seeking_mentor` tinyint(1) NOT NULL DEFAULT 0,
+  `standing` enum('good','warned_1','warned_2','lapsed') NOT NULL DEFAULT 'good' COMMENT 'Membership standing (activity rules)',
+  `standing_changed_at` datetime DEFAULT NULL,
+  `standing_exempt` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'Never warned or paused',
   PRIMARY KEY (`id`),
   UNIQUE KEY `email` (`email`),
   UNIQUE KEY `uuid` (`uuid`),
@@ -228,7 +243,8 @@ CREATE TABLE IF NOT EXISTS `members` (
   KEY `reset_token` (`reset_token`),
   KEY `idx_status` (`status`),
   KEY `idx_section` (`section_id`),
-  KEY `idx_created` (`created_at`)
+  KEY `idx_created` (`created_at`),
+  KEY `idx_standing` (`standing`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `membership_plans` (

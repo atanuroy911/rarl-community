@@ -52,6 +52,7 @@ function appSecret(): string {
 
 function settingSet(string $key, string $value): void {
     db()->prepare('INSERT INTO settings (`key`,`value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)')->execute([$key, $value]);
+    $GLOBALS['rarl_settings_cache'][$key] = $value;
 }
 
 /** PNG QR code as a data: URI (for <img>), using the bundled phpqrcode. */
@@ -196,6 +197,7 @@ function scheduleBackgroundJobs(): void {
             sendEventReminders();
             if (function_exists('processEmailQueue') && emailQueueReady()) processEmailQueue(10, 20);
             if (function_exists('membershipCertAutoRegen') && membershipCertAutoRegen()) regenerateOutdatedMembershipCerts(15, 20);
+            if (function_exists('standingDailyRun')) standingDailyRun(); // once a day, only when turned on
         } catch (Throwable $e) { error_log('background jobs: ' . $e->getMessage()); }
     });
 }

@@ -79,8 +79,10 @@ function schemaDesired(): array {
 }
 
 function schemaEnumValues(string $type): ?array {
-    if (!preg_match('/^(enum|set)\s*\((.*)\)/is', trim($type), $m)) return null;
-    return array_map(fn($v) => str_replace("''", "'", trim($v, "'")), sqlSplitClauses($m[2]));
+    // Only the quoted list right after enum( / set( — a COMMENT with brackets must not be read as values.
+    if (!preg_match("/^(?:enum|set)\s*\(((?:\s*'(?:[^']|'')*'\s*,?)+)\)/i", trim($type), $m)) return null;
+    preg_match_all("/'((?:[^']|'')*)'/", $m[1], $v);
+    return array_map(fn($x) => str_replace("''", "'", $x), $v[1]);
 }
 function schemaCharLength(string $type): ?int {
     return preg_match('/^(?:var)?char\s*\((\d+)\)/i', trim($type), $m) ? (int)$m[1] : null;

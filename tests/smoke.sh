@@ -54,7 +54,7 @@ M="$WORK/member.jar"
 curl -s -c "$M" -b "$M" -o "$WORK/login.html" "$BASE/login.php"
 TOKEN=$(grep -o 'name="csrf_token" value="[^"]*"' "$WORK/login.html" | head -1 | sed 's/.*value="//;s/"//')
 curl -s -c "$M" -b "$M" -o /dev/null --data-urlencode "csrf_token=$TOKEN" -d "email=ci@example.com&password=ci-password" "$BASE/login.php"
-for p in dashboard.php membership.php profile.php events.php community.php; do check member "$M" "$p"; done
+for p in dashboard.php membership.php profile.php events.php community.php "share.php?type=event&id=999"; do check member "$M" "$p"; done
 grep -q 'Sign in\|name="password"' "$WORK/page.html" && fail "member login did not work"
 
 echo "Admin pages"
@@ -62,7 +62,7 @@ A="$WORK/admin.jar"
 curl -s -c "$A" -b "$A" -o /dev/null -d "step=password&u=admin&p=ci-admin" "$BASE/admin/login.php"
 for p in index.php members.php member-check.php import-members.php sections.php publications.php community.php events.php videos.php resources.php people.php \
          certificates.php "certificates.php?view=history" membership-certificates.php templates.php newsletter.php compose-email.php email-queue.php email-check.php \
-         settings.php security.php partnerships.php plans.php migrate.php backup.php; do
+         settings.php security.php partnerships.php plans.php migrate.php backup.php standing.php "standing.php?show=below" id-cards.php "id-cards.php?show=nophoto"; do
   check admin "$A" "admin/$p"
 done
 grep -q 'name="u"' "$WORK/page.html" && fail "admin login did not work"

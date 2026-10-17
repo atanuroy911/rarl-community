@@ -55,6 +55,19 @@ $statusChip = [
     'pending'  => ['Pending review', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'fa-hourglass-half'],
     'inactive' => ['Inactive', 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300', 'fa-circle-pause'],
 ][$m['status']] ?? ['—', '', 'fa-circle'];
+if (($m['standing'] ?? '') === 'lapsed') $statusChip = ['Paused', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'fa-circle-pause'];
+
+// Membership standing (shown only when the activity rules are turned on).
+$standing = null;
+if (standingEnabled() && in_array($m['status'], ['active', 'inactive'], true)) {
+    $rules = standingRules();
+    $standing = standingScores([$memberId])[$memberId] ?? null;
+    // Reached the target since a reminder: clear it now rather than at the next daily check.
+    if ($standing && $standing['meets'] && $m['status'] === 'active' && in_array($standing['standing'], ['warned_1', 'warned_2'], true)) {
+        $pdo->prepare("UPDATE members SET standing = 'good', standing_changed_at = NOW() WHERE id = ?")->execute([$memberId]);
+        $standing['standing'] = 'good';
+    }
+}
 
 echo htmlHead('My Membership');
 ?>
@@ -75,6 +88,7 @@ echo htmlHead('My Membership');
     </div>
     <nav class="max-w-6xl mx-auto px-4 sm:px-6 flex gap-6 text-sm font-semibold text-gray-500 overflow-x-auto" aria-label="Sections">
       <a href="#overview" class="py-3 border-b-2 border-rarl-red text-gray-900 dark:text-white whitespace-nowrap">Overview</a>
+      <?php if ($standing): ?><a href="#standing" class="py-3 border-b-2 border-transparent hover:text-gray-900 dark:hover:text-white whitespace-nowrap">Activity</a><?php endif; ?>
       <a href="#id-card" class="py-3 border-b-2 border-transparent hover:text-gray-900 dark:hover:text-white whitespace-nowrap">ID card</a>
       <a href="#certificates" class="py-3 border-b-2 border-transparent hover:text-gray-900 dark:hover:text-white whitespace-nowrap">Certificates <span class="text-gray-400"><?= count($certificates) ?></span></a>
       <a href="#benefits" class="py-3 border-b-2 border-transparent hover:text-gray-900 dark:hover:text-white whitespace-nowrap">Benefits</a>
@@ -101,9 +115,51 @@ echo htmlHead('My Membership');
           <?php endforeach; ?>
         </dl>
         <?php if ($m['status'] === 'pending'): ?>
-        <p class="mx-5 mb-5 -mt-1 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"><i class="fa-solid fa-hourglass-half"></i> Your application is with the RARL team. Your member number, ID card and membership certificate are issued automatically when you're approved.</p>
+        <p class="mx-5 mb-5 -mt-1 text-sm text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-900/20 rounded-xl p-3"><i class="fa-solid fa-hourglass-half"></i> Your application is with the RARL team. Your member number and ID card are issued when you're approved.</p>
         <?php endif; ?>
       </section>
+
+      <?php if ($standing):
+        $pct = $rules['target'] ? min(100, (int)round($standing['points'] / $rules['target'] * 100)) : 100;
+        $deadline = $standing['standing_changed_at'] ? date('d M Y', strtotime($standing['standing_changed_at']) + $rules['grace'] * 86400) : null;
+        $months = max(1, (int)round($rules['window'] / 30));
+        $state = match ($standing['standing']) {
+            'warned_1' => ['Reminder sent', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'Reach ' . $rules['target'] . ' points by ' . $deadline . ' to keep your membership active.'],
+            'warned_2' => ['Final reminder', 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300', 'Reach ' . $rules['target'] . ' points by ' . $deadline . ', or your membership, ID card and membership certificate will be paused.'],
+            'lapsed'   => ['Paused', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'Your membership is paused. Contact the RARL team to reactivate it.'],
+            default    => $standing['meets'] ? ['Good standing', 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300', 'Thanks for taking part. Keep it up to stay an active member.']
+                                             : ['Below target', 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', 'Earn ' . ($rules['target'] - $standing['points']) . ' more point' . ($rules['target'] - $standing['points'] === 1 ? '' : 's') . ' to stay in good standing.'],
+        };
+        if ($standing['standing_exempt']) $state = ['Good standing', 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300', 'Your membership is kept active by the RARL team.'];
+        $ways = [
+          ['fa-video', 'Events attended', (int)$standing['events'], $rules['event'], 'events.php', 'Find an event'],
+          ['fa-brands fa-linkedin', 'RARL events shared on LinkedIn', (int)$standing['shares'], $rules['share'], 'events.php', 'Share an event'],
+          ['fa-file-lines', 'Papers with the RARL affiliation', (int)$standing['papers'], $rules['paper'], 'publications.php', 'Submit a paper'],
+          ['fa-right-to-bracket', 'Signed in', $standing['signed_in'] ? 1 : 0, $rules['login'], null, null],
+        ]; ?>
+      <section id="standing" class="rarl-panel p-5 scroll-mt-24">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-1">
+          <h2 class="font-heading font-bold text-lg text-gray-900 dark:text-white">Activity &amp; standing</h2>
+          <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold <?= $state[1] ?>"><?= $state[0] ?></span>
+        </div>
+        <p class="text-sm text-gray-600 dark:text-gray-400"><?= $h($state[2]) ?></p>
+        <div class="mt-4 flex items-center gap-3">
+          <div class="flex-1 h-2.5 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden" role="progressbar" aria-valuenow="<?= (int)$standing['points'] ?>" aria-valuemin="0" aria-valuemax="<?= (int)$rules['target'] ?>" aria-label="Activity points">
+            <div class="h-full rounded-full <?= $standing['meets'] ? 'bg-green-600' : 'bg-rarl-red' ?>" style="width:<?= $pct ?>%"></div>
+          </div>
+          <span class="text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap"><?= (int)$standing['points'] ?> / <?= (int)$rules['target'] ?> points</span>
+        </div>
+        <p class="text-xs text-gray-500 mt-1">Points from the last <?= $months ?> months.</p>
+        <ul class="mt-4 grid sm:grid-cols-2 gap-2">
+          <?php foreach ($ways as [$icon, $label, $n, $pts, $href, $cta]): ?>
+          <li class="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-gray-800/50">
+            <span class="w-9 h-9 rounded-lg bg-white dark:bg-gray-900 text-rarl-red flex items-center justify-center flex-shrink-0"><i class="<?= str_contains($icon, 'fa-brands') ? $icon : 'fa-solid ' . $icon ?>"></i></span>
+            <span class="flex-1 min-w-0"><span class="block text-sm text-gray-900 dark:text-white"><?= $label ?></span><span class="block text-xs text-gray-500"><?= $n ?> × <?= $pts ?> pt<?= $pts == 1 ? '' : 's' ?><?php if ($href): ?> · <a href="<?= $href ?>" class="text-rarl-red font-semibold hover:underline"><?= $cta ?></a><?php endif; ?></span></span>
+          </li>
+          <?php endforeach; ?>
+        </ul>
+      </section>
+      <?php endif; ?>
 
       <section id="id-card" class="rarl-panel p-5 scroll-mt-24">
         <div class="flex items-center justify-between gap-3 mb-4">

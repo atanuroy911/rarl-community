@@ -9,7 +9,7 @@ $cert = null;
 $event = null;
 
 if ($uuid) {
-    $stmt = db()->prepare("SELECT c.*, e.title as event_title, e.type as event_type, e.event_date, e.description as event_desc FROM certificates c LEFT JOIN events e ON c.event_id = e.id WHERE c.uuid = ? AND c.is_public = 1");
+    $stmt = db()->prepare("SELECT c.*, e.title as event_title, e.type as event_type, e.event_date, e.description as event_desc, m.status AS member_status FROM certificates c LEFT JOIN events e ON c.event_id = e.id LEFT JOIN members m ON m.id = c.member_id WHERE c.uuid = ? AND c.is_public = 1");
     $stmt->execute([$uuid]);
     $cert = $stmt->fetch();
 }
@@ -47,6 +47,13 @@ echo htmlHead('Verify Certificate', false, ['description' => 'Check that a Robot
       <div class="text-4xl mb-3"><i class="fa-solid fa-circle-xmark text-red-500"></i></div>
       <h2 class="font-heading font-bold text-lg text-red-700 dark:text-red-300 mb-2">Certificate Not Found</h2>
       <p class="text-red-600 dark:text-red-400 text-sm">No valid certificate found for this ID. It may be invalid, revoked, or marked private.</p>
+    </div>
+
+    <?php elseif (($cert['cert_type'] ?? '') === 'membership' && ($cert['member_status'] ?? '') !== 'active'): ?>
+    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-2xl p-8 text-center">
+      <div class="text-4xl mb-3"><i class="fa-solid fa-circle-pause text-amber-500"></i></div>
+      <h2 class="font-heading font-bold text-lg text-amber-800 dark:text-amber-300 mb-2">Membership not active</h2>
+      <p class="text-amber-800 dark:text-amber-300 text-sm">Membership certificate <span class="font-mono font-semibold"><?= ex($cert['certificate_no']) ?></span> was issued by RARL, but this membership is not active at the moment, so the certificate is not currently valid.</p>
     </div>
 
     <?php elseif ($cert): ?>
