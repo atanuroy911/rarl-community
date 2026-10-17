@@ -197,7 +197,6 @@ function scheduleBackgroundJobs(): void {
             sendEventReminders();
             if (function_exists('processEmailQueue') && emailQueueReady()) processEmailQueue(10, 20);
             if (function_exists('membershipCertAutoRegen') && membershipCertAutoRegen()) regenerateOutdatedMembershipCerts(15, 20);
-            if (function_exists('standingDailyRun')) standingDailyRun(); // once a day, only when turned on
         } catch (Throwable $e) { error_log('background jobs: ' . $e->getMessage()); }
     });
 }

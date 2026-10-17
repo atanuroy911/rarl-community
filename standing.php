@@ -8,16 +8,17 @@
  *   sharing an RARL event on LinkedIn through the site's LinkedIn button,
  *   a paper published with the RARL affiliation (approved by an admin),
  *   signing in at least once.
- * Below the target: a first warning, then (after the grace period) a final
- * warning, then the membership is paused (status inactive), which also stops
- * the ID card and membership certificate verifying. Reaching the target again
- * at any point before the pause restores good standing.
+ * Below the target the steps are: first reminder, then (after the grace
+ * period) a final reminder, then the membership is paused (status inactive),
+ * which also stops the ID card and membership certificate verifying.
  *
- * Off until an admin turns it on (Admin → Members → Standing). New and
- * reinstated members are not checked for their first N days, and any member
- * can be exempted.
+ * Nothing happens automatically: admins review members in Admin → Members →
+ * Standing and apply the next step (with or without an email) when they choose.
+ * New and reinstated members are not due for their first N days, and any
+ * member can be exempted. Reaching the target clears reminders.
  */
 
+/** Members see their activity points on their Membership page. */
 function standingEnabled(): bool { return setting('standing_enabled', '0') === '1'; }
 
 /** Rules from settings. */
@@ -85,27 +86,27 @@ function standingNextAction(array $s, array $r): ?string {
 }
 
 /**
- * Runs the check. With $apply = false nothing changes (preview).
- * Returns ['actions' => [['member' => row, 'action' => …]], 'counts' => [action => n]].
+ * Applies the next step to the chosen members only (an admin action; nothing
+ * runs on its own). Each member's step is worked out again at this moment.
+ * $email = false updates their standing without emailing them.
+ * Returns counts per step.
  */
-function standingRun(bool $apply): array {
+function standingApply(array $memberIds, bool $email): array {
     $r = standingRules();
     $pdo = db();
-    $actions = []; $counts = ['recover' => 0, 'warn_1' => 0, 'warn_2' => 0, 'lapse' => 0];
-    $batch = $apply ? newEmailBatch() : null;
-    foreach (standingScores() as $s) {
+    $counts = ['recover' => 0, 'warn_1' => 0, 'warn_2' => 0, 'lapse' => 0, 'emailed' => 0];
+    $batch = $email ? newEmailBatch() : null;
+    foreach (standingScores(array_values(array_unique(array_map('intval', $memberIds)))) as $s) {
         $a = standingNextAction($s, $r);
         if (!$a) continue;
-        $actions[] = ['member' => $s, 'action' => $a];
-        $counts[$a]++;
-        if (!$apply) continue;
         $newStanding = ['recover' => 'good', 'warn_1' => 'warned_1', 'warn_2' => 'warned_2', 'lapse' => 'lapsed'][$a];
         $pdo->prepare('UPDATE members SET standing = ?, standing_changed_at = NOW()' . ($a === 'lapse' ? ", status = 'inactive'" : '') . ' WHERE id = ?')
             ->execute([$newStanding, $s['id']]);
-        if ($a !== 'recover') standingEmail($s, $a, $r, $batch);
+        $counts[$a]++;
+        if ($email && $a !== 'recover') { standingEmail($s, $a, $r, $batch); $counts['emailed']++; }
     }
-    if ($apply) settingSet('standing_last_run', date('c') . ' ' . json_encode($counts));
-    return ['actions' => $actions, 'counts' => $counts];
+    settingSet('standing_last_run', date('c') . ' ' . json_encode($counts));
+    return $counts;
 }
 
 /** Queues the warning / pause email for one member. */
@@ -116,20 +117,11 @@ function standingEmail(array $s, string $action, array $r, ?string $batch = null
     ob_start(); require __DIR__ . '/emails/standing-notice.php'; $body = ob_get_clean();
     $subject = match ($action) {
         'warn_1' => 'Keep your RARL membership active',
-        'warn_2' => 'Final reminder: your RARL membership will be paused',
+        'warn_2' => 'Final reminder: keep your RARL membership active',
         default  => 'Your RARL membership has been paused',
     };
     $batch ??= newEmailBatch();
     queueEmail($batch, 'Membership standing', $s['email'], (string)$memberName, $subject, $body);
-}
-
-/** Runs the check once a day (from background jobs and cron) when it is turned on. */
-function standingDailyRun(): ?array {
-    if (!standingEnabled()) return null;
-    $last = setting('standing_last_run', '');
-    if ($last !== '' && substr($last, 0, 10) === date('Y-m-d')) return null;
-    settingSet('standing_last_run', date('c') . ' running');
-    return standingRun(true)['counts'];
 }
 
 /** Admin: put a member back in good standing (and reactivate a paused membership). */

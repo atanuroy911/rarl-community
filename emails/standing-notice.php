@@ -20,10 +20,10 @@ $row = fn($label, $value, $pts) => '<tr><td style="padding:8px 14px; font-size:1
     <p>We'd love to have you back. Reply to this email and we'll reactivate your membership.</p>
     <?php else: ?>
     <p style="margin:0 0 4px; font-size:12px; font-weight:bold; letter-spacing:.08em; text-transform:uppercase; color:<?= $level === 'warn_2' ? '#b91c1c' : BRAND_RED ?>;"><?= $level === 'warn_2' ? 'Final reminder' : 'Membership reminder' ?></p>
-    <h2 style="margin:0 0 18px; font-size:22px; color:#111;"><?= $level === 'warn_2' ? 'Your membership will be paused on ' . $t($deadline) : 'Stay an active RARL member' ?></h2>
+    <h2 style="margin:0 0 18px; font-size:22px; color:#111;"><?= $level === 'warn_2' ? 'Your membership may be paused after ' . $t($deadline) : 'Stay an active RARL member' ?></h2>
     <p>Dear <?= $t($first) ?>,</p>
     <p>RARL membership is for people who take part. To keep it active, members need at least <strong><?= (int)$r['target'] ?> points</strong> over <?= $months ?> months. You have <strong><?= (int)$s['points'] ?></strong> right now.</p>
-    <?php if ($level === 'warn_2'): ?><p>This is your second and final reminder. If you don't reach the target by <strong><?= $t($deadline) ?></strong>, your membership, ID card and membership certificate will be paused.</p>
+    <?php if ($level === 'warn_2'): ?><p>This is your second and final reminder. If you haven't reached the target by <strong><?= $t($deadline) ?></strong>, your membership, ID card and membership certificate may be paused.</p>
     <?php else: ?><p>There's plenty of time: just reach the target by <strong><?= $t($deadline) ?></strong>.</p><?php endif; ?>
     <table cellpadding="0" cellspacing="0" style="width:100%; margin:20px 0; background:#f8f9fa; border-radius:8px;">
       <?= $row('Events you attended', (int)$s['events'], $r['event']) ?>

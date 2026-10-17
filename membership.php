@@ -125,7 +125,7 @@ echo htmlHead('My Membership');
         $months = max(1, (int)round($rules['window'] / 30));
         $state = match ($standing['standing']) {
             'warned_1' => ['Reminder sent', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'Reach ' . $rules['target'] . ' points by ' . $deadline . ' to keep your membership active.'],
-            'warned_2' => ['Final reminder', 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300', 'Reach ' . $rules['target'] . ' points by ' . $deadline . ', or your membership, ID card and membership certificate will be paused.'],
+            'warned_2' => ['Final reminder', 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300', 'Reach ' . $rules['target'] . ' points by ' . $deadline . ', or your membership, ID card and membership certificate may be paused.'],
             'lapsed'   => ['Paused', 'bg-amber-50 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300', 'Your membership is paused. Contact the RARL team to reactivate it.'],
             default    => $standing['meets'] ? ['Good standing', 'bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-300', 'Thanks for taking part. Keep it up to stay an active member.']
                                              : ['Below target', 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300', 'Earn ' . ($rules['target'] - $standing['points']) . ' more point' . ($rules['target'] - $standing['points'] === 1 ? '' : 's') . ' to stay in good standing.'],
