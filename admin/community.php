@@ -65,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     }
 
     if ($action === 'add_feed_post') {
-        // Posted as the "RARL Team" system account (sql/009_admin_only_posts.sql).
+        // Posted as the "RARL Team" system account (created by database/seed.sql).
         $body = clean($_POST['post_body'] ?? '');
         $imagePath = null;
         if (!empty($_FILES['post_image']['name'])) {

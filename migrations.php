@@ -1,79 +1,27 @@
 <?php
 /**
- * RARL — Database migration engine.
+ * RARL — Database schema sync.
  *
- * - Tracks what has been applied in `schema_migrations` (file + checksum), so
- *   only new or edited files run; every file is still idempotent, so a
- *   re-run is always safe.
- * - Portable across MariaDB and MySQL 5.7/8: MySQL has no
- *   `ADD COLUMN/KEY IF NOT EXISTS`, so those clauses are checked against
- *   information_schema and run one by one without the IF NOT EXISTS.
- * - "Already exists" errors (duplicate column/key/table) are treated as done.
- * - A named lock stops two runs (e.g. a deploy and an admin click) overlapping.
+ * One source of truth instead of a growing pile of migration files:
+ *   database/schema.sql   CREATE TABLE for every table, exactly as it should be.
+ *   database/seed.sql     starter data (insert-if-missing; never overwrites).
+ *   database/changes.php  rare one-off data fixes, each run once and recorded.
  *
- * Applied automatically by deploy-extract.php after every deploy; admins can
- * also apply from Admin → Database (admin/migrate.php).
+ * dbSync() compares schema.sql with the live database (information_schema) and
+ * only ADDS what is missing: tables, columns (in position) and indexes. It also
+ * widens a column when schema.sql allows more (new enum values, a longer
+ * VARCHAR). It never drops or narrows anything, so it is always safe to run.
+ * Works the same on MySQL 5.7/8 and MariaDB.
+ *
+ * Runs automatically after every deploy (deploy-extract.php), on the first-run
+ * installer, and from Admin → Database.
  */
 
-const RARL_MIGRATIONS = [
-    'schema.sql'                            => 'Base schema (members, certificates, settings, …)',
-    '002_v2_features.sql'                   => 'Plans, OTP, community, ID cards, chapters',
-    '003_community_richtext.sql'            => 'Rich-text team posts with a photo',
-    '004_events_premium_directory.sql'      => 'Event RSVPs, members-only learning, roster visibility',
-    '005_chapters_not_sections.sql'         => 'Rename "Section" to "Chapter"',
-    '006_multi_email_accounts.sql'          => 'Several emails per account, temporary passwords, chairs',
-    '007_certificate_templates.sql'         => 'Uploadable ID card and certificate templates',
-    '008_membership_certs_and_chapters.sql' => 'Membership certificates, chapter announcements',
-    '009_admin_only_posts.sql'              => 'The "RARL Team" account team posts are published as',
-    '010_cv_url.sql'                        => 'External CV / résumé link',
-    '012_email_queue.sql'                   => 'Background email queue for bulk sends',
-    '013_announcement_controls.sql'         => 'Announcement button link and expiry date',
-    '014_performance_indexes.sql'           => 'Indexes for faster member, event and feed pages',
-    '015_videos_publications.sql'           => 'Videos (YouTube recordings) and member publications',
-    '016_membership_cert_settings.sql'      => 'Membership certificates: manual by default, kept up to date with the design',
-];
+const DB_SCHEMA_FILE  = __DIR__ . '/database/schema.sql';
+const DB_SEED_FILE    = __DIR__ . '/database/seed.sql';
+const DB_CHANGES_FILE = __DIR__ . '/database/changes.php';
 
-// MySQL/MariaDB error codes that mean "this change is already in place".
-const RARL_MIGRATION_ALREADY_DONE = [1050, 1060, 1061, 1091, 1826];
-
-function migrationsTableEnsure(PDO $pdo): void {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `schema_migrations` (
-        `file`       VARCHAR(190) NOT NULL,
-        `checksum`   CHAR(40)     NOT NULL,
-        `applied_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        `statements` INT(11)      NOT NULL DEFAULT 0,
-        `ms`         INT(11)      NOT NULL DEFAULT 0,
-        PRIMARY KEY (`file`)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-}
-
-/** Every known migration with its state: applied, pending (never run) or changed (file edited since). */
-function migrationStatus(): array {
-    $pdo = db();
-    migrationsTableEnsure($pdo);
-    $applied = [];
-    foreach ($pdo->query('SELECT * FROM schema_migrations') as $r) $applied[$r['file']] = $r;
-    $out = [];
-    foreach (RARL_MIGRATIONS as $file => $desc) {
-        $path = __DIR__ . '/sql/' . $file;
-        $sum  = is_file($path) ? sha1_file($path) : '';
-        $row  = $applied[$file] ?? null;
-        $state = !$row ? 'pending' : ($row['checksum'] !== $sum ? 'changed' : 'applied');
-        $out[$file] = ['file' => $file, 'desc' => $desc, 'state' => $state, 'missing' => $sum === '',
-                       'applied_at' => $row['applied_at'] ?? null, 'statements' => (int)($row['statements'] ?? 0), 'ms' => (int)($row['ms'] ?? 0)];
-    }
-    return $out;
-}
-
-function pendingMigrations(): array {
-    static $cache = null;
-    if ($cache !== null) return $cache;
-    try {
-        return $cache = array_keys(array_filter(migrationStatus(), fn($m) => $m['state'] !== 'applied' && !$m['missing']));
-    } catch (Throwable $e) {
-        return [];
-    }
-}
+// ── SQL parsing helpers ────────────────────────────────────
 
 /** Splits SQL on `;` outside quotes and comments. */
 function sqlSplitStatements(string $sql): array {
@@ -94,7 +42,7 @@ function sqlSplitStatements(string $sql): array {
     return $out;
 }
 
-/** Splits an ALTER TABLE's clause list on top-level commas. */
+/** Splits a comma list on top-level commas (outside quotes and brackets). */
 function sqlSplitClauses(string $s): array {
     $out = []; $buf = ''; $depth = 0; $q = null;
     foreach (str_split($s) as $c) {
@@ -109,79 +57,168 @@ function sqlSplitClauses(string $s): array {
     return $out;
 }
 
-function migrationColumnExists(PDO $pdo, string $table, string $col): bool {
-    $st = $pdo->prepare('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
-    $st->execute([$table, $col]); return (bool)$st->fetchColumn();
-}
-function migrationIndexExists(PDO $pdo, string $table, string $key): bool {
-    $st = $pdo->prepare('SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?');
-    $st->execute([$table, $key]); return (bool)$st->fetchColumn();
+/**
+ * The desired schema: [table => ['create' => sql, 'columns' => [name => def], 'order' => [names],
+ * 'indexes' => [name => def], 'primary' => def|null]].
+ */
+function schemaDesired(): array {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    $tables = [];
+    foreach (sqlSplitStatements((string)@file_get_contents(DB_SCHEMA_FILE)) as $stmt) {
+        if (!preg_match('/^CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?`?(\w+)`?\s*\((.*)\)([^)]*)$/is', $stmt, $m)) continue;
+        $t = ['create' => $stmt, 'columns' => [], 'order' => [], 'indexes' => [], 'primary' => null];
+        foreach (sqlSplitClauses($m[2]) as $line) {
+            if (preg_match('/^`(\w+)`\s+(.+)$/s', $line, $c)) { $t['columns'][$c[1]] = $c[2]; $t['order'][] = $c[1]; }
+            elseif (preg_match('/^PRIMARY\s+KEY/i', $line)) $t['primary'] = $line;
+            elseif (preg_match('/^(?:UNIQUE\s+|FULLTEXT\s+|SPATIAL\s+)?(?:KEY|INDEX)\s+`(\w+)`/i', $line, $k)) $t['indexes'][$k[1]] = $line;
+        }
+        $tables[$m[1]] = $t;
+    }
+    return $cache = $tables;
 }
 
-/** Runs one statement portably; returns how many statements actually executed. */
-function migrationExec(PDO $pdo, string $stmt): int {
-    if (preg_match('/^ALTER\s+TABLE\s+`?(\w+)`?\s+(.*)$/is', $stmt, $m) && stripos($stmt, 'IF NOT EXISTS') !== false) {
-        $table = $m[1]; $ran = 0;
-        foreach (sqlSplitClauses($m[2]) as $clause) {
-            if (preg_match('/^ADD\s+COLUMN\s+IF\s+NOT\s+EXISTS\s+`?(\w+)`?/i', $clause, $c)) {
-                if (migrationColumnExists($pdo, $table, $c[1])) continue;
-            } elseif (preg_match('/^ADD\s+((?:UNIQUE\s+|FULLTEXT\s+)?(?:KEY|INDEX))\s+IF\s+NOT\s+EXISTS\s+`?(\w+)`?/i', $clause, $c)) {
-                if (migrationIndexExists($pdo, $table, $c[2])) continue;
+function schemaEnumValues(string $type): ?array {
+    if (!preg_match('/^(enum|set)\s*\((.*)\)/is', trim($type), $m)) return null;
+    return array_map(fn($v) => str_replace("''", "'", trim($v, "'")), sqlSplitClauses($m[2]));
+}
+function schemaCharLength(string $type): ?int {
+    return preg_match('/^(?:var)?char\s*\((\d+)\)/i', trim($type), $m) ? (int)$m[1] : null;
+}
+
+// ── Planning ───────────────────────────────────────────────
+
+/**
+ * What dbSync() would do: a list of ['sql' => …, 'desc' => …, 'kind' => table|column|index|widen].
+ */
+function schemaPlan(): array {
+    $pdo = db();
+    $have = [];
+    foreach ($pdo->query("SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE()")->fetchAll(PDO::FETCH_COLUMN) as $t) $have[strtolower($t)] = $t;
+    $cols = [];
+    foreach ($pdo->query("SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE()") as $r) $cols[strtolower($r['TABLE_NAME'])][strtolower($r['COLUMN_NAME'])] = $r['COLUMN_TYPE'];
+    $idx = [];
+    foreach ($pdo->query("SELECT DISTINCT TABLE_NAME, INDEX_NAME FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE()") as $r) $idx[strtolower($r['TABLE_NAME'])][strtolower($r['INDEX_NAME'])] = true;
+
+    $plan = [];
+    foreach (schemaDesired() as $table => $t) {
+        $lt = strtolower($table);
+        if (!isset($have[$lt])) { $plan[] = ['kind' => 'table', 'desc' => "Create table {$table}", 'sql' => $t['create']]; continue; }
+        $prev = null;
+        foreach ($t['order'] as $col) {
+            $def = $t['columns'][$col];
+            $current = $cols[$lt][strtolower($col)] ?? null;
+            if ($current === null) {
+                // Keep generated values sane on existing rows: AUTO_INCREMENT columns can't be added this way.
+                $plan[] = ['kind' => 'column', 'desc' => "Add column {$table}.{$col}",
+                           'sql' => "ALTER TABLE `{$table}` ADD COLUMN `{$col}` {$def}" . ($prev ? " AFTER `{$prev}`" : ' FIRST')];
+            } else {
+                $want = schemaEnumValues($def); $got = schemaEnumValues($current);
+                $wantLen = schemaCharLength($def); $gotLen = schemaCharLength($current);
+                if (($want !== null && $got !== null && array_diff($want, $got)) || ($wantLen && $gotLen && $wantLen > $gotLen)) {
+                    $plan[] = ['kind' => 'widen', 'desc' => "Widen {$table}.{$col}", 'sql' => "ALTER TABLE `{$table}` MODIFY COLUMN `{$col}` {$def}"];
+                }
             }
-            $ran += migrationTry($pdo, "ALTER TABLE `$table` " . preg_replace('/\s+IF\s+NOT\s+EXISTS/i', '', $clause, 1));
+            $prev = $col;
         }
-        return $ran;
-    }
-    return migrationTry($pdo, $stmt);
-}
-function migrationTry(PDO $pdo, string $sql): int {
-    try { $pdo->exec($sql); return 1; }
-    catch (PDOException $e) {
-        if (in_array((int)($e->errorInfo[1] ?? 0), RARL_MIGRATION_ALREADY_DONE, true)) return 0;
-        throw $e;
-    }
-}
-
-/** Applies one migration file and records it. Returns ['ok', 'statements', 'ms', 'error'?]. */
-function applyMigration(string $file): array {
-    $pdo = db();
-    migrationsTableEnsure($pdo);
-    $path = __DIR__ . '/sql/' . basename($file);
-    if (!is_file($path)) return ['ok' => false, 'statements' => 0, 'ms' => 0, 'error' => 'File not found: sql/' . $file];
-    $t = microtime(true); $ran = 0; $stmts = sqlSplitStatements(file_get_contents($path));
-    foreach ($stmts as $i => $stmt) {
-        try { $ran += migrationExec($pdo, $stmt); }
-        catch (PDOException $e) {
-            return ['ok' => false, 'statements' => $ran, 'ms' => 0,
-                    'error' => 'Statement ' . ($i + 1) . ' of ' . count($stmts) . ': ' . $e->getMessage(),
-                    'sql' => mb_strimwidth(preg_replace('/\s+/', ' ', $stmt), 0, 240, '…')];
+        foreach ($t['indexes'] as $name => $def) {
+            if (!isset($idx[$lt][strtolower($name)])) $plan[] = ['kind' => 'index', 'desc' => "Add index {$table}.{$name}", 'sql' => "ALTER TABLE `{$table}` ADD {$def}"];
         }
     }
-    $ms = (int)round((microtime(true) - $t) * 1000);
-    $pdo->prepare('INSERT INTO schema_migrations (file, checksum, statements, ms) VALUES (?,?,?,?)
-                   ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), statements = VALUES(statements), ms = VALUES(ms), applied_at = CURRENT_TIMESTAMP')
-        ->execute([$file, sha1_file($path), $ran, $ms]);
-    return ['ok' => true, 'statements' => $ran, 'ms' => $ms];
+    return $plan;
 }
 
-/** Applies $files (default: everything pending) in order, stopping at the first failure. */
-function applyMigrations(?array $files = null): array {
+// ── One-off data changes ───────────────────────────────────
+
+function dbSyncTableEnsure(PDO $pdo): void {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `schema_migrations` (
+        `file`       VARCHAR(190) NOT NULL,
+        `checksum`   CHAR(40)     NOT NULL,
+        `applied_at` TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `statements` INT(11)      NOT NULL DEFAULT 0,
+        `ms`         INT(11)      NOT NULL DEFAULT 0,
+        PRIMARY KEY (`file`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+}
+
+/** [name => callable(PDO): void] from database/changes.php. */
+function dbChanges(): array {
+    static $c = null;
+    return $c ??= (is_file(DB_CHANGES_FILE) ? (array)require DB_CHANGES_FILE : []);
+}
+
+function dbPendingChanges(): array {
     $pdo = db();
-    $locked = (int)$pdo->query("SELECT GET_LOCK('rarl_migrate', 15)")->fetchColumn() === 1;
-    if (!$locked) return ['_lock' => ['ok' => false, 'statements' => 0, 'ms' => 0, 'error' => 'Another migration run is in progress. Try again in a minute.']];
+    dbSyncTableEnsure($pdo);
+    $done = array_flip($pdo->query("SELECT file FROM schema_migrations WHERE file LIKE 'change:%'")->fetchAll(PDO::FETCH_COLUMN));
+    return array_values(array_filter(array_keys(dbChanges()), fn($n) => !isset($done['change:' . $n])));
+}
+
+// ── Sync ───────────────────────────────────────────────────
+
+/**
+ * Brings the database in line with schema.sql, then seed.sql and pending changes.
+ * Returns ['ok' => bool, 'applied' => [desc…], 'seeded' => int, 'ms' => int, 'error' => ?string, 'sql' => ?string].
+ */
+function dbSync(): array {
+    $pdo = db();
+    $t0 = microtime(true);
+    $res = ['ok' => true, 'applied' => [], 'seeded' => 0, 'ms' => 0, 'error' => null, 'sql' => null];
+    if (!is_file(DB_SCHEMA_FILE)) return ['ok' => false, 'error' => 'database/schema.sql is missing.'] + $res;
+    if ((int)$pdo->query("SELECT GET_LOCK('rarl_db_sync', 15)")->fetchColumn() !== 1) {
+        return ['ok' => false, 'error' => 'Another database update is running. Try again in a minute.'] + $res;
+    }
     try {
-        $results = [];
-        foreach ($files ?? pendingMigrations() as $file) {
-            $results[$file] = applyMigration($file);
-            if (!$results[$file]['ok']) break;
+        dbSyncTableEnsure($pdo);
+        foreach (schemaPlan() as $step) {
+            $res['sql'] = $step['sql'];
+            $pdo->exec($step['sql']);
+            $res['applied'][] = $step['desc'];
         }
-        return $results;
+        foreach (sqlSplitStatements((string)@file_get_contents(DB_SEED_FILE)) as $stmt) {
+            $res['sql'] = $stmt;
+            $res['seeded'] += $pdo->exec($stmt) > 0 ? 1 : 0;
+        }
+        foreach (dbPendingChanges() as $name) {
+            $res['sql'] = 'change: ' . $name;
+            (dbChanges()[$name])($pdo);
+            $pdo->prepare("INSERT INTO schema_migrations (file, checksum) VALUES (?, '') ON DUPLICATE KEY UPDATE applied_at = CURRENT_TIMESTAMP")->execute(['change:' . $name]);
+            $res['applied'][] = 'Data change: ' . $name;
+        }
+        $res['sql'] = null;
+        $res['ms'] = (int)round((microtime(true) - $t0) * 1000);
+        $pdo->prepare("INSERT INTO schema_migrations (file, checksum, statements, ms) VALUES ('sync', ?, ?, ?)
+                       ON DUPLICATE KEY UPDATE checksum = VALUES(checksum), statements = VALUES(statements), ms = VALUES(ms), applied_at = CURRENT_TIMESTAMP")
+            ->execute([sha1_file(DB_SCHEMA_FILE), count($res['applied']), $res['ms']]);
+    } catch (Throwable $e) {
+        $res['ok'] = false;
+        $res['error'] = $e->getMessage();
+        $res['sql'] = $res['sql'] ? mb_strimwidth(preg_replace('/\s+/', ' ', $res['sql']), 0, 300, '…') : null;
     } finally {
-        $pdo->query("SELECT RELEASE_LOCK('rarl_migrate')");
+        $pdo->query("SELECT RELEASE_LOCK('rarl_db_sync')");
     }
+    return $res;
 }
 
-/** Re-applies every migration (fresh install, or "repair" from the admin page). */
-function runAllMigrations(): array {
-    return applyMigrations(array_keys(RARL_MIGRATIONS));
+/** Descriptions of what a sync would change (cached per request; empty = up to date). Used for admin badges. */
+function pendingMigrations(): array {
+    static $cache = null;
+    if ($cache !== null) return $cache;
+    try {
+        $cache = array_column(schemaPlan(), 'desc');
+        foreach (dbPendingChanges() as $n) $cache[] = 'Data change: ' . $n;
+    } catch (Throwable $e) {
+        $cache = [];
+    }
+    return $cache;
+}
+
+/** When the database was last synced: ['at' => ?string, 'ms' => int]. */
+function dbLastSync(): array {
+    try {
+        $r = db()->query("SELECT applied_at, ms FROM schema_migrations WHERE file = 'sync'")->fetch();
+        return ['at' => $r['applied_at'] ?? null, 'ms' => (int)($r['ms'] ?? 0)];
+    } catch (Throwable $e) {
+        return ['at' => null, 'ms' => 0];
+    }
 }

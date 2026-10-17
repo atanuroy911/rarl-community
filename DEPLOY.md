@@ -15,13 +15,10 @@ runtime), so it deploys the same way any classic PHP site does on shared hosting
 In cPanel → **MySQL Databases**:
 1. Create a database (e.g. `yourcpaneluser_rarl`).
 2. Create a database user with a strong password, add it to the database with **All Privileges**.
-3. Leave the tables empty — you don't need to import `schema.sql` by hand. The first time
-   you visit `/admin/` (or `/admin/login.php`) against an empty database, the app
-   detects there are no tables yet and redirects to a first-run setup screen
-   (`admin/install.php`, WordPress-style) with a single "Set Up Database" button that
-   runs `sql/schema.sql` and `sql/002_v2_features.sql` for you, then sends you to login.
-   You can still import them manually via phpMyAdmin if you prefer — the setup screen
-   just won't appear once the `members` table exists.
+3. Leave the database empty. The first time you visit `/admin/` against an empty
+   database, the app shows a first-run setup screen (`admin/install.php`) with a single
+   "Set Up Database" button. It creates every table from `database/schema.sql`, adds the
+   starter data from `database/seed.sql`, then sends you to login.
 
 ## 2. Upload the files
 
@@ -74,14 +71,18 @@ it in place and deletes the zip. One file over the wire instead of hundreds.
    so whatever you create on the server in step 3 below stays in place across every
    future deploy. Same goes for real server environment variables instead of a `.env`
    file (see step 3).
-5. Database migrations run **automatically** at the end of every deploy:
-   `deploy-extract.php` applies any `sql/*.sql` file listed in `migrations.php` that
-   hasn't been applied yet (tracked in the `schema_migrations` table) and prints the
-   result in the Actions log. Every file is idempotent and portable across MySQL and
-   MariaDB. If a run fails, every admin page shows a banner with an **Apply now**
-   button, and **Admin → Database** shows the error, per-file status and a Repair
-   option. To add a migration: create `sql/NNN_name.sql`, then add it to
-   `RARL_MIGRATIONS` in `migrations.php`.
+5. The database is **synced automatically** at the end of every deploy:
+   `deploy-extract.php` calls `dbSync()` (`migrations.php`), which compares
+   `database/schema.sql` with the live database and adds any missing table, column or
+   index, widens enum lists and text lengths, then inserts missing starter data from
+   `database/seed.sql`. It never drops or overwrites anything and works on MySQL and
+   MariaDB. The result is printed in the Actions log. If it fails, every admin page shows
+   a banner, and **Admin → Database** shows the error and a **Check & sync** button.
+
+   **Changing the schema:** edit the table in `database/schema.sql` (add a column line, a
+   `KEY` line or a whole `CREATE TABLE`) and deploy. There are no migration files.
+   Starter rows and default settings go in `database/seed.sql` (insert-if-missing only).
+   A one-off data fix that must run exactly once goes in `database/changes.php`.
 
 ## 3. Configure
 

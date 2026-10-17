@@ -26,9 +26,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!hash_equals($_SESSION['install_csrf'], $_POST['csrf'] ?? '')) {
         $error = 'Security check failed — please reload and try again.';
     } else {
-        $results = runAllMigrations();
-        $failed = array_filter($results, fn($r) => !$r['ok']);
-        if (!$failed) {
+        $sync = dbSync();
+        $results = ['database/schema.sql' => $sync];
+        if ($sync['ok']) {
             session_unset(); session_destroy();
             session_name(ADMIN_SESSION_NAME);
             session_start();
@@ -77,9 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <?php endif; ?>
 
     <ul class="text-xs text-gray-500 space-y-1.5 mb-6">
-      <?php foreach (RARL_MIGRATIONS as $file => $desc): ?>
-      <li><span class="font-mono font-semibold text-gray-700"><?= ex($file) ?></span> — <?= ex($desc) ?></li>
-      <?php endforeach; ?>
+      <li>Creates <?= count(schemaDesired()) ?> tables from <span class="font-mono font-semibold text-gray-700">database/schema.sql</span> and adds the starter settings, plans and categories.</li>
     </ul>
 
     <form method="POST">
