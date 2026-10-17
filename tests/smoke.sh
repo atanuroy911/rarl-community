@@ -62,7 +62,7 @@ A="$WORK/admin.jar"
 curl -s -c "$A" -b "$A" -o /dev/null -d "step=password&u=admin&p=ci-admin" "$BASE/admin/login.php"
 for p in index.php members.php member-check.php import-members.php sections.php publications.php community.php events.php videos.php resources.php people.php \
          certificates.php "certificates.php?view=history" membership-certificates.php templates.php newsletter.php compose-email.php email-queue.php email-check.php \
-         settings.php security.php partnerships.php plans.php migrate.php; do
+         settings.php security.php partnerships.php plans.php migrate.php backup.php; do
   check admin "$A" "admin/$p"
 done
 grep -q 'name="u"' "$WORK/page.html" && fail "admin login did not work"
