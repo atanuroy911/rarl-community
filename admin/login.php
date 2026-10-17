@@ -43,7 +43,9 @@ if ($lockedFor > 0) {
     sleep(1); $error = 'That code didn\'t work. Check your authenticator app\'s current code and try again.';
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['step'] ?? 'password') === 'password') {
     $u = trim($_POST['u'] ?? ''); $p = $_POST['p'] ?? '';
-    if ($u === ADMIN_USERNAME && password_verify($p, ADMIN_PASSWORD_HASH)) {
+    if (ADMIN_PASSWORD_HASH === '') {
+        $error = 'Admin sign-in is not set up yet: add ADMIN_PASSWORD_HASH to the server&rsquo;s .env file.';
+    } elseif ($u === ADMIN_USERNAME && password_verify($p, ADMIN_PASSWORD_HASH)) {
         if (!adminTwoFactorEnabled()) $finish($u);
         session_regenerate_id(true);
         $_SESSION['admin_2fa_pending'] = time();

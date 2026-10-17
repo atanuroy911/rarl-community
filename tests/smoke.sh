@@ -21,8 +21,10 @@ check() { # check <label> <jar> <path>
   local label="$1" jar="$2" path="$3" out="$WORK/page.html" code
   code=$(curl -s -L -b "$jar" -c "$jar" -o "$out" -w '%{http_code}' "$BASE/$path")
   if [ "$code" -ge 500 ]; then fail "$label $path → HTTP $code"; return; fi
-  if grep -qE '(Fatal error|Parse error|Warning|Deprecated|Notice)</b>:|Uncaught (Error|Exception|TypeError)|PHP (Fatal|Warning)' "$out"; then
-    fail "$label $path → PHP error: $(grep -oE '(Fatal error|Parse error|Warning|Deprecated|Notice)</b>:[^<]*<b>[^<]*' "$out" | head -1 | sed 's/<[^>]*>//g')"
+  # PHP messages look like "<b>Warning</b>:  … on line <b>3</b>" (html_errors) or "Warning: … on line 3".
+  local perr='(Fatal error|Parse error|Warning|Deprecated|Notice)(</b>)?: .* on line (<b>)?[0-9]+|Uncaught (Error|Exception|TypeError)'
+  if grep -qE "$perr" "$out"; then
+    fail "$label $path → PHP error: $(grep -oE "$perr" "$out" | head -1 | sed 's/<[^>]*>//g' | cut -c1-220)"
     return
   fi
   # Every inline script must parse.

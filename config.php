@@ -43,7 +43,8 @@ define('SMTP_SECURE', env('SMTP_SECURE', 'tls')); // 'tls' (STARTTLS, port 587) 
 // ── Admin Auth ─────────────────────────────────────────────
 // Generate hash: php -r "echo password_hash('yourpassword', PASSWORD_BCRYPT);"
 define('ADMIN_USERNAME',      env('ADMIN_USERNAME', 'admin'));
-define('ADMIN_PASSWORD_HASH', env('ADMIN_PASSWORD_HASH', '$2y$10$Yb0ps2g8MNeSvehh6B.oWeiXWG95GRJcNwahFIPJEM5ZnP2.7aLuS'));
+// No default: without ADMIN_PASSWORD_HASH in .env, admin sign-in stays closed.
+define('ADMIN_PASSWORD_HASH', env('ADMIN_PASSWORD_HASH', ''));
 define('ADMIN_SESSION_NAME',  'rarl_admin');
 define('ADMIN_TIMEOUT',       7200); // 2 hours
 

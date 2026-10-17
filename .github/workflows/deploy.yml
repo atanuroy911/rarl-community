@@ -40,6 +40,7 @@ jobs:
       DB_PASS: root
       SITE_URL: http://127.0.0.1:8123
       MAIN_SITE_URL: http://127.0.0.1:8123
+      APP_DEBUG: '1'   # show PHP warnings so the smoke test can catch them
     steps:
       - uses: actions/checkout@v4
 
