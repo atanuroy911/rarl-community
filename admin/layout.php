@@ -523,6 +523,7 @@ function adminSidebar(string $active = ''): void {
             'partnerships' => ['partnerships.php',   '<i class="fa-solid fa-handshake"></i>', 'Partnerships'],
             'plans'        => ['plans.php',          '<i class="fa-solid fa-id-badge"></i>', 'Plans'],
             'migrate'      => ['migrate.php',        '<i class="fa-solid fa-database"></i>', 'Database'],
+            'backup'       => ['backup.php',         '<i class="fa-solid fa-cloud-arrow-down"></i>', 'Backup'],
         ],
     ];
     echo '<div id="admin-backdrop" onclick="toggleAdminSidebar()" class="fixed inset-0 bg-black/40 z-30 hidden md:hidden"></div>
