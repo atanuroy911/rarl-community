@@ -29,16 +29,18 @@ $certCount = $pdo->prepare('SELECT COUNT(*) FROM certificates WHERE member_id = 
 $certCount->execute([$memberId, $m['email']]);
 $certCount = (int)$certCount->fetchColumn();
 
-$goingCount = $pdo->prepare("SELECT COUNT(*) FROM event_registrations r JOIN events e ON e.id = r.event_id WHERE r.member_id = ? AND r.status IN ('registered','attended') AND (e.event_date IS NULL OR e.event_date >= CURDATE())");
+$goingCount = $pdo->prepare("SELECT COUNT(*) FROM event_registrations r JOIN events e ON e.id = r.event_id WHERE r.member_id = ? AND r.status IN ('registered','attended') AND " . eventNotOverSql('e'));
 $goingCount->execute([$memberId]);
 $goingCount = (int)$goingCount->fetchColumn();
 
 $evStmt = $pdo->prepare("SELECT e.*, r.status AS my_status,
         (SELECT COUNT(*) FROM event_registrations x WHERE x.event_id = e.id AND x.status != 'cancelled') AS reg_count
     FROM events e LEFT JOIN event_registrations r ON r.event_id = e.id AND r.member_id = ?
-    WHERE e.is_active = 1 AND (e.event_date IS NULL OR e.event_date >= CURDATE())
-    ORDER BY e.event_date IS NULL, e.event_date ASC LIMIT 4");
-$evStmt->execute([$memberId]);
+    WHERE e.is_active = 1 AND " . eventNotOverSql('e') . "
+      AND (e.visibility <> 'unlisted' OR r.status IN ('registered','attended'))
+      AND (e.visibility <> 'members_only' OR ? = 1)
+    ORDER BY e.event_date IS NULL, e.starts_at_utc ASC LIMIT 4");
+$evStmt->execute([$memberId, $isActive ? 1 : 0]);
 $upcoming = $evStmt->fetchAll();
 
 $feed  = rarlFeedItems($m['section_id'] ? (int)$m['section_id'] : null, true, 30);
@@ -187,14 +189,14 @@ echo htmlHead('Home');
           </div>
           <div class="min-w-0 flex-1">
             <a href="events.php#event-<?= (int)$e['id'] ?>" class="block text-sm font-semibold text-gray-900 dark:text-white leading-snug hover:text-rarl-red line-clamp-2"><?= $h($e['title']) ?></a>
-            <p class="text-xs text-gray-500 truncate"><?= ucfirst($e['type']) ?><?= $e['event_time'] ? ' · ' . date('g:i A', strtotime($e['event_time'])) : '' ?><?= $e['location'] ? ' · ' . $h($e['location']) : ($e['online_url'] ? ' · Online' : '') ?></p>
+            <p class="text-xs text-gray-500 truncate"><?= ucfirst($e['type']) ?><?= $e['event_time'] && $e['event_date'] ? ' · ' . $h(eventTimeText($e)) : '' ?><?= $e['location'] ? ' · ' . $h($e['location']) : ($e['online_url'] ? ' · Online' : '') ?></p>
             <div class="mt-1.5">
               <?php if (!$isActive): ?>
               <a href="events.php#event-<?= (int)$e['id'] ?>" class="text-xs font-semibold text-gray-600 dark:text-gray-300 hover:text-rarl-red">Details</a>
               <?php elseif ($mine): ?>
               <span class="text-xs font-semibold text-green-700 dark:text-green-400"><i class="fa-solid fa-check"></i> You're going</span>
               <?php if ($e['my_status'] === 'registered' && !$e['online_url']): ?> · <a href="events.php#pass-<?= (int)$e['id'] ?>" class="text-xs font-semibold text-rarl-red hover:underline"><i class="fa-solid fa-qrcode"></i> Pass</a><?php endif; ?>
-              <?php if ($e['online_url'] && $e['event_date'] === date('Y-m-d')): ?> · <a href="<?= $h($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs font-semibold text-rarl-red hover:underline">Join now</a><?php endif; ?>
+              <?php if ($e['online_url'] && in_array(eventPhase($e), ['live', 'upcoming'], true) && $e['starts_at_utc'] && $e['starts_at_utc'] <= gmdate('Y-m-d H:i:s', time() + 3600)): ?> · <a href="<?= $h($e['online_url']) ?>" target="_blank" rel="noopener" class="text-xs font-semibold text-rarl-red hover:underline">Join now</a><?php endif; ?>
               <?php elseif ($full): ?>
               <span class="text-xs font-semibold text-gray-500">Fully booked</span>
               <?php else: ?>

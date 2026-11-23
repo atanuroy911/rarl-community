@@ -686,7 +686,8 @@ function seoHeadHtml(string $title, array $meta): string {
     $base = rtrim(SITE_URL, '/');
     $page = basename(parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH)) ?: 'index.php';
     // Canonical: the page plus only the query keys that change its content.
-    $keep = array_intersect_key($_GET, array_flip(['v', 'id', 'tab', 'event', 'cat']));
+    // 'k' is the key of a link-only event: without it the link (and its social preview) wouldn't open.
+    $keep = array_intersect_key($_GET, array_flip(['v', 'id', 'tab', 'event', 'k', 'cat']));
     $canonical = $base . '/' . $page . ($keep ? '?' . http_build_query($keep) : '');
     $desc = trim($meta['description'] ?? '') ?: 'The Robotics & Automation Research Lab (RARL), UK: a free international membership for robotics and AI researchers, with webinars, learning resources, verified certificates and member ID cards.';
     $desc = mb_strimwidth(preg_replace('/\s+/', ' ', $desc), 0, 300, '…');
@@ -2819,7 +2820,7 @@ function rarlFeedItems(?int $sectionId, bool $isMember, int $limit = 20, string 
         foreach ($st as $p) $items[] = ['kind' => 'post', 'at' => $p['created_at'], 'pinned' => (bool)$p['is_pinned'], 'row' => $p];
     });
     $try(function () use ($pdo, &$items, $isMember, $q, $like) {
-        $sql = "SELECT * FROM events WHERE is_active = 1" . ($isMember ? '' : " AND visibility = 'public'") . ($q !== '' ? ' AND (title LIKE ? OR description LIKE ? OR speaker_name LIKE ?)' : ' AND (event_date IS NULL OR event_date >= CURDATE() - INTERVAL 30 DAY)') . ' ORDER BY created_at DESC LIMIT 30';
+        $sql = "SELECT * FROM events WHERE is_active = 1 AND " . eventListableSql($isMember) . ($q !== '' ? ' AND (title LIKE ? OR description LIKE ? OR speaker_name LIKE ?)' : ' AND (event_date IS NULL OR event_date >= CURDATE() - INTERVAL 30 DAY)') . ' ORDER BY created_at DESC LIMIT 30';
         $st = $pdo->prepare($sql); $st->execute($q !== '' ? [$like, $like, $like] : []);
         foreach ($st as $e) $items[] = ['kind' => 'event', 'at' => $e['created_at'], 'pinned' => false, 'row' => $e];
     });
@@ -2880,8 +2881,8 @@ function renderFeedItem(array $it): string {
                  . '<div class="flex items-center gap-4 mt-3 pt-3 border-t border-gray-100 dark:border-gray-800 text-xs text-gray-500"><span><i class="fa-solid fa-thumbs-up"></i> ' . (int)($r['like_count'] ?? 0) . '</span>' . (communityCommentsEnabled() ? '<span>' . (int)($r['comment_count'] ?? 0) . ' replies</span>' : '')
                  . '<a href="community.php#post-' . (int)$r['id'] . '" class="ml-auto font-semibold text-gray-600 dark:text-gray-300 hover:text-rarl-red">Open in Updates →</a></div></article>';
         case 'event':
-            $date = $r['event_date'] ? date('D, d M Y', strtotime($r['event_date'])) . ($r['event_time'] ? ' · ' . date('g:i A', strtotime($r['event_time'])) : '') : 'Date to be announced';
-            $past = $r['event_date'] && $r['event_date'] < date('Y-m-d');
+            $date = html_entity_decode(eventWhenText($r), ENT_QUOTES);
+            $past = eventIsPast($r);
             $cover = !empty($r['cover_image']) ? '<img src="' . $h(str_starts_with((string)$r['cover_image'], 'http') ? $r['cover_image'] : UPLOADS_URL . '/events/' . $r['cover_image']) . '" alt="" loading="lazy" class="mt-3 w-full aspect-[2/1] object-cover rounded-xl"/>' : '';
             return '<article class="' . $card . '">' . $head('fa-calendar-days', 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300', ($past ? 'Past ' : 'New ') . ucfirst((string)$r['type']))
                  . '<h3 class="font-heading font-bold text-lg text-gray-900 dark:text-white leading-snug">' . $h($r['title']) . '</h3>'
@@ -2889,7 +2890,7 @@ function renderFeedItem(array $it): string {
                  . ($r['speaker_name'] ? '<p class="text-sm text-gray-600 dark:text-gray-400"><i class="fa-solid fa-microphone"></i> ' . $h($r['speaker_name']) . '</p>' : '')
                  . ($r['description'] ? '<p class="text-[15px] text-gray-700 dark:text-gray-300 mt-2 line-clamp-3">' . $h(strip_tags((string)$r['description'])) . '</p>' : '')
                  . $cover
-                 . '<a href="events.php#event-' . (int)$r['id'] . '" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red">' . ($past && $r['recording_url'] ? 'Watch recording' : ($past ? 'View event' : 'Details &amp; RSVP')) . '</a></article>';
+                 . '<a href="' . $h(eventUrl($r, false)) . '" class="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-sm font-semibold text-gray-800 dark:text-gray-200 hover:border-rarl-red hover:text-rarl-red">' . ($past && $r['recording_url'] ? 'Watch recording' : ($past ? 'View event' : 'Details &amp; RSVP')) . '</a></article>';
         case 'resource':
             $icon = ['youtube_playlist' => 'fa-brands fa-youtube', 'youtube_video' => 'fa-brands fa-youtube', 'article' => 'fa-solid fa-file-lines', 'book' => 'fa-solid fa-book', 'tool' => 'fa-solid fa-screwdriver-wrench', 'course' => 'fa-solid fa-graduation-cap'][$r['type']] ?? 'fa-solid fa-link';
             return '<article class="' . $card . '">' . $head('fa-graduation-cap', 'bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-300', 'New in Learning')

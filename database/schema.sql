@@ -143,9 +143,15 @@ CREATE TABLE IF NOT EXISTS `events` (
   `title` varchar(500) NOT NULL,
   `description` text DEFAULT NULL,
   `type` enum('workshop','webinar','hackathon','competition','volunteer','conference','seminar','other') NOT NULL DEFAULT 'other',
-  `visibility` enum('public','members_only') NOT NULL DEFAULT 'public',
-  `event_date` date DEFAULT NULL,
-  `event_time` time DEFAULT NULL,
+  `visibility` enum('public','members_only','unlisted') NOT NULL DEFAULT 'public' COMMENT 'unlisted = only people with the share link',
+  `share_token` varchar(32) DEFAULT NULL COMMENT 'secret part of the link for unlisted events',
+  `event_date` date DEFAULT NULL COMMENT 'start date, wall-clock in timezone',
+  `event_time` time DEFAULT NULL COMMENT 'start time, wall-clock in timezone (NULL = all day)',
+  `end_date` date DEFAULT NULL,
+  `end_time` time DEFAULT NULL,
+  `timezone` varchar(64) DEFAULT NULL COMMENT 'IANA name such as Europe/London, NULL = site default',
+  `starts_at_utc` datetime DEFAULT NULL COMMENT 'derived from date/time/timezone on save',
+  `ends_at_utc` datetime DEFAULT NULL COMMENT 'derived from date/time/timezone on save',
   `location` varchar(255) DEFAULT NULL COMMENT 'Online or physical location',
   `online_url` varchar(500) DEFAULT NULL,
   `speaker_name` varchar(255) DEFAULT NULL,
@@ -156,7 +162,9 @@ CREATE TABLE IF NOT EXISTS `events` (
   `reminder_sent` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  KEY `idx_active_date` (`is_active`,`event_date`)
+  KEY `idx_active_date` (`is_active`,`event_date`),
+  KEY `idx_active_ends` (`is_active`,`ends_at_utc`),
+  UNIQUE KEY `uniq_share_token` (`share_token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE IF NOT EXISTS `event_registrations` (

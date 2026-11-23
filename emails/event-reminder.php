@@ -1,18 +1,19 @@
 <?php
-// Expects: $event (events row), $memberName, $eventUrl, $icsUrl
+// Expects: $event (events row), $memberName, $eventUrl, $icsUrl; optional $when ('today' / 'tomorrow' / 'on Friday')
 $t = fn($v) => htmlspecialchars(html_entity_decode((string)$v, ENT_QUOTES, 'UTF-8'));
-$isToday = $event['event_date'] === date('Y-m-d');
+$when = $when ?? eventReminderDay($event);
+$isToday = $when === 'today';
 ?>
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.6;">
   <div style="text-align: center; padding: 20px 0;">
     <img src="<?= emailLogoUrl() ?>" width="40" height="40" style="border-radius:8px;" alt="RARL"/>
   </div>
   <div style="background: #ffffff; padding: 28px; border-radius: 12px; border: 1px solid #eee;">
-    <p style="margin:0 0 4px; font-size:12px; font-weight:bold; letter-spacing:.08em; text-transform:uppercase; color: <?= BRAND_RED ?>;"><?= $isToday ? 'Happening today' : 'Tomorrow' ?></p>
+    <p style="margin:0 0 4px; font-size:12px; font-weight:bold; letter-spacing:.08em; text-transform:uppercase; color: <?= BRAND_RED ?>;"><?= $isToday ? 'Happening today' : $t(ucfirst($when)) ?></p>
     <h2 style="margin:0 0 16px; font-size:22px; color:#111;"><?= $t($event['title']) ?></h2>
     <p>Hi <?= $t($memberName) ?>, a quick reminder that you're registered.</p>
     <table cellpadding="0" cellspacing="0" style="width:100%; margin:18px 0; background:#f8f9fa; border-radius:8px;">
-      <tr><td style="padding:12px 16px; font-size:14px;"><strong>When:</strong> <?= date('l, d F Y', strtotime($event['event_date'])) ?><?= $event['event_time'] ? ' at ' . date('g:i A', strtotime($event['event_time'])) : '' ?></td></tr>
+      <tr><td style="padding:12px 16px; font-size:14px;"><strong>When:</strong> <?= $t(eventWhenText($event, true)) ?><?php $tz = eventTz($event); ?><br><span style="font-size:12px; color:#666;">Time zone: <?= $t(str_replace('_', ' ', $tz->getName())) ?>. Open the event page to see it in your own time.</span></td></tr>
       <tr><td style="padding:0 16px 12px; font-size:14px;"><strong>Where:</strong> <?= $event['location'] ? $t($event['location']) : 'Online' ?></td></tr>
       <?php if (!empty($event['speaker_name'])): ?><tr><td style="padding:0 16px 12px; font-size:14px;"><strong>Speaker:</strong> <?= $t($event['speaker_name']) ?></td></tr><?php endif; ?>
     </table>

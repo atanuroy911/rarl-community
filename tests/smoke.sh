@@ -45,7 +45,7 @@ PY
 
 echo "Public pages"
 G="$WORK/guest.jar"
-for p in index.php events.php videos.php publications.php resources.php community.php directory.php partners.php people.php search.php?q=robot verify.php verify.php?id=nope login.php register.php register-individual.php register-lab.php forgot-password.php sitemap.php robots.php; do
+for p in index.php events.php "events.php?event=999" "events.php?event=1&k=bad" "events.php?ics=999" videos.php publications.php resources.php community.php directory.php partners.php people.php search.php?q=robot verify.php verify.php?id=nope login.php register.php register-individual.php register-lab.php forgot-password.php sitemap.php robots.php; do
   check guest "$G" "$p"
 done
 

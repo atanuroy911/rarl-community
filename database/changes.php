@@ -17,4 +17,14 @@
  *   },
  */
 return [
+    // Events gained a time zone, derived UTC start/end and a share key. Existing
+    // events were entered in the site's time zone, so they keep meaning that.
+    '2026-11-23 events: time zone, UTC times, share keys' => function (PDO $pdo): void {
+        $pdo->prepare('UPDATE events SET timezone = ? WHERE timezone IS NULL')->execute([date_default_timezone_get()]);
+        $upd = $pdo->prepare('UPDATE events SET starts_at_utc = ?, ends_at_utc = ?, share_token = COALESCE(share_token, ?) WHERE id = ?');
+        foreach ($pdo->query('SELECT * FROM events')->fetchAll() as $e) {
+            $u = eventUtcColumns($e);
+            $upd->execute([$u['starts_at_utc'], $u['ends_at_utc'], eventNewShareToken(), $e['id']]);
+        }
+    },
 ];

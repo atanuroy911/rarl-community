@@ -35,7 +35,7 @@ if ($token && !$linkResult) {
     }
 }
 
-$events = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_time,
+$events = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_time, e.end_date, e.end_time, e.timezone,
         (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status IN ('registered','attended')) AS regs,
         (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status = 'attended') AS done
     FROM events e WHERE e.is_active = 1 AND e.event_date BETWEEN CURDATE() - INTERVAL 2 DAY AND CURDATE() + INTERVAL 7 DAY ORDER BY e.event_date, e.event_time")->fetchAll();
@@ -111,7 +111,7 @@ adminWrap(function () use ($events, $token, $preview, $linkResult) {
       <ul class="divide-y divide-[color:var(--border)]">
         <?php foreach ($events as $ev): ?>
         <li class="px-5 py-3 flex items-center gap-3">
-          <div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate"><?= ex($ev['title']) ?></p><p class="text-xs text-[color:var(--muted-fg)]"><?= date('D d M', strtotime($ev['event_date'])) ?><?= $ev['event_time'] ? ' · ' . date('g:i A', strtotime($ev['event_time'])) : '' ?></p></div>
+          <div class="flex-1 min-w-0"><p class="font-semibold text-sm truncate"><?= ex($ev['title']) ?></p><p class="text-xs text-[color:var(--muted-fg)]"><?= ex(eventWhenText($ev)) ?></p></div>
           <span class="text-sm font-semibold whitespace-nowrap" data-event-count="<?= (int)$ev['id'] ?>"><?= (int)$ev['done'] ?></span><span class="text-xs text-[color:var(--muted-fg)] whitespace-nowrap">/ <?= (int)$ev['regs'] ?></span>
           <a href="event-registrations.php?event=<?= (int)$ev['id'] ?>" class="rarl-icon-btn" title="Attendee list (check in by name)"><i class="fa-solid fa-list-check"></i></a>
         </li>

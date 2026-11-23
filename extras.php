@@ -57,12 +57,7 @@ function settingSet(string $key, string $value): void {
 
 /** PNG QR code as a data: URI (for <img>), using the bundled phpqrcode. */
 function qrDataUri(string $text, int $scale = 6, int $margin = 2): string {
-    if (!class_exists('QRcode')) require_once __DIR__ . '/libs/phpqrcode/qrlib.php';
-    $tmp = tempnam(sys_get_temp_dir(), 'rqr');
-    QRcode::png($text, $tmp, QR_ECLEVEL_M, $scale, $margin);
-    $png = (string)file_get_contents($tmp);
-    @unlink($tmp);
-    return 'data:image/png;base64,' . base64_encode($png);
+    return 'data:image/png;base64,' . base64_encode(qrPng($text, $scale, $margin));
 }
 
 // ── TOTP ───────────────────────────────────────────────────
@@ -145,14 +140,15 @@ function checkinApply(string $token): array {
 }
 
 // ── Event reminders ────────────────────────────────────────
-// The day before an event, every registered member gets a reminder with the
-// time, place/join link and an add-to-calendar link. Each event is reminded
-// once (events.reminder_sent).
+// About a day before an event starts (in real time, whatever its time zone),
+// every registered member gets a reminder with the time, place/join link and an
+// add-to-calendar link. Each event is reminded once (events.reminder_sent);
+// moving an event to a new start time re-arms it.
 function sendEventReminders(): int {
     $pdo = db(); $sent = 0;
     try {
         $events = $pdo->query("SELECT * FROM events WHERE is_active = 1 AND reminder_sent = 0 AND event_date IS NOT NULL
-                               AND event_date BETWEEN CURDATE() AND CURDATE() + INTERVAL 1 DAY")->fetchAll();
+                               AND starts_at_utc IS NOT NULL AND starts_at_utc > UTC_TIMESTAMP() AND starts_at_utc <= UTC_TIMESTAMP() + INTERVAL 26 HOUR")->fetchAll();
     } catch (Throwable $e) { return 0; }
     foreach ($events as $event) {
         // Claim the event first so two concurrent runs can't both send.
@@ -165,10 +161,10 @@ function sendEventReminders(): int {
         $batch = newEmailBatch();
         foreach ($regs as $member) {
             $memberName = $member['type'] === 'lab' ? $member['lab_name'] : $member['full_name'];
-            $eventUrl = SITE_URL . '/events.php#event-' . (int)$event['id'];
-            $icsUrl   = SITE_URL . '/events.php?ics=' . (int)$event['id'];
+            $eventUrl = eventUrl($event);
+            $icsUrl   = eventIcsUrl($event);
+            $when = eventReminderDay($event);
             ob_start(); require __DIR__ . '/emails/event-reminder.php'; $body = ob_get_clean();
-            $when = $event['event_date'] === date('Y-m-d') ? 'today' : 'tomorrow';
             queueEmail($batch, 'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES), $member['email'], (string)$memberName,
                 'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES) . ' is ' . $when, $body);
             $sent++;
@@ -290,7 +286,7 @@ function generateEventCover(array $ev, string $style = 'blue'): ?string {
     foreach ($lines as $i => $l) $center($l, $F(600), $size, 570 + $i * 56, $soft);
 
     // Date / place
-    $when = $ev['event_date'] ? date('l, d F Y', strtotime($ev['event_date'])) . ($ev['event_time'] ? '  ·  ' . date('g:i A', strtotime($ev['event_time'])) : '') : '';
+    $when = $ev['event_date'] ? str_replace(' · ', '  ·  ', eventWhenText($ev, true)) : '';
     $where = $ev['location'] ? $text($ev['location']) : (!empty($ev['online_url']) ? 'Online' : '');
     $line = trim($when . ($when && $where ? '  ·  ' : '') . $where);
     if ($line !== '') $center($line, $F(800), 30, 570 + count($lines) * 56 + 40, $ink);
@@ -299,4 +295,243 @@ function generateEventCover(array $ev, string $style = 'blue'): ?string {
     $file = 'cover-' . (int)($ev['id'] ?? 0) . '-' . bin2hex(random_bytes(4)) . '.jpg';
     imagejpeg($im, "$dir/$file", 88); imagedestroy($im);
     return $file;
+}
+
+// ── Event times, time zones and access ─────────────────────
+// An event's date and times are wall-clock values in the event's own time zone
+// (events.timezone, an IANA name; NULL means the site default). starts_at_utc
+// and ends_at_utc are derived from them on every save, so "has it started /
+// finished?" is the same answer for every viewer, wherever they are.
+// Visibility: public (anyone, listed and indexed), members_only (signed-in
+// active members), unlisted (never listed; anyone holding the share link,
+// which carries events.share_token, can open it).
+
+const EVENT_VISIBILITIES = ['public' => 'Public', 'members_only' => 'Members only', 'unlisted' => 'Link only'];
+const EVENT_DEFAULT_MINUTES = 90; // assumed length when no end time is set
+
+function eventValidTimezone(?string $tz): ?string {
+    $tz = trim((string)$tz);
+    if ($tz === '') return null;
+    static $ids = null;
+    $ids ??= array_flip(DateTimeZone::listIdentifiers(DateTimeZone::ALL_WITH_BC));
+    return isset($ids[$tz]) ? $tz : null;
+}
+
+function eventTz(array $e): DateTimeZone {
+    try { return new DateTimeZone(eventValidTimezone($e['timezone'] ?? null) ?? date_default_timezone_get()); }
+    catch (Throwable $x) { return new DateTimeZone('UTC'); }
+}
+
+/**
+ * The event's start and end in its own time zone:
+ * ['start' => ?DateTimeImmutable, 'end' => ?DateTimeImmutable, 'all_day' => bool, 'explicit_end' => bool, 'tz' => DateTimeZone].
+ * No end time: all-day events end at midnight, timed ones after EVENT_DEFAULT_MINUTES.
+ * An end time at or before the start with no end date means it runs past midnight.
+ */
+function eventTimes(array $e): array {
+    $tz = eventTz($e);
+    $allDay = empty($e['event_time']);
+    $out = ['start' => null, 'end' => null, 'all_day' => $allDay, 'explicit_end' => false, 'tz' => $tz];
+    if (empty($e['event_date'])) return $out;
+    try {
+        $start = new DateTimeImmutable($e['event_date'] . ' ' . ($allDay ? '00:00:00' : $e['event_time']), $tz);
+        $endDate = !empty($e['end_date']) && $e['end_date'] >= $e['event_date'] ? $e['end_date'] : $e['event_date'];
+        if ($allDay) {
+            $end = new DateTimeImmutable($endDate . ' 23:59:59', $tz);
+            $out['explicit_end'] = $endDate !== $e['event_date'];
+        } elseif (!empty($e['end_time'])) {
+            $end = new DateTimeImmutable($endDate . ' ' . $e['end_time'], $tz);
+            if ($end <= $start) $end = empty($e['end_date']) ? $end->modify('+1 day') : $start->modify('+' . EVENT_DEFAULT_MINUTES . ' minutes');
+            $out['explicit_end'] = true;
+        } else {
+            $end = $start->modify('+' . EVENT_DEFAULT_MINUTES . ' minutes');
+        }
+    } catch (Throwable $x) {
+        return $out;
+    }
+    return ['start' => $start, 'end' => $end] + $out;
+}
+
+/** ['starts_at_utc' => ?string, 'ends_at_utc' => ?string] for storing on the row. */
+function eventUtcColumns(array $e): array {
+    $t = eventTimes($e);
+    $utc = new DateTimeZone('UTC');
+    return [
+        'starts_at_utc' => $t['start'] ? $t['start']->setTimezone($utc)->format('Y-m-d H:i:s') : null,
+        'ends_at_utc'   => $t['end'] ? $t['end']->setTimezone($utc)->format('Y-m-d H:i:s') : null,
+    ];
+}
+
+/**
+ * True when the chosen start time doesn't exist on that day in the event's zone
+ * (the hour skipped when clocks go forward), so it was moved.
+ */
+function eventStartShifted(array $e): bool {
+    $t = eventTimes($e);
+    return $t['start'] && !$t['all_day'] && $t['start']->format('Y-m-d H:i') !== $e['event_date'] . ' ' . substr((string)$e['event_time'], 0, 5);
+}
+
+/** Short zone label for a moment: "IST", "BST", "GMT", or "GMT+6" when the zone has no common abbreviation. */
+function eventTzLabel(DateTimeInterface $d): string {
+    $abbr = $d->format('T');
+    if ($abbr !== '' && !preg_match('/^[+-]?\d/', $abbr)) return $abbr;
+    $o = $d->format('P');
+    if ($o === '+00:00') return 'GMT';
+    [$h, $m] = explode(':', substr($o, 1));
+    return 'GMT' . $o[0] . (int)$h . ($m !== '00' ? ':' . $m : '');
+}
+
+/** "Kolkata" from "Asia/Kolkata". */
+function eventTzCity(DateTimeZone $tz): string {
+    $n = $tz->getName();
+    return str_replace('_', ' ', str_contains($n, '/') ? substr($n, strrpos($n, '/') + 1) : $n);
+}
+
+/** Just the time part: "7:00 – 8:30 PM IST", "7:00 PM IST", or "All day". */
+function eventTimeText(array $e, bool $withTz = true): string {
+    $t = eventTimes($e);
+    if (!$t['start']) return '';
+    if ($t['all_day']) return 'All day';
+    $s = $t['start']; $en = $t['end'];
+    $tz = $withTz ? ' ' . eventTzLabel($s) : '';
+    if (!$t['explicit_end']) return $s->format('g:i A') . $tz;
+    if ($s->format('Y-m-d') !== $en->format('Y-m-d')) return $s->format('g:i A') . ' – ' . $en->format('D g:i A') . $tz;
+    return ($s->format('A') === $en->format('A') ? $s->format('g:i') : $s->format('g:i A')) . ' – ' . $en->format('g:i A') . $tz;
+}
+
+/** Full date and time in the event's zone, e.g. "Sat, 29 Nov 2026 · 7:00 – 8:30 PM IST". */
+function eventWhenText(array $e, bool $long = false, bool $withTz = true): string {
+    $t = eventTimes($e);
+    if (!$t['start']) return 'Date to be announced';
+    $df = $long ? 'l, j F Y' : 'D, j M Y';
+    $s = $t['start']; $en = $t['end'];
+    $multiDay = $t['explicit_end'] && $s->format('Y-m-d') !== $en->format('Y-m-d');
+    if ($t['all_day']) return $multiDay ? $s->format($long ? 'l, j F' : 'D, j M') . ' – ' . $en->format($df) : $s->format($df);
+    if ($multiDay && $en->getTimestamp() - $s->getTimestamp() > 86400) {
+        return $s->format($df) . ', ' . $s->format('g:i A') . ' – ' . $en->format($df) . ', ' . $en->format('g:i A') . ($withTz ? ' ' . eventTzLabel($s) : '');
+    }
+    return $s->format($df) . ' · ' . eventTimeText($e, $withTz);
+}
+
+/** 'tba' (no date), 'upcoming', 'live' (started, not finished) or 'past'. */
+function eventPhase(array $e): string {
+    if (empty($e['event_date'])) return 'tba';
+    $s = $e['starts_at_utc'] ?? null; $en = $e['ends_at_utc'] ?? null;
+    if (!$s || !$en) ['starts_at_utc' => $s, 'ends_at_utc' => $en] = eventUtcColumns($e);
+    if (!$s || !$en) return 'upcoming';
+    $now = gmdate('Y-m-d H:i:s');
+    return $en < $now ? 'past' : ($s <= $now ? 'live' : 'upcoming');
+}
+function eventIsPast(array $e): bool { return eventPhase($e) === 'past'; }
+
+/** 'today' or 'tomorrow' (or the weekday) as seen in the event's own time zone. */
+function eventReminderDay(array $e): string {
+    $t = eventTimes($e);
+    if (!$t['start']) return 'soon';
+    $today = new DateTimeImmutable('today', $t['tz']);
+    $days = (int)$today->diff($t['start']->setTime(0, 0))->format('%r%a');
+    return $days <= 0 ? 'today' : ($days === 1 ? 'tomorrow' : 'on ' . $t['start']->format('l'));
+}
+
+/** SQL condition: the event has no date yet or hasn't finished. $a = table alias. */
+function eventNotOverSql(string $a = ''): string {
+    $p = $a !== '' ? "{$a}." : '';
+    return "({$p}event_date IS NULL OR COALESCE({$p}ends_at_utc, TIMESTAMP({$p}event_date, '23:59:59')) >= UTC_TIMESTAMP())";
+}
+/** SQL condition: the event has finished. */
+function eventOverSql(string $a = ''): string {
+    $p = $a !== '' ? "{$a}." : '';
+    return "({$p}event_date IS NOT NULL AND COALESCE({$p}ends_at_utc, TIMESTAMP({$p}event_date, '23:59:59')) < UTC_TIMESTAMP())";
+}
+
+/**
+ * SQL condition: events this viewer may see in lists, feeds and search.
+ * Link-only events are never listed, except to a member who already registered for one.
+ * Without an alias the query must select FROM events (unaliased).
+ */
+function eventListableSql(bool $activeMember, int $memberId = 0, string $a = ''): string {
+    $p = $a !== '' ? "{$a}." : 'events.';
+    $sql = $activeMember ? "{$p}visibility IN ('public','members_only')" : "{$p}visibility = 'public'";
+    if ($memberId > 0) {
+        $sql = "({$sql} OR ({$p}visibility = 'unlisted' AND EXISTS (SELECT 1 FROM event_registrations er_l WHERE er_l.event_id = {$p}id AND er_l.member_id = " . (int)$memberId . " AND er_l.status <> 'cancelled')))";
+    }
+    return $sql;
+}
+
+function eventNewShareToken(): string { return bin2hex(random_bytes(12)); }
+
+/** The link to share: link-only events carry their secret key. */
+function eventUrl(array $e, bool $absolute = true): string {
+    $u = 'events.php?event=' . (int)$e['id'];
+    if (($e['visibility'] ?? '') === 'unlisted' && !empty($e['share_token'])) $u .= '&k=' . rawurlencode((string)$e['share_token']);
+    return $absolute ? rtrim(SITE_URL, '/') . '/' . $u : $u;
+}
+function eventIcsUrl(array $e): string {
+    return rtrim(SITE_URL, '/') . '/events.php?ics=' . (int)$e['id']
+        . (($e['visibility'] ?? '') === 'unlisted' && !empty($e['share_token']) ? '&k=' . rawurlencode((string)$e['share_token']) : '');
+}
+
+/**
+ * Whether this visitor may open the event's details. $key is the k= value from
+ * the link. Opening a link-only event with a valid key remembers it for the
+ * session (until an admin resets the link), so sign-in and RSVP round trips work.
+ */
+function eventCanView(array $e, bool $activeMember, int $memberId = 0, ?string $key = null): bool {
+    if (empty($e['is_active'])) return false;
+    $vis = $e['visibility'] ?? 'public';
+    if ($vis === 'public') return true;
+    if ($vis === 'members_only') return $activeMember;
+    if ($vis !== 'unlisted') return false;
+    $tok = (string)($e['share_token'] ?? '');
+    if ($tok === '') return false;
+    $id = (int)$e['id'];
+    if ($key !== null && $key !== '' && hash_equals($tok, $key)) {
+        if (session_status() === PHP_SESSION_ACTIVE) $_SESSION['event_keys'][$id] = $tok;
+        return true;
+    }
+    if (isset($_SESSION['event_keys'][$id]) && hash_equals($tok, (string)$_SESSION['event_keys'][$id])) return true;
+    if ($memberId > 0) {
+        $r = db()->prepare("SELECT 1 FROM event_registrations WHERE event_id = ? AND member_id = ? AND status <> 'cancelled'");
+        $r->execute([$id, $memberId]);
+        return (bool)$r->fetchColumn();
+    }
+    return false;
+}
+
+/** <option>s for every time zone, grouped by region and labelled with its current UTC offset. */
+function timezoneOptionsHtml(string $selected = ''): string {
+    static $groups = null;
+    if ($groups === null) {
+        $now = new DateTimeImmutable('now');
+        $groups = [];
+        foreach (DateTimeZone::listIdentifiers() as $id) {
+            $z = new DateTimeZone($id);
+            $cc = (string)(($z->getLocation() ?: [])['country_code'] ?? '');
+            $groups[str_contains($id, '/') ? strstr($id, '/', true) : 'Other'][] = [$z->getOffset($now), $id, $cc === '??' ? '' : $cc];
+        }
+        foreach ($groups as &$list) usort($list, fn($a, $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
+        unset($list);
+    }
+    $html = '';
+    foreach ($groups as $region => $list) {
+        $html .= '<optgroup label="' . ex($region) . '">';
+        foreach ($list as [$off, $id, $cc]) {
+            $abs = abs($off);
+            $place = str_replace(['_', '/'], [' ', ' / '], str_contains($id, '/') ? substr($id, strpos($id, '/') + 1) : $id);
+            $label = sprintf('(GMT%s%02d:%02d) %s', $off < 0 ? '−' : '+', intdiv($abs, 3600), intdiv($abs % 3600, 60), $place);
+            $html .= '<option value="' . ex($id) . '" data-cc="' . ex($cc) . '"' . ($id === $selected ? ' selected' : '') . '>' . ex($label) . '</option>';
+        }
+        $html .= '</optgroup>';
+    }
+    return $html;
+}
+
+/** Raw PNG bytes of a QR code (bundled phpqrcode). */
+function qrPng(string $text, int $scale = 6, int $margin = 2): string {
+    if (!class_exists('QRcode')) require_once __DIR__ . '/libs/phpqrcode/qrlib.php';
+    $tmp = tempnam(sys_get_temp_dir(), 'rqr');
+    QRcode::png($text, $tmp, QR_ECLEVEL_M, $scale, $margin);
+    $png = (string)file_get_contents($tmp);
+    @unlink($tmp);
+    return $png;
 }

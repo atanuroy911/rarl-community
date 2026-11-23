@@ -207,7 +207,9 @@ if ($isMember) {
         $mySection = $ms->fetch();
     }
 }
-$upcomingEvents = $pdo->query("SELECT id, title, event_date FROM events WHERE is_active = 1 AND (event_date IS NULL OR event_date >= CURDATE()) ORDER BY event_date ASC LIMIT 3")->fetchAll();
+$evActive = false;
+if ($isMember) { $evS = $pdo->prepare('SELECT status FROM members WHERE id = ?'); $evS->execute([(int)$_SESSION['member_id']]); $evActive = $evS->fetchColumn() === 'active'; }
+$upcomingEvents = $pdo->query("SELECT id, title, event_date FROM events WHERE is_active = 1 AND " . eventListableSql($evActive, $evActive ? (int)$_SESSION['member_id'] : 0) . " AND " . eventNotOverSql() . " ORDER BY event_date IS NULL, starts_at_utc ASC LIMIT 3")->fetchAll();
 
 echo htmlHead('Updates', false, ['description' => 'News, announcements and highlights from the Robotics & Automation Research Lab (RARL) team.']);
 $tab = ($_GET['tab'] ?? '') === 'announcements' || !$isMember ? 'announcements' : 'posts';

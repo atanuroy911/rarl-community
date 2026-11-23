@@ -106,13 +106,14 @@ adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId,
 <div class="rarl-page-head">
   <div>
     <h1><?= ex($event['title']) ?></h1>
-    <p><?= $event['event_date'] ? date('l, d F Y', strtotime($event['event_date'])) . ($event['event_time'] ? ' · ' . date('g:i A', strtotime($event['event_time'])) : '') : 'No date set' ?><?= $event['location'] ? ' · ' . ex($event['location']) : '' ?></p>
+    <p><?= $event['event_date'] ? ex(eventWhenText($event, true)) : 'No date set' ?><?= $event['location'] ? ' · ' . ex($event['location']) : '' ?></p>
   </div>
   <div class="flex flex-wrap gap-2">
     <button type="button" class="rarl-btn rarl-btn-primary" id="btn-checkin"><i class="fa-solid fa-clipboard-check"></i> Check-in mode</button>
     <button type="button" class="rarl-btn" onclick="document.getElementById('add-dlg').showModal()"><i class="fa-solid fa-user-plus"></i> Add attendee</button>
     <button type="button" class="rarl-btn" data-copy="<?= ex($emails) ?>" <?= $emails ? '' : 'disabled' ?>><i class="fa-solid fa-copy"></i> Copy emails</button>
     <a href="event-registrations.php?event=<?= $eventId ?>&export=csv" class="rarl-btn"><i class="fa-solid fa-download"></i> CSV</a>
+    <a href="events.php?share=<?= $eventId ?>" class="rarl-btn" title="Link, QR code and social sharing"><i class="fa-solid fa-arrow-up-from-bracket"></i> Share</a>
   </div>
 </div>
 

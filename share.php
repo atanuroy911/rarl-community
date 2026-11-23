@@ -11,7 +11,8 @@ if (session_status() === PHP_SESSION_NONE) { session_name(MEMBER_SESSION_NAME); 
 $type = $_GET['type'] ?? '';
 $id   = (int)($_GET['id'] ?? 0);
 $targets = [
-    'event'       => ['SELECT id FROM events WHERE id = ? AND is_active = 1', '/events.php?event='],
+    // Link-only events are private: they are never posted publicly (or counted as shares).
+    'event'       => ["SELECT id FROM events WHERE id = ? AND is_active = 1 AND visibility <> 'unlisted'", '/events.php?event='],
     'video'       => ['SELECT id FROM videos WHERE id = ?', '/videos.php?v='],
     'publication' => ["SELECT id FROM publications WHERE id = ? AND status = 'approved'", '/publications.php?id='],
 ];
