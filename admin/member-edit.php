@@ -409,13 +409,13 @@ adminWrap(function() use ($m, $errors, $plans, $sections, $displayName, $linkedE
 
       <div class="flex flex-wrap gap-6 pt-2">
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="newsletter_opt_in" value="1" <?= $m['newsletter_opt_in']?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Newsletter
+          <input type="checkbox" role="switch" name="newsletter_opt_in" value="1" <?= $m['newsletter_opt_in']?'checked':'' ?> class="rarl-switch"/> Newsletter
         </label>
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="community_notify" value="1" <?= $m['community_notify']?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Community comment emails
+          <input type="checkbox" role="switch" name="community_notify" value="1" <?= $m['community_notify']?'checked':'' ?> class="rarl-switch"/> Community comment emails
         </label>
         <label class="flex items-center gap-2 text-xs font-semibold text-gray-700">
-          <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible']??1)?'checked':'' ?> class="accent-rarl-red w-4 h-4"/> Visible on public roster
+          <input type="checkbox" role="switch" name="directory_visible" value="1" <?= ($m['directory_visible']??1)?'checked':'' ?> class="rarl-switch"/> Visible on public roster
         </label>
       </div>
 

@@ -196,7 +196,7 @@ adminWrap(function() use ($sections, $byContinent, $continents, $countries, $una
       </div>
       <div class="grid grid-cols-2 gap-3 pt-2 border-t border-gray-100">
         <div><label class="rarl-label">Display order</label><input type="number" name="display_order" class="rarl-input" value="0"/></div>
-        <label class="flex items-center gap-2 mt-6 text-sm"><input type="checkbox" name="is_published" value="1" checked class="accent-rarl-red w-4 h-4"/> Visible to members</label>
+        <label class="flex items-center gap-2 mt-6 text-sm"><input type="checkbox" role="switch" name="is_published" value="1" checked class="rarl-switch"/> Visible to members</label>
       </div>
     </div>
     <div class="p-4 border-t border-gray-100 flex justify-end gap-2 bg-gray-50/70"><button type="button" class="rarl-btn" data-close>Cancel</button><button class="rarl-btn rarl-btn-primary" id="sec-submit">Create chapter</button></div>

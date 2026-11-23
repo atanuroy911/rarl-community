@@ -342,7 +342,7 @@ echo htmlHead($shared ? html_entity_decode($shared['title'], ENT_QUOTES) : ($sha
         <?php elseif ($mine): ?>
           <?php if ($myState === 'registered' && !$e['online_url']): ?><button type="button" data-modal="pass-<?= $id ?>" class="ev-btn ev-btn-primary"><i class="fa-solid fa-qrcode"></i> Check-in pass</button><?php endif; ?>
           <?php if ($e['online_url']): ?><a href="<?= ex($e['online_url']) ?>" target="_blank" rel="noopener" class="ev-btn ev-btn-primary"><i class="fa-solid fa-video"></i> Join link</a><?php endif; ?>
-          <?php if ($myState === 'registered'): ?><form method="POST" data-confirm="Cancel your registration for this event?"><?= csrfField() ?><input type="hidden" name="action" value="cancel_rsvp"><input type="hidden" name="event_id" value="<?= $id ?>"><button class="ev-btn" onclick="return confirm('Cancel your registration for this event?')">Cancel registration</button></form><?php endif; ?>
+          <?php if ($myState === 'registered'): ?><form method="POST" data-confirm="Cancel your registration for this event?"><?= csrfField() ?><input type="hidden" name="action" value="cancel_rsvp"><input type="hidden" name="event_id" value="<?= $id ?>"><button class="ev-btn">Cancel registration</button></form><?php endif; ?>
         <?php elseif ($isFull): ?><span class="ev-btn opacity-60 cursor-not-allowed">Fully booked</span>
         <?php else: ?>
           <form method="POST"><?= csrfField() ?><input type="hidden" name="action" value="rsvp"><input type="hidden" name="event_id" value="<?= $id ?>"><?= $kField ?><button class="ev-btn ev-btn-primary"><i class="fa-solid fa-check"></i> Register — free</button></form>

@@ -13,11 +13,11 @@ function htmlAdminHead(string $title): void {
 <script>tailwind.config={darkMode:"class",theme:{extend:{colors:' . brandTailwindConfigJson() . ',fontFamily:{heading:["' . BRAND_FONT_HEADING . '","' . BRAND_FONT_SANS . '","system-ui","sans-serif"]},boxShadow:{card:"0 1px 2px rgba(16,16,16,.04), 0 1px 12px rgba(16,16,16,.05)"}}}}</script>
 <link href="' . BRAND_FONT_GOOGLE_URL . '" rel="stylesheet"/>
 <link href="' . FONTAWESOME_CDN_URL . '" rel="stylesheet"/>
-' . rarlFormFrictionJs() . '
+' . rarlFormFrictionJs() . rarlAppleJs(false) . '
 <style>
   body{font-family:"' . BRAND_FONT_SANS . '",sans-serif;-webkit-font-smoothing:antialiased;}
   h1,h2,h3,h4{font-family:"' . BRAND_FONT_HEADING . '","' . BRAND_FONT_SANS . '",sans-serif;letter-spacing:-0.01em;}
-  ' . rarlFontSizeCss() . rarlA11yCss() . '
+  ' . rarlFontSizeCss() . rarlA11yCss() . rarlAppleCss() . '
   a,button,[role="button"]{transition:color .15s ease,background-color .15s ease,border-color .15s ease,opacity .15s ease,box-shadow .15s ease;}
   a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid ' . BRAND_RED . ';outline-offset:2px;border-radius:4px;}
   ::-webkit-scrollbar{width:10px;height:10px;}
@@ -225,6 +225,7 @@ function htmlAdminHead(string $title): void {
 
   // ── Styled confirm dialog: rarlConfirm(msg, {ok, danger, title}) → Promise<boolean> ──
   window.rarlConfirm = function(msg, opts) {
+    if (window.rarlAlertConfirm) return window.rarlAlertConfirm(msg, opts); // one iOS-style alert everywhere
     opts = opts || {};
     var danger = opts.danger !== undefined ? opts.danger : /delete|remove|destroy|unlink|cannot be undone|permanent/i.test(msg);
     return new Promise(function(resolve) {

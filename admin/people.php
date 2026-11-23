@@ -140,7 +140,7 @@ adminWrap(function () use ($people, $edit, $chapterCount) {
     </div>
     <label class="flex items-center justify-between gap-3 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer">
       <span><span class="block text-sm font-semibold">Show on the public page</span><span class="block text-xs text-[color:var(--muted-fg)]">Turn off to keep someone here without showing them.</span></span>
-      <input type="checkbox" name="is_published" value="1" <?= ($edit['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-5 h-5">
+      <input type="checkbox" role="switch" name="is_published" value="1" <?= ($edit['is_published'] ?? 1) ? 'checked' : '' ?> class="rarl-switch">
     </label>
 
     </div>

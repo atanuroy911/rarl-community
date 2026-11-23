@@ -617,6 +617,160 @@ function rarlA11yCss(): string {
     CSS;
 }
 
+// ── Apple-style interaction layer (public + admin heads) ────
+// Follows Apple's Human Interface Guidelines where the web allows it:
+// - switches (not checkboxes) for on/off settings: <input type="checkbox" class="rarl-switch" role="switch">
+// - fields never below 16px on touch screens, so iPhone Safari doesn't zoom on focus
+// - immediate press feedback on touch, no grey tap flash, no double-tap-zoom delay
+// - one alert style for confirmations (rarlConfirm), instead of the browser's own dialog
+function rarlAppleCss(): string {
+    $red = BRAND_RED;
+    return <<<CSS
+    html { -webkit-tap-highlight-color:transparent; }
+    a, button, [role="button"], label, summary, select, input, textarea { touch-action:manipulation; }
+    input[type=checkbox], input[type=radio] { accent-color:{$red}; }
+    @media (pointer: coarse) {
+      input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=hidden]), select, textarea { font-size:max(16px, 1em) !important; }
+    }
+    @media (hover: hover) {
+      :is(button, input[type=submit])[class*="hover:-translate-y"]:hover { transform:none !important; }
+    }
+    button[aria-busy=true] { cursor:progress; opacity:.75; }
+    @media (hover: none) {
+      :is(a, button)[class*="rounded-full"]:not(:disabled):active, .rarl-btn:not(:disabled):active, .ev-btn:not(:disabled):active { transform:scale(.97); }
+    }
+    input[type=checkbox].rarl-switch { appearance:none; -webkit-appearance:none; flex-shrink:0; width:44px; height:26px; margin:0; border:0; border-radius:999px; background:#e3e3e7; position:relative; cursor:pointer; vertical-align:middle; transition:background-color .2s ease; }
+    input[type=checkbox].rarl-switch::after { content:""; position:absolute; top:2px; left:2px; width:22px; height:22px; border-radius:50%; background:#fff; box-shadow:0 2px 6px rgba(0,0,0,.18), 0 0 1px rgba(0,0,0,.25); transition:transform .22s cubic-bezier(.3,.7,.4,1.1); }
+    input[type=checkbox].rarl-switch:checked { background:#34c759; }
+    input[type=checkbox].rarl-switch:checked::after { transform:translateX(18px); }
+    [dir=rtl] input[type=checkbox].rarl-switch::after { left:auto; right:2px; }
+    [dir=rtl] input[type=checkbox].rarl-switch:checked::after { transform:translateX(-18px); }
+    .dark input[type=checkbox].rarl-switch { background:#3a3a3c; }
+    .dark input[type=checkbox].rarl-switch:checked { background:#30d158; }
+    input[type=checkbox].rarl-switch:focus-visible { outline:2px solid {$red}; outline-offset:2px; }
+    input[type=checkbox].rarl-switch:disabled { opacity:.4; cursor:not-allowed; }
+    dialog.rarl-alert { padding:0; border:0; width:min(18rem, calc(100vw - 3rem)); border-radius:14px; background:rgba(242,242,247,.92); backdrop-filter:blur(30px) saturate(180%); -webkit-backdrop-filter:blur(30px) saturate(180%); color:#1c1c1e; box-shadow:0 20px 60px rgba(0,0,0,.25); overflow:hidden; text-align:center; animation:rarlAlertIn .2s cubic-bezier(.2,.9,.3,1.15); }
+    dialog.rarl-alert::backdrop { background:rgba(0,0,0,.35); }
+    .rarl-alert-body { padding:1.15rem 1rem 1rem; }
+    .rarl-alert h2 { font-family:inherit; font-size:17px; font-weight:600; line-height:1.3; letter-spacing:-.01em; margin:0; }
+    .rarl-alert p { font-size:13px; line-height:1.4; margin:.3rem 0 0; color:#3c3c43; white-space:pre-line; }
+    .rarl-alert-actions { display:flex; border-top:.5px solid rgba(60,60,67,.3); }
+    .rarl-alert-actions button { flex:1; min-height:44px; font-size:17px; color:#007aff; background:transparent; border:0; }
+    .rarl-alert-actions button + button { border-left:.5px solid rgba(60,60,67,.3); }
+    .rarl-alert-actions button[data-v="1"] { font-weight:600; }
+    .rarl-alert-actions button.danger { color:#ff3b30; }
+    .rarl-alert-actions button:hover, .rarl-alert-actions button:focus-visible { background:rgba(0,0,0,.05); outline:none; }
+    .rarl-alert-actions button:active { background:rgba(0,0,0,.1); }
+    .dark dialog.rarl-alert { background:rgba(44,44,46,.92); color:#f2f2f7; }
+    .dark .rarl-alert p { color:#c7c7cc; }
+    .dark .rarl-alert-actions, .dark .rarl-alert-actions button + button { border-color:rgba(84,84,88,.6); }
+    .dark .rarl-alert-actions button { color:#0a84ff; }
+    .dark .rarl-alert-actions button.danger { color:#ff453a; }
+    .dark .rarl-alert-actions button:hover { background:rgba(255,255,255,.06); }
+    @keyframes rarlAlertIn { from { opacity:0; transform:scale(1.12); } to { opacity:1; transform:none; } }
+    @media (prefers-reduced-motion: reduce) { dialog.rarl-alert { animation:none; } .rarl-switch, .rarl-switch::after { transition:none; } }
+    CSS;
+}
+
+/**
+ * rarlConfirm(message, {title, ok, cancel, danger}) → Promise<boolean>, an iOS-style alert.
+ * With $handlers, also turns every form[data-confirm] / [data-confirm] button or link and
+ * legacy onsubmit/onclick="return confirm('…')" into that alert (the admin has its own handlers).
+ */
+function rarlAppleJs(bool $handlers = true): string {
+    return str_replace('__HANDLERS__', $handlers ? 'true' : 'false', <<<'HTML'
+<script>
+(function () {
+  window.rarlAlertConfirm = function (msg, opts) {
+    opts = opts || {};
+    var danger = opts.danger !== undefined ? opts.danger : /delete|remove|cancel|unlink|reset|sign out|cannot be undone|permanent/i.test(msg);
+    return new Promise(function (resolve) {
+      var d = document.createElement('dialog');
+      d.className = 'rarl-alert';
+      d.setAttribute('role', 'alertdialog');
+      d.innerHTML = '<div class="rarl-alert-body"><h2></h2><p></p></div><div class="rarl-alert-actions"><button type="button" data-v="0"></button><button type="button" data-v="1"></button></div>';
+      var title = opts.title || (opts.message ? msg : (msg.length <= 60 ? msg : 'Are you sure?'));
+      var body = opts.message || (title === msg ? '' : msg);
+      d.querySelector('h2').textContent = title;
+      var p = d.querySelector('p'); if (body) p.textContent = body; else p.remove();
+      var ok = d.querySelector('[data-v="1"]'), no = d.querySelector('[data-v="0"]');
+      ok.textContent = opts.ok || (danger ? (/cancel/i.test(msg) && !/delete|remove/i.test(msg) ? 'Yes, cancel' : 'Delete') : 'OK');
+      no.textContent = opts.cancel || (/cancel/i.test(ok.textContent) ? 'Keep' : 'Cancel');
+      if (danger) ok.classList.add('danger');
+      var id = 'ra' + Date.now(); d.querySelector('h2').id = id; d.setAttribute('aria-labelledby', id);
+      var done = function (v) { d.close(); d.remove(); resolve(v); };
+      ok.onclick = function () { done(true); }; no.onclick = function () { done(false); };
+      d.addEventListener('cancel', function (e) { e.preventDefault(); done(false); });
+      document.body.appendChild(d); d.showModal();
+      (danger ? no : ok).focus();
+    });
+  };
+  if (!window.rarlConfirm) window.rarlConfirm = window.rarlAlertConfirm;
+  if (!__HANDLERS__) return;
+
+  var pull = /return\s+confirm\(\s*(['"])((?:\\.|(?!\1).)*)\1\s*\)/;
+  function upgrade(root) {
+    root.querySelectorAll('[onsubmit*="confirm("],[onclick*="confirm("]').forEach(function (el) {
+      ['onsubmit', 'onclick'].forEach(function (attr) {
+        var v = el.getAttribute(attr), m = v && v.match(pull);
+        if (!m) return;
+        el.removeAttribute(attr);
+        var target = attr === 'onclick' && el.form && el.form.hasAttribute('data-confirm') ? null : el;
+        if (target && !target.hasAttribute('data-confirm')) target.setAttribute('data-confirm', m[2].replace(/\\(.)/g, '$1'));
+      });
+    });
+  }
+  document.addEventListener('DOMContentLoaded', function () { upgrade(document); });
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest && e.target.closest('a[data-confirm],button[data-confirm]');
+    if (!el || el._confirmed) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    rarlConfirm(el.getAttribute('data-confirm')).then(function (yes) {
+      if (!yes) return;
+      el._confirmed = true;
+      if (el.tagName === 'A') location.href = el.href;
+      else if (el.form) { if (el.form.requestSubmit) el.form.requestSubmit(el); else el.form.submit(); }
+      else el.click();
+      setTimeout(function () { el._confirmed = false; }, 0);
+    });
+  }, true);
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    if (!f.hasAttribute || !f.hasAttribute('data-confirm') || f._confirmed) return;
+    if (e.submitter && e.submitter._confirmed) return;
+    e.preventDefault(); e.stopImmediatePropagation();
+    var sub = e.submitter;
+    rarlConfirm(f.getAttribute('data-confirm')).then(function (yes) {
+      if (!yes) return;
+      f._confirmed = true;
+      if (f.requestSubmit) f.requestSubmit(sub && sub.form === f ? sub : undefined); else f.submit();
+    });
+  }, true);
+
+  // Direct feedback after submitting: spinner on the button, no accidental double submit.
+  // Runs after other submit handlers; skips GET forms, new-tab forms and data-no-loading.
+  document.addEventListener('submit', function (e) {
+    var f = e.target;
+    setTimeout(function () {
+      if (e.defaultPrevented || !f.method || f.method.toLowerCase() !== 'post' || f.target === '_blank' || f.hasAttribute('data-no-loading')) return;
+      var b = e.submitter && f.contains(e.submitter) ? e.submitter : f.querySelector('button[type=submit],button:not([type])');
+      if (!b || b.disabled || b.hasAttribute('data-no-loading')) return;
+      b._html = b.innerHTML; b.style.minWidth = b.offsetWidth + 'px';
+      b.disabled = true; b.setAttribute('aria-busy', 'true');
+      b.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin" aria-hidden="true"></i>' + (b.textContent.trim().length > 2 && b.offsetWidth > 90 ? ' <span>' + (b.dataset.busy || 'Working…') + '</span>' : '');
+    }, 0);
+  });
+  // Back/forward cache: restore buttons left spinning.
+  window.addEventListener('pageshow', function (e) {
+    if (!e.persisted) return;
+    document.querySelectorAll('button[aria-busy=true]').forEach(function (b) { b.disabled = false; b.removeAttribute('aria-busy'); if (b._html) b.innerHTML = b._html; b.style.minWidth = ''; });
+  });
+})();
+</script>
+HTML);
+}
+
 // Site-wide form friction fixes (public + admin heads):
 // - type=url accepts "scholar.google.com/…" — https:// is added before the
 //   browser's validity check instead of blocking the submit (cleanUrl does the same server-side)
@@ -724,8 +878,8 @@ function htmlHead(string $title, bool $isAdmin = false, array $meta = []): strin
     $colorsJson = brandTailwindConfigJson();
     $fontUrl    = BRAND_FONT_GOOGLE_URL;
     $faUrl      = FONTAWESOME_CDN_URL;
-    $sizeCss    = rarlFontSizeCss() . rarlA11yCss();
-    $formJs     = rarlFormFrictionJs();
+    $sizeCss    = rarlFontSizeCss() . rarlA11yCss() . rarlAppleCss();
+    $formJs     = rarlFormFrictionJs() . rarlAppleJs();
     $langJs     = languageHeadJs();
     $brandRedHex = BRAND_RED;
     return <<<HTML
@@ -810,7 +964,7 @@ function htmlHead(string $title, bool $isAdmin = false, array $meta = []): strin
     {$sizeCss}
     a, button, [role="button"] { transition:color .15s ease, background-color .15s ease, border-color .15s ease, opacity .15s ease, transform .15s ease, box-shadow .15s ease; }
     a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, [tabindex]:focus-visible {
-      outline:2px solid {$brandRedHex}; outline-offset:2px; border-radius:4px;
+      outline:2px solid {$brandRedHex}; outline-offset:2px;
     }
     ::selection { background:{$brandRedHex}; color:#fff; }
     ::-webkit-scrollbar { width:10px; height:10px; }

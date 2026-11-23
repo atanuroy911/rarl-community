@@ -114,8 +114,8 @@ adminWrap(function() use ($tiers, $set, $editTier) {
   </div>
   <p class="text-xs text-[color:var(--muted-fg)] -mt-2">Leave the fee empty to show the card without a price.</p>
   <input type="hidden" name="display_order" value="<?= (int)($editTier['display_order'] ?? 0) ?>">
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_addon" value="1" <?= !empty($editTier['is_addon']) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Show as a separate add-on card (e.g. "High visibility")</label>
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="is_published" value="1" <?= ($editTier['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Published</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="is_addon" value="1" <?= !empty($editTier['is_addon']) ? 'checked' : '' ?> class="rarl-switch"> Show as a separate add-on card (e.g. "High visibility")</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="is_published" value="1" <?= ($editTier['is_published'] ?? 1) ? 'checked' : '' ?> class="rarl-switch"> Published</label>
 <?php adminModalClose($editTier ? 'Save changes' : 'Create tier', '', true); ?>
 <script>document.getElementById('tier-modal').addEventListener('close', function () { if (/[?&](edit|new)=/.test(location.search)) history.replaceState(null, '', 'partnerships.php'); });</script>
 

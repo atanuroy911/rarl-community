@@ -133,8 +133,8 @@ adminWrap(function() use ($categories, $resources, $catCounts) {
       </div>
       <div><label class="rarl-label" for="res_desc">Short description</label><textarea id="res_desc" name="res_desc" rows="3" class="rarl-input" placeholder="Why it's worth a member's time"></textarea></div>
       <div class="grid sm:grid-cols-2 gap-3">
-        <label class="flex items-start gap-2.5 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer"><input type="checkbox" name="res_feat" value="1" class="accent-rarl-red w-4 h-4 mt-0.5"><span class="text-sm"><span class="block font-semibold"><i class="fa-solid fa-star text-amber-500"></i> Featured</span><span class="text-xs text-[color:var(--muted-fg)]">Shown first in its topic</span></span></label>
-        <label class="flex items-start gap-2.5 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer"><input type="checkbox" name="res_access" value="member" class="accent-rarl-red w-4 h-4 mt-0.5"><span class="text-sm"><span class="block font-semibold"><i class="fa-solid fa-lock text-amber-600"></i> Members only</span><span class="text-xs text-[color:var(--muted-fg)]">Hidden from visitors</span></span></label>
+        <label class="flex items-start gap-2.5 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer"><input type="checkbox" role="switch" name="res_feat" value="1" class="rarl-switch mt-0.5"><span class="text-sm"><span class="block font-semibold"><i class="fa-solid fa-star text-amber-500"></i> Featured</span><span class="text-xs text-[color:var(--muted-fg)]">Shown first in its topic</span></span></label>
+        <label class="flex items-start gap-2.5 p-3 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer"><input type="checkbox" role="switch" name="res_access" value="member" class="rarl-switch mt-0.5"><span class="text-sm"><span class="block font-semibold"><i class="fa-solid fa-lock text-amber-600"></i> Members only</span><span class="text-xs text-[color:var(--muted-fg)]">Hidden from visitors</span></span></label>
       </div>
     <?php };
 ?>
@@ -208,8 +208,8 @@ adminWrap(function() use ($categories, $resources, $catCounts) {
     <div><label class="rarl-label" for="cat_name">Name <span class="text-rarl-red">*</span></label><input id="cat_name" name="cat_name" required class="rarl-input" placeholder="Motion Planning"/></div>
   </div>
   <div><label class="rarl-label" for="cat_desc">Description</label><textarea id="cat_desc" name="cat_desc" rows="2" class="rarl-input"></textarea></div>
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="cat_pub" value="1" checked class="accent-rarl-red w-4 h-4"> Published</label>
-  <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="cat_access" value="member" class="accent-rarl-red w-4 h-4"> <i class="fa-solid fa-lock text-amber-600"></i> Members-only topic</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="cat_pub" value="1" checked class="rarl-switch"> Published</label>
+  <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="cat_access" value="member" class="rarl-switch"> <i class="fa-solid fa-lock text-amber-600"></i> Members-only topic</label>
 <?php adminModalClose('Save topic', '<button type="submit" form="cat-del" class="rarl-btn text-red-600" data-cat-del hidden><i class="fa-solid fa-trash"></i> Delete</button>', true); ?>
 <form id="cat-del" method="POST" data-confirm="Delete this topic? Its resources stay but lose their topic."><?= acsrfField() ?><input type="hidden" name="action" value="delete_cat"><input type="hidden" name="cat_id" value=""></form>
 

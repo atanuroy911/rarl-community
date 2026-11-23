@@ -382,7 +382,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $shareId, $
               <label><input type="radio" name="cover_style" value="red"/><span><i class="inline-block w-3 h-3 rounded-full bg-gradient-to-r from-red-500 to-red-900 align-[-1px]"></i> Red</span></label>
             </span>
           </div>
-          <label class="ev-row hidden" id="ev-remove-cover"><span class="flex-1 text-red-600">Remove current cover</span><input type="checkbox" name="remove_cover" value="1" class="ev-switch" role="switch"/></label>
+          <label class="ev-row" id="ev-remove-cover" style="display:none"><span class="flex-1 text-red-600">Remove current cover</span><input type="checkbox" name="remove_cover" value="1" class="ev-switch" role="switch"/></label>
         </div>
       </section>
 
@@ -502,7 +502,7 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $shareId, $
       <a id="share-open" target="_blank" rel="noopener" class="ev-row"><i class="fa-solid fa-arrow-up-right-from-square text-[color:var(--muted-fg)]"></i><span class="flex-1">Open event page</span><i class="fa-solid fa-chevron-right text-xs text-[color:var(--muted-fg)]"></i></a>
     </div>
 
-    <div class="ev-card p-4 flex items-center gap-4">
+    <div class="ev-card ev-card-solo p-4 flex items-center gap-4">
       <div class="w-32 h-32 flex-shrink-0 rounded-xl bg-white ring-1 ring-[color:var(--border)] p-1.5"><img id="share-qr" alt="QR code for the event link" class="w-full h-full [image-rendering:pixelated]"/></div>
       <div class="min-w-0">
         <p class="font-semibold">QR code</p>
@@ -528,6 +528,8 @@ adminWrap(function() use ($events, $all, $counts, $tab, $q, $editId, $shareId, $
   .ev-row,.ev-field{display:flex;align-items:center;gap:.75rem;min-height:46px;padding:.55rem 1rem;font-size:.9375rem;color:var(--fg);position:relative}
   .ev-card>*+*::before{content:"";position:absolute;top:0;left:1rem;right:0;border-top:.5px solid rgba(60,60,67,.18)}
   .ev-card>*+*{position:relative}
+  .ev-card-solo>*+*::before{display:none}
+  .ev-row.text-red-600,.ev-row .text-red-600{color:#dc2626}
   a.ev-row:hover,button.ev-row:hover{background:#f7f7f9}
   .ev-sub{display:block;font-size:.8125rem;color:var(--muted-fg);line-height:1.35;margin-top:.1rem}
   .ev-field-ic{width:1rem;text-align:center;color:var(--muted-fg);flex-shrink:0}

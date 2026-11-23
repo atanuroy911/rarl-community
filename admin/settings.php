@@ -124,7 +124,7 @@ adminWrap(function() use ($set) {
       <?php $cardHead('fa-toggle-on', 'Membership Program'); ?>
       <div class="space-y-4">
         <label class="flex items-center gap-2 p-3 <?= ($set['membership_enabled']??'1')==='1' ? 'bg-gray-50 border-gray-200' : 'bg-red-50 border-red-200' ?> border rounded-xl cursor-pointer">
-          <input type="checkbox" name="settings[membership_enabled]" value="1" <?= ($set['membership_enabled']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+          <input type="checkbox" role="switch" name="settings[membership_enabled]" value="1" <?= ($set['membership_enabled']??'1') === '1' ? 'checked' : '' ?> class="rarl-switch"/>
           <span class="text-sm text-gray-700 font-semibold">Membership program is active</span>
         </label>
         <p class="text-[10px] text-gray-400 -mt-2">Master switch for the whole membership system. When off, sign-in, registration, dashboard, profile, community feed, chapter portal, and the public roster all show a "Membership Paused" notice — the rest of the site (home, events, resources, people, partners, certificate/ID verification) stays up as normal. This is more drastic than "Accepting new registrations" below, which only pauses new signups.</p>
@@ -202,7 +202,7 @@ adminWrap(function() use ($set) {
       <?php $cardHead('fa-user-plus', 'Registration'); ?>
       <div class="space-y-4">
         <label class="flex items-center gap-2 p-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer">
-          <input type="checkbox" name="settings[registrations_open]" value="1" <?= ($set['registrations_open']??'1') === '1' ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"/>
+          <input type="checkbox" role="switch" name="settings[registrations_open]" value="1" <?= ($set['registrations_open']??'1') === '1' ? 'checked' : '' ?> class="rarl-switch"/>
           <span class="text-sm text-gray-700 font-semibold">Accepting new registrations</span>
         </label>
         <p class="text-[10px] text-gray-400 -mt-2">When off, register.php and both sub-forms redirect to a "Registrations Closed" notice — existing members can still log in and use the site as normal.</p>
@@ -292,7 +292,7 @@ adminWrap(function() use ($set) {
       <?php $cardHead('fa-window-restore', 'Homepage Popup'); ?>
       <div class="space-y-4">
         <label class="flex items-center gap-2 p-3 border border-gray-200 rounded-xl cursor-pointer hover:border-rarl-red/30 transition-colors">
-          <input type="checkbox" name="settings[popup_enabled]" value="1" <?= ($set['popup_enabled']??'0')==='1'?'checked':'' ?> class="accent-rarl-red w-4 h-4"/>
+          <input type="checkbox" role="switch" name="settings[popup_enabled]" value="1" <?= ($set['popup_enabled']??'0')==='1'?'checked':'' ?> class="rarl-switch"/>
           <span class="text-xs font-semibold text-gray-700">Enable popup on homepage</span>
         </label>
         <div>

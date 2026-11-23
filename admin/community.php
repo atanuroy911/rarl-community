@@ -199,7 +199,7 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
       <span class="rarl-label">Photo <span class="font-normal text-[color:var(--muted-fg)]">(optional)</span></span>
       <?= adminImageDrop('post_image', null, 'JPG, PNG or WebP · up to 5 MB · shown full width', 'wide') ?>
     </div>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="post_pinned" value="1" class="accent-rarl-red w-4 h-4"> Pin to the top of the feed</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="post_pinned" value="1" class="rarl-switch"> Pin to the top of the feed</label>
     <div class="flex justify-end"><button class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-paper-plane"></i> Publish to members</button></div>
   </form>
   <div class="lg:sticky lg:top-6">
@@ -250,7 +250,7 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
     <?php else: ?>
     <p class="text-xs p-3 rounded-[var(--radius)] bg-amber-50 text-amber-800"><i class="fa-solid fa-circle-info"></i> Run <a class="underline font-semibold" href="migrate.php">migration 013</a> to add call-to-action buttons and auto-expiry.</p>
     <?php endif; ?>
-    <label class="flex items-center gap-2 text-sm"><input type="checkbox" name="ann_pinned" value="1" <?= !empty($edit['is_pinned']) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> <i class="fa-solid fa-thumbtack text-amber-600"></i> Pin above everything else</label>
+    <label class="flex items-center gap-2 text-sm"><input type="checkbox" role="switch" name="ann_pinned" value="1" <?= !empty($edit['is_pinned']) ? 'checked' : '' ?> class="rarl-switch"> <i class="fa-solid fa-thumbtack text-amber-600"></i> Pin above everything else</label>
     </div>
     <div class="rarl-amodal-foot">
       <button type="button" class="rarl-btn me-auto" data-amodal-close>Cancel</button>
@@ -397,7 +397,7 @@ adminWrap(function () use ($settings, $announcements, $posts, $comments, $tab, $
     <textarea id="community_guidelines" name="community_guidelines" rows="5" class="rarl-input"><?= ex($settings['community_guidelines'] ?? '') ?></textarea>
   </div>
   <label class="flex items-start gap-3 p-4 rounded-[var(--radius)] border border-[color:var(--border)] cursor-pointer">
-    <input type="checkbox" name="community_comments_enabled" value="1" <?= $commentsOn ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4 mt-0.5">
+    <input type="checkbox" role="switch" name="community_comments_enabled" value="1" <?= $commentsOn ? 'checked' : '' ?> class="rarl-switch mt-0.5">
     <span><span class="block text-sm font-semibold">Let members reply to team posts</span>
     <span class="block text-xs text-[color:var(--muted-fg)] mt-0.5">Off by default: members follow and like, but don't post. Turning this on shows a reply box under each team post, and replies show the member's name and photo to other members.</span></span>
   </label>

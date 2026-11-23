@@ -350,31 +350,26 @@ echo htmlHead('My Profile');
       </div>
       <?php endif; ?>
 
-      <label class="flex items-start gap-3 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
-        <input type="checkbox" name="newsletter_opt_in" value="1" <?= $m['newsletter_opt_in'] ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
-        <div>
-          <strong class="text-sm text-gray-800 dark:text-white">Subscribe to RARL Newsletter</strong>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Receive research updates, events, and opportunities.</p>
+      <div>
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ms-4">Notifications</p>
+        <div class="rounded-2xl bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-800 divide-y divide-gray-100 dark:divide-gray-800 overflow-hidden">
+          <label class="flex items-center gap-4 px-4 py-3.5 min-h-[56px] cursor-pointer">
+            <span class="flex-1 min-w-0"><span class="block text-sm font-medium text-gray-900 dark:text-white">RARL newsletter</span><span class="block text-xs text-gray-500 dark:text-gray-400">Research updates, events and opportunities.</span></span>
+            <input type="checkbox" role="switch" name="newsletter_opt_in" value="1" <?= $m['newsletter_opt_in'] ? 'checked' : '' ?> class="rarl-switch"/>
+          </label>
+          <label class="flex items-center gap-4 px-4 py-3.5 min-h-[56px] cursor-pointer">
+            <span class="flex-1 min-w-0"><span class="block text-sm font-medium text-gray-900 dark:text-white">Replies to my posts</span><span class="block text-xs text-gray-500 dark:text-gray-400">Email me when someone comments on my community post.</span></span>
+            <input type="checkbox" role="switch" name="community_notify" value="1" <?= $m['community_notify'] ? 'checked' : '' ?> class="rarl-switch"/>
+          </label>
         </div>
-      </label>
+      </div>
 
-      <label class="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
-        <input type="checkbox" name="community_notify" value="1" <?= $m['community_notify'] ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
-        <div>
-          <strong class="text-sm text-gray-800 dark:text-white">Community Comment Notifications</strong>
-          <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Email me when someone comments on my community post.</p>
-        </div>
-      </label>
-
-      <div class="pt-2 border-t border-gray-100 dark:border-gray-800">
-        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Membership Roster</p>
-        <div class="space-y-3">
-          <label class="flex items-start gap-3 p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl cursor-pointer hover:border-rarl-red/40 transition-colors">
-            <input type="checkbox" name="directory_visible" value="1" <?= ($m['directory_visible'] ?? 1) ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red flex-shrink-0"/>
-            <div>
-              <strong class="text-sm text-gray-800 dark:text-white">Include me in the public Membership Roster</strong>
-              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Your membership number and name appear on the public roster, grouped by country. No contact info or other details are shown.</p>
-            </div>
+      <div>
+        <p class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 ms-4">Privacy</p>
+        <div class="rounded-2xl bg-white dark:bg-gray-900 ring-1 ring-gray-200 dark:ring-gray-800 overflow-hidden">
+          <label class="flex items-center gap-4 px-4 py-3.5 min-h-[56px] cursor-pointer">
+            <span class="flex-1 min-w-0"><span class="block text-sm font-medium text-gray-900 dark:text-white">Show me on the public roster</span><span class="block text-xs text-gray-500 dark:text-gray-400">Only your membership number and name, grouped by country. No contact details.</span></span>
+            <input type="checkbox" role="switch" name="directory_visible" value="1" <?= ($m['directory_visible'] ?? 1) ? 'checked' : '' ?> class="rarl-switch"/>
           </label>
         </div>
       </div>

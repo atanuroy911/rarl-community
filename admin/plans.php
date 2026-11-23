@@ -142,8 +142,8 @@ adminWrap(function() use ($plans, $editPlan) {
   </fieldset>
   <input type="hidden" name="display_order" value="<?= (int)($editPlan['display_order'] ?? 0) ?>">
   <div class="flex flex-wrap gap-5 text-sm">
-    <label class="flex items-center gap-2"><input type="checkbox" name="is_free_now" value="1" <?= ($editPlan['is_free_now'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Free right now</label>
-    <label class="flex items-center gap-2"><input type="checkbox" name="is_published" value="1" <?= ($editPlan['is_published'] ?? 1) ? 'checked' : '' ?> class="accent-rarl-red w-4 h-4"> Published</label>
+    <label class="flex items-center gap-2"><input type="checkbox" role="switch" name="is_free_now" value="1" <?= ($editPlan['is_free_now'] ?? 1) ? 'checked' : '' ?> class="rarl-switch"> Free right now</label>
+    <label class="flex items-center gap-2"><input type="checkbox" role="switch" name="is_published" value="1" <?= ($editPlan['is_published'] ?? 1) ? 'checked' : '' ?> class="rarl-switch"> Published</label>
   </div>
 <?php adminModalClose($editPlan ? 'Save changes' : 'Create plan', '', true); ?>
 <script>

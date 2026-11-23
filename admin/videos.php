@@ -87,8 +87,8 @@ adminWrap(function () use ($videos, $events, $ready) {
   <div><label class="rarl-label" for="v-event">Recording of event <span class="font-normal text-[color:var(--muted-fg)]">(optional)</span></label>
     <select id="v-event" name="event_id" class="rarl-input"><option value="">None</option><?php foreach ($events as $e): ?><option value="<?= (int)$e['id'] ?>"><?= ex($e['title']) ?><?= $e['event_date'] ? ' — ' . date('d M Y', strtotime($e['event_date'])) : '' ?></option><?php endforeach; ?></select></div>
   <div class="flex flex-wrap gap-5 text-sm">
-    <label class="flex items-center gap-2"><input type="checkbox" name="members_only" value="1" class="accent-rarl-red w-4 h-4"> Members only</label>
-    <label class="flex items-center gap-2"><input type="checkbox" name="hidden" value="1" class="accent-rarl-red w-4 h-4"> Hidden for now</label>
+    <label class="flex items-center gap-2"><input type="checkbox" role="switch" name="members_only" value="1" class="rarl-switch"> Members only</label>
+    <label class="flex items-center gap-2"><input type="checkbox" role="switch" name="hidden" value="1" class="rarl-switch"> Hidden for now</label>
   </div>
 <?php adminModalClose('Save video', '', true); ?>
 <script>

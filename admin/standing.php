@@ -155,7 +155,7 @@ adminWrap(function () use ($rules, $enabled, $scores, $preview, $counts, $rows, 
     <form method="POST" class="space-y-3 text-sm">
       <?= acsrfField() ?><input type="hidden" name="action" value="save">
       <label class="flex items-start gap-3 cursor-pointer p-3 rounded-xl bg-gray-50">
-        <input type="checkbox" name="enabled" value="1" <?= $enabled ? 'checked' : '' ?> class="mt-0.5 w-4 h-4 accent-rarl-red">
+        <input type="checkbox" role="switch" name="enabled" value="1" <?= $enabled ? 'checked' : '' ?> class="rarl-switch mt-0.5">
         <span><span class="block font-semibold text-gray-900">Show members their activity points</span><span class="block text-xs text-gray-500">Adds an "Activity &amp; standing" card to each member's Membership page. Nothing is sent automatically.</span></span>
       </label>
       <div class="grid grid-cols-2 gap-2">

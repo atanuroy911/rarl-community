@@ -116,11 +116,11 @@ adminWrap(function () use ($templates, $default, $stats, $sample, $real, $recent
       <form method="POST" class="space-y-3">
         <?= acsrfField() ?><input type="hidden" name="action" value="save_settings">
         <label class="flex items-start gap-3 cursor-pointer">
-          <input type="checkbox" name="auto" value="1" <?= $auto ? 'checked' : '' ?> class="mt-1 w-4 h-4 accent-rarl-red">
+          <input type="checkbox" role="switch" name="auto" value="1" <?= $auto ? 'checked' : '' ?> class="rarl-switch mt-1">
           <span><span class="block text-sm font-semibold text-gray-900">Issue automatically on approval</span><span class="block text-xs text-gray-500">When off, members only get a certificate when you issue it here.</span></span>
         </label>
         <label class="flex items-start gap-3 cursor-pointer">
-          <input type="checkbox" name="autoregen" value="1" <?= $autoregen ? 'checked' : '' ?> class="mt-1 w-4 h-4 accent-rarl-red">
+          <input type="checkbox" role="switch" name="autoregen" value="1" <?= $autoregen ? 'checked' : '' ?> class="rarl-switch mt-1">
           <span><span class="block text-sm font-semibold text-gray-900">Keep certificates up to date with the design</span><span class="block text-xs text-gray-500">When the default design or its layout changes, existing certificates are regenerated in the background.</span></span>
         </label>
         <button class="rarl-btn rarl-btn-primary"><i class="fa-solid fa-floppy-disk"></i> Save settings</button>
