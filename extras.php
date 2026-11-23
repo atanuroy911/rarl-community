@@ -122,6 +122,7 @@ function checkinUrl(int $eventId, int $memberId): string {
  * Returns ['ok', 'state' => checked_in|already|not_registered|cancelled|invalid, 'name', 'event'].
  */
 function checkinApply(string $token): array {
+    if (($guestId = guestCheckinParse($token)) !== null) return guestCheckinApply($guestId);
     $p = checkinParse($token);
     if (!$p) return ['ok' => false, 'state' => 'invalid', 'name' => null, 'event' => null];
     $pdo = db();
@@ -166,6 +167,20 @@ function sendEventReminders(): int {
             $when = eventReminderDay($event);
             ob_start(); require __DIR__ . '/emails/event-reminder.php'; $body = ob_get_clean();
             queueEmail($batch, 'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES), $member['email'], (string)$memberName,
+                'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES) . ' is ' . $when, $body);
+            $sent++;
+        }
+        // Guests who registered with the form: their private link replaces the member pages.
+        try {
+            $guests = $pdo->prepare("SELECT * FROM event_guest_registrations WHERE event_id = ? AND status = 'registered'");
+            $guests->execute([$event['id']]);
+        } catch (Throwable $e) { $guests = []; }
+        foreach ($guests as $g) {
+            $memberName = $g['full_name'];
+            $eventUrl = guestManageUrl($g);
+            $icsUrl   = eventIcsUrl($event);
+            ob_start(); require __DIR__ . '/emails/event-reminder.php'; $body = ob_get_clean();
+            queueEmail($batch, 'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES), $g['email'], html_entity_decode((string)$g['full_name'], ENT_QUOTES),
                 'Reminder: ' . html_entity_decode($event['title'], ENT_QUOTES) . ' is ' . $when, $body);
             $sent++;
         }
@@ -534,4 +549,101 @@ function qrPng(string $text, int $scale = 6, int $margin = 2): string {
     $png = (string)file_get_contents($tmp);
     @unlink($tmp);
     return $png;
+}
+
+// ── Event guest registrations ──────────────────────────────
+// Anyone can register for a public or link-only event with a short form
+// (event_guest_registrations); signed-in active members register in one tap
+// (event_registrations). Both count towards capacity, both can be checked in
+// and both get a certificate. A guest's private link (?guest=TOKEN) shows their
+// registration, join link, check-in pass and a cancel button.
+
+const GUEST_POSITIONS = ['student' => 'Student', 'researcher' => 'Researcher', 'faculty' => 'Faculty', 'industry' => 'Industry', 'other' => 'Other'];
+
+/** SQL expression: places taken at the event aliased $a (members + guests, not cancelled). */
+function eventTakenSql(string $a = 'e'): string {
+    return "((SELECT COUNT(*) FROM event_registrations tr WHERE tr.event_id = {$a}.id AND tr.status <> 'cancelled')"
+         . " + (SELECT COUNT(*) FROM event_guest_registrations tg WHERE tg.event_id = {$a}.id AND tg.status <> 'cancelled'))";
+}
+/** SQL expression: people checked in at the event aliased $a. */
+function eventAttendedSql(string $a = 'e'): string {
+    return "((SELECT COUNT(*) FROM event_registrations ar WHERE ar.event_id = {$a}.id AND ar.status = 'attended')"
+         . " + (SELECT COUNT(*) FROM event_guest_registrations ag WHERE ag.event_id = {$a}.id AND ag.status = 'attended'))";
+}
+function eventTakenCount(PDO $pdo, int $eventId): int {
+    $s = $pdo->prepare('SELECT ' . eventTakenSql('e') . ' FROM events e WHERE e.id = ?');
+    $s->execute([$eventId]);
+    return (int)$s->fetchColumn();
+}
+
+/** "RARL-2025-0042" from "#rarl 2025 0042" and similar. */
+function normalizeMemberCode(string $v): string {
+    return trim(strtoupper((string)preg_replace('/[^A-Za-z0-9]+/', '-', $v)), '-');
+}
+
+/** The member account that owns this email (primary or linked): ['id', 'member_code', 'status'] or null. */
+function memberByEmail(PDO $pdo, string $email): ?array {
+    $s = $pdo->prepare('SELECT m.id, m.member_code, m.status FROM members m LEFT JOIN member_emails me ON me.member_id = m.id WHERE m.email = ? OR me.email = ? LIMIT 1');
+    $s->execute([$email, $email]);
+    return $s->fetch() ?: null;
+}
+
+function guestToken(): string { return bin2hex(random_bytes(16)); }
+
+function guestManageUrl(array $g, bool $absolute = true): string {
+    $u = 'events.php?guest=' . rawurlencode((string)$g['token']);
+    return $absolute ? rtrim(SITE_URL, '/') . '/' . $u : $u;
+}
+
+function guestCheckinToken(int $guestId): string {
+    return 'g' . $guestId . '.' . substr(hash_hmac('sha256', "guest-checkin:{$guestId}", appSecret()), 0, 20);
+}
+function guestCheckinParse(string $token): ?int {
+    if (!preg_match('/\bg(\d+)\.([a-f0-9]{20})\b/', $token, $m)) return null;
+    return hash_equals(guestCheckinToken((int)$m[1]), $m[0]) ? (int)$m[1] : null;
+}
+function guestCheckinUrl(int $guestId): string {
+    return SITE_URL . '/admin/checkin.php?t=' . guestCheckinToken($guestId);
+}
+
+/** A guest row shaped like a member row, for certificates. */
+function guestAsRecipient(array $g): array {
+    return ['id' => $g['member_id'] ?: null, 'email' => $g['email'], 'type' => 'individual', 'full_name' => $g['full_name'], 'lab_name' => null];
+}
+
+/** Marks a guest attended and issues their certificate. False if not found at this event. */
+function guestMarkAttended(PDO $pdo, array $event, int $guestId, ?string $batch = null): bool {
+    $s = $pdo->prepare('SELECT * FROM event_guest_registrations WHERE id = ? AND event_id = ?');
+    $s->execute([$guestId, $event['id']]);
+    if (!$g = $s->fetch()) return false;
+    $pdo->prepare("UPDATE event_guest_registrations SET status = 'attended' WHERE id = ?")->execute([$guestId]);
+    try { issueCertificateForAttendance($pdo, $event, guestAsRecipient($g), $batch); } catch (Throwable $e) { error_log('guest cert: ' . $e->getMessage()); }
+    return true;
+}
+
+/** Check-in from a guest's QR pass: same result shape as checkinApply(). */
+function guestCheckinApply(int $guestId): array {
+    $pdo = db();
+    $s = $pdo->prepare('SELECT g.*, e.title AS event_title FROM event_guest_registrations g JOIN events e ON e.id = g.event_id WHERE g.id = ?');
+    $s->execute([$guestId]);
+    $g = $s->fetch();
+    if (!$g) return ['ok' => false, 'state' => 'invalid', 'name' => null, 'event' => null];
+    $base = ['name' => $g['full_name'], 'event' => $g['event_title'], 'member_code' => null, 'avatar' => null, 'event_id' => (int)$g['event_id'], 'guest' => true];
+    if ($g['status'] === 'attended') return ['ok' => true, 'state' => 'already'] + $base;
+    if ($g['status'] === 'cancelled') return ['ok' => false, 'state' => 'cancelled'] + $base;
+    $e = $pdo->prepare('SELECT * FROM events WHERE id = ?'); $e->execute([$g['event_id']]);
+    guestMarkAttended($pdo, $e->fetch(), $guestId, newEmailBatch());
+    return ['ok' => true, 'state' => 'checked_in'] + $base;
+}
+
+/** Confirmation email with the private registration link. Sends now; queues if sending fails. */
+function sendGuestConfirmation(array $event, array $g, bool $updated = false): bool {
+    $guest = $g; $manageUrl = guestManageUrl($g); $icsUrl = eventIcsUrl($event);
+    ob_start(); require __DIR__ . '/emails/event-guest-confirmation.php'; $body = ob_get_clean();
+    $subject = ($updated ? 'Updated: ' : "You're registered: ") . html_entity_decode((string)$event['title'], ENT_QUOTES, 'UTF-8');
+    $name = html_entity_decode((string)$g['full_name'], ENT_QUOTES, 'UTF-8');
+    try {
+        if (sendEmail($g['email'], $name, $subject, $body)) return true;
+    } catch (Throwable $e) { error_log('guest confirmation: ' . $e->getMessage()); }
+    try { queueEmail(newEmailBatch(), 'Event registration', $g['email'], $name, $subject, $body); return true; } catch (Throwable $e) { return false; }
 }

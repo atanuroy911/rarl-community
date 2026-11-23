@@ -2224,7 +2224,7 @@ function purgeDatabase(): void {
     $pdo = db();
     $tables = [
         'community_likes', 'community_comments', 'community_posts',
-        'event_registrations', 'events',
+        'event_registrations', 'event_guest_registrations', 'events',
         'certificates', 'certificate_templates',
         'member_emails', 'otp_codes', 'members',
         'newsletters', 'resources', 'resource_categories',
@@ -2287,6 +2287,8 @@ function deleteMemberCascade(int $memberId): bool {
 
     // Events, extra emails, password/verification codes
     $pdo->prepare('DELETE FROM event_registrations WHERE member_id = ?')->execute([$memberId]);
+    // Event-form registrations made with this member's email addresses go too.
+    $pdo->prepare('DELETE FROM event_guest_registrations WHERE member_id = ? OR email = ? OR email IN (SELECT email FROM member_emails WHERE member_id = ?)')->execute([$memberId, $m['email'], $memberId]);
     $pdo->prepare('DELETE FROM member_emails WHERE member_id = ?')->execute([$memberId]);
     $pdo->prepare('DELETE FROM otp_codes WHERE email = ?')->execute([$m['email']]);
 

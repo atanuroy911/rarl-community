@@ -5,6 +5,9 @@
  * certificate via issueCertificateForAttendance() (designed template + email);
  * bulk marking queues the emails so big events never time out. Check-in mode
  * is a fast, search-first view for marking attendance at the door.
+ * Members (event_registrations) and guests who used the registration form
+ * (event_guest_registrations) share one list: guest rows carry negative ids
+ * (-id), so the same buttons, bulk actions and check-in mode work for both.
  */
 require_once __DIR__ . '/auth.php';
 require_once __DIR__ . '/layout.php';
@@ -18,6 +21,7 @@ $event = $eventStmt->fetch();
 if (!$event) { $_SESSION['flash'] = ['type'=>'error','msg'=>'Event not found.']; header('Location: events.php'); exit; }
 
 function regMarkAttended(PDO $pdo, array $event, int $regId, ?string $batch): bool {
+    if ($regId < 0) return guestMarkAttended($pdo, $event, -$regId, $batch);
     $reg = $pdo->prepare("SELECT * FROM event_registrations WHERE id = ? AND event_id = ?");
     $reg->execute([$regId, $event['id']]);
     if (!$r = $reg->fetch()) return false;
@@ -41,15 +45,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         regMarkAttended($pdo, $event, $regId, null) ? $reply('success', 'Checked in — certificate issued and emailed.') : $reply('error', 'Registration not found.');
     }
     if ($action === 'mark_no_show' || $action === 'reset') {
-        $pdo->prepare("UPDATE event_registrations SET status=? WHERE id=? AND event_id=?")->execute([$action === 'reset' ? 'registered' : 'no_show', $regId, $eventId]);
+        $table = $regId < 0 ? 'event_guest_registrations' : 'event_registrations';
+        $pdo->prepare("UPDATE {$table} SET status=? WHERE id=? AND event_id=?")->execute([$action === 'reset' ? 'registered' : 'no_show', abs($regId), $eventId]);
         $reply('success', $action === 'reset' ? 'Moved back to registered.' : 'Marked as no-show.');
     }
     if ($action === 'add_attendee') {
-        $email = cleanEmail($_POST['email'] ?? '');
-        $m = $pdo->prepare("SELECT id FROM members WHERE email = ?"); $m->execute([$email]);
-        if (!$mid = $m->fetchColumn()) $reply('error', 'No member account uses ' . $email . '. They need to join first.');
-        $pdo->prepare("INSERT INTO event_registrations (event_id, member_id, status) VALUES (?,?,'registered') ON DUPLICATE KEY UPDATE status = IF(status='cancelled','registered',status)")->execute([$eventId, $mid]);
-        $reply('success', 'Added to the attendee list.');
+        $email = mb_strtolower(cleanEmail($_POST['email'] ?? ''));
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $reply('error', 'Enter a valid email address.');
+        $acct = memberByEmail($pdo, $email);
+        if ($acct) {
+            $pdo->prepare("INSERT INTO event_registrations (event_id, member_id, status) VALUES (?,?,'registered') ON DUPLICATE KEY UPDATE status = IF(status='cancelled','registered',status)")->execute([$eventId, $acct['id']]);
+            $reply('success', 'Added to the attendee list (RARL member).');
+        }
+        // Not a member: add them as a guest so they can still be checked in and get a certificate.
+        $name = clean(trim((string)($_POST['name'] ?? '')));
+        if ($name === '') $reply('error', $email . ' isn\'t a RARL member. Add their name too and they\'ll be added as a guest.');
+        $pdo->prepare("INSERT INTO event_guest_registrations (event_id, full_name, email, token, source) VALUES (?,?,?,?,'admin')
+                       ON DUPLICATE KEY UPDATE full_name = VALUES(full_name), status = IF(status='cancelled','registered',status)")
+            ->execute([$eventId, $name, $email, guestToken()]);
+        $reply('success', 'Added ' . html_entity_decode($name, ENT_QUOTES) . ' as a guest.');
     }
     if ($action === 'bulk') {
         $ids = array_filter(array_map('intval', $_POST['ids'] ?? []));
@@ -62,14 +76,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $reply('success', "{$n} marked attended. Certificates issued — emails are sending in the background.");
         }
         if ($op === 'no_show' || $op === 'reset') {
-            $in = implode(',', $ids);
-            $pdo->prepare("UPDATE event_registrations SET status=? WHERE event_id=? AND id IN ({$in})")->execute([$op === 'reset' ? 'registered' : 'no_show', $eventId]);
+            $status = $op === 'reset' ? 'registered' : 'no_show';
+            $mem = array_filter($ids, fn($i) => $i > 0); $gst = array_map('abs', array_filter($ids, fn($i) => $i < 0));
+            if ($mem) $pdo->prepare("UPDATE event_registrations SET status=? WHERE event_id=? AND id IN (" . implode(',', $mem) . ")")->execute([$status, $eventId]);
+            if ($gst) $pdo->prepare("UPDATE event_guest_registrations SET status=? WHERE event_id=? AND id IN (" . implode(',', $gst) . ")")->execute([$status, $eventId]);
             $reply('success', count($ids) . ' updated.');
         }
     }
     if ($action === 'close_out') {
         $n = $pdo->prepare("UPDATE event_registrations SET status='no_show' WHERE event_id=? AND status='registered'"); $n->execute([$eventId]);
-        $reply('success', $n->rowCount() . ' remaining registration(s) marked as no-show.');
+        $g = $pdo->prepare("UPDATE event_guest_registrations SET status='no_show' WHERE event_id=? AND status='registered'"); $g->execute([$eventId]);
+        $reply('success', ($n->rowCount() + $g->rowCount()) . ' remaining registration(s) marked as no-show.');
     }
     $reply('error', 'Unknown action.');
 }
@@ -81,13 +98,31 @@ $regs = $pdo->prepare("SELECT r.*, m.full_name, m.lab_name, m.type, m.email, m.a
     ORDER BY FIELD(r.status,'registered','attended','no_show','cancelled'), COALESCE(m.full_name, m.lab_name)");
 $regs->execute([$eventId]);
 $all = $regs->fetchAll();
+foreach ($all as &$r) $r['kind'] = 'member';
+unset($r);
+// Guests from the registration form (negative ids keep them apart from member registrations).
+$gs = $pdo->prepare("SELECT g.*, -g.id AS id, 'individual' AS type, NULL AS lab_name, NULL AS avatar_path, 'guest' AS kind,
+        (SELECT c.pdf_path FROM certificates c WHERE c.event_id = g.event_id AND c.recipient_email = g.email LIMIT 1) AS cert_pdf
+    FROM event_guest_registrations g WHERE g.event_id = ?");
+$gs->execute([$eventId]);
+$all = array_merge($all, $gs->fetchAll());
+$order = ['registered' => 0, 'attended' => 1, 'no_show' => 2, 'cancelled' => 3];
+usort($all, fn($a, $b) => [$order[$a['status']] ?? 9, mb_strtolower(html_entity_decode((string)(($a['type'] === 'lab' ? $a['lab_name'] : $a['full_name']) ?: $a['email']), ENT_QUOTES))]
+                       <=> [$order[$b['status']] ?? 9, mb_strtolower(html_entity_decode((string)(($b['type'] === 'lab' ? $b['lab_name'] : $b['full_name']) ?: $b['email']), ENT_QUOTES))]);
+$posLabel = fn($r) => ($r['position'] ?? '') === 'other' && !empty($r['position_other']) ? html_entity_decode((string)$r['position_other'], ENT_QUOTES) : (GUEST_POSITIONS[$r['position'] ?? ''] ?? '');
 
 if (($_GET['export'] ?? '') === 'csv') {
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="attendees-' . $eventId . '-' . date('Ymd') . '.csv"');
     $out = fopen('php://output', 'w'); fwrite($out, "\xEF\xBB\xBF");
-    fputcsv($out, ['name', 'email', 'institution', 'country', 'status', 'registered_at']);
-    foreach ($all as $r) fputcsv($out, [$r['type'] === 'lab' ? $r['lab_name'] : $r['full_name'], $r['email'], $r['institution'], $r['country'], $r['status'], $r['registered_at']]);
+    fputcsv($out, ['name', 'email', 'registered_as', 'institution', 'country', 'position', 'says_rarl_member', 'member_number', 'member_number_verified', 'research_interest', 'status', 'registered_at']);
+    $d = fn($v) => html_entity_decode((string)$v, ENT_QUOTES, 'UTF-8');
+    foreach ($all as $r) {
+        $guest = $r['kind'] === 'guest';
+        fputcsv($out, [$d($r['type'] === 'lab' ? $r['lab_name'] : $r['full_name']), $r['email'], $guest ? 'guest form' : 'member account', $d($r['institution']), $r['country'],
+            $guest ? $posLabel($r) : '', $guest ? ($r['says_member'] ? 'yes' : 'no') : 'yes', $guest ? $r['member_number'] : '', $guest ? ($r['member_verified'] ? 'yes' : 'no') : '',
+            $guest ? $d($r['research_interest']) : '', $r['status'], $r['registered_at']]);
+    }
     exit;
 }
 
@@ -98,7 +133,7 @@ $rows = $tab === 'all' ? $all : array_values(array_filter($all, fn($r) => $r['st
 $isPast = $event['event_date'] && $event['event_date'] < date('Y-m-d');
 $qs = $tab !== 'all' ? 'tab=' . $tab : '';
 
-adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId, $qs) {
+adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId, $qs, $posLabel) {
     adminFlash();
     $emails = implode(', ', array_column(array_filter($all, fn($r) => $r['status'] !== 'cancelled'), 'email'));
 ?>
@@ -169,7 +204,18 @@ adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId,
         ?>
         <tr data-search="<?= ex(mb_strtolower($name . ' ' . $r['email'])) ?>">
           <td><?= bulkRowCheckbox((int)$r['id']) ?></td>
-          <td><div class="flex items-center gap-3"><?= memberAvatarHtml($r['avatar_path'] ?? null, $name, 'w-8 h-8 text-xs') ?><div class="min-w-0"><p class="font-semibold text-gray-900 truncate max-w-[240px]"><?= ex($name) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[240px]"><?= ex($r['email']) ?><?= $r['institution'] ? ' · ' . ex($r['institution']) : '' ?></p></div></div></td>
+          <td><div class="flex items-center gap-3"><?= memberAvatarHtml($r['avatar_path'] ?? null, $name, 'w-8 h-8 text-xs') ?><div class="min-w-0"><p class="font-semibold text-gray-900 truncate max-w-[240px]"><?= ex($name) ?></p><p class="text-[11px] text-gray-400 truncate max-w-[240px]"><?= ex($r['email']) ?><?= $r['institution'] ? ' · ' . ex($r['institution']) : '' ?></p>
+            <?php if ($r['kind'] === 'guest'): ?>
+            <p class="flex flex-wrap items-center gap-1 mt-1">
+              <span class="rarl-badge rarl-badge-gray" title="Registered with the event form, without signing in">Guest</span>
+              <?php if ($r['says_member']): ?><span class="rarl-badge <?= $r['member_verified'] ? 'rarl-badge-green' : 'rarl-badge-amber' ?>" title="<?= $r['member_verified'] ? 'Member number matches the account for this email' : 'Says they\'re a member, but the number doesn\'t match an account with this email' ?>"><i class="fa-solid <?= $r['member_verified'] ? 'fa-circle-check' : 'fa-circle-question' ?>"></i> <?= $r['member_number'] ? '#' . ex($r['member_number']) : 'Says member' ?></span>
+              <?php elseif ($r['member_id']): ?><span class="rarl-badge rarl-badge-blue" title="This email belongs to a member account">Has account</span><?php endif; ?>
+              <?php if ($posLabel($r)): ?><span class="rarl-badge rarl-badge-gray"><?= ex($posLabel($r)) ?></span><?php endif; ?>
+              <?php if ($r['country']): ?><span class="text-[11px] text-gray-500"><?= ex($r['country']) ?></span><?php endif; ?>
+            </p>
+            <?php if ($r['research_interest']): ?><p class="text-[11px] text-gray-500 mt-0.5 max-w-[360px] line-clamp-2" title="<?= ex($r['research_interest']) ?>"><i class="fa-solid fa-flask text-gray-400"></i> <?= ex($r['research_interest']) ?></p><?php endif; ?>
+            <?php endif; ?>
+            </div></div></td>
           <td class="text-[11px] text-gray-500 whitespace-nowrap" data-sort="<?= ex($r['registered_at']) ?>"><?= date('d M Y, H:i', strtotime($r['registered_at'])) ?></td>
           <td><span class="rarl-badge <?= $badge[0] ?>"><?= $badge[1] ?></span></td>
           <td class="text-right whitespace-nowrap">
@@ -216,8 +262,9 @@ adminWrap(function() use ($event, $rows, $all, $counts, $tab, $isPast, $eventId,
 <dialog id="add-dlg" class="rarl-dialog w-full max-w-md">
   <form method="POST" class="p-6 space-y-4"><?= acsrfField() ?><input type="hidden" name="action" value="add_attendee"><input type="hidden" name="event_id" value="<?= $eventId ?>">
     <div class="flex items-center justify-between"><h2 class="font-heading font-bold text-lg">Add attendee</h2><button type="button" onclick="this.closest('dialog').close()" class="rarl-icon-btn" aria-label="Close"><i class="fa-solid fa-xmark"></i></button></div>
-    <p class="text-sm text-gray-500">For walk-ins or people who registered elsewhere. They need a member account.</p>
-    <div><label class="rarl-label">Member email</label><input type="email" name="email" required class="rarl-input" placeholder="name@example.com"/></div>
+    <p class="text-sm text-gray-500">For walk-ins or people who registered elsewhere. Members are matched by email; anyone else is added as a guest.</p>
+    <div><label class="rarl-label" for="add-email">Email</label><input type="email" name="email" id="add-email" required class="rarl-input" placeholder="name@example.com"/></div>
+    <div><label class="rarl-label" for="add-name">Name <span class="font-normal text-gray-400">— needed if they're not a member</span></label><input name="name" id="add-name" class="rarl-input" placeholder="As it should appear on the certificate"/></div>
     <div class="flex justify-end gap-2"><button type="button" class="rarl-btn" onclick="this.closest('dialog').close()">Cancel</button><button class="rarl-btn rarl-btn-primary">Add</button></div>
   </form>
 </dialog>

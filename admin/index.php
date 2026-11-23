@@ -22,10 +22,12 @@ $chairless   = (int)$q("SELECT COUNT(*) FROM regional_sections WHERE is_publishe
 
 $pending = $pdo->query("SELECT id, full_name, lab_name, type, email, institution, country, avatar_path, created_at, email_verified_at FROM members WHERE status='pending' AND " . REAL_MEMBER_SQL . " ORDER BY created_at ASC LIMIT 5")->fetchAll();
 $needAttendance = [];
-try { $needAttendance = $pdo->query("SELECT e.id, e.title, e.event_date, COUNT(r.id) open_regs FROM events e JOIN event_registrations r ON r.event_id = e.id AND r.status = 'registered'
-    WHERE e.event_date < CURDATE() AND e.event_date >= CURDATE() - INTERVAL 60 DAY GROUP BY e.id ORDER BY e.event_date DESC LIMIT 3")->fetchAll(); } catch (Throwable $e) {}
+try { $needAttendance = $pdo->query("SELECT e.id, e.title, e.event_date,
+        (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status = 'registered')
+      + (SELECT COUNT(*) FROM event_guest_registrations g WHERE g.event_id = e.id AND g.status = 'registered') AS open_regs
+    FROM events e WHERE e.event_date < CURDATE() AND e.event_date >= CURDATE() - INTERVAL 60 DAY HAVING open_regs > 0 ORDER BY e.event_date DESC LIMIT 3")->fetchAll(); } catch (Throwable $e) {}
 $nextEvents = [];
-try { $nextEvents = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_time, e.capacity, (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id=e.id AND r.status!='cancelled') regs
+try { $nextEvents = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_time, e.capacity, " . eventTakenSql('e') . " regs
     FROM events e WHERE e.is_active=1 AND e.event_date >= CURDATE() ORDER BY e.event_date LIMIT 3")->fetchAll(); } catch (Throwable $e) {}
 
 // Signups per week, last 12 weeks (oldest first, zero-filled).

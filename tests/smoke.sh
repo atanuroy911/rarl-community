@@ -67,5 +67,37 @@ for p in index.php members.php member-check.php import-members.php sections.php 
 done
 grep -q 'name="u"' "$WORK/page.html" && fail "admin login did not work"
 
+echo "Guest event registration (events seeded by tests/ci-db.php)"
+GJ="$WORK/guest-reg.jar"
+post_guest() { # post_guest <out-file> <form fields…>: submits the registration form, follows redirects, prints the final URL
+  local out="$1"; shift
+  curl -s -L -c "$GJ" -b "$GJ" -o "$out" -w '%{url_effective}' --data-urlencode "csrf_token=$GT" -d action=guest_register "$@" "$BASE/events.php"
+}
+valid_guest=(--data-urlencode "g_country=United Kingdom" --data-urlencode "g_institution=University of CI" -d g_position=researcher -d g_member=0 --data-urlencode "g_interest=Swarm robotics")
+check guest-reg "$GJ" "events.php?event=1"
+grep -q 'data-guest-open="1"' "$WORK/page.html" || fail "public event has no Register button for guests"
+GT=$(grep -o 'name="csrf_token" value="[^"]*"' "$WORK/page.html" | head -1 | sed 's/.*value="//;s/"//')
+post_guest "$WORK/g-bad.html" -d event_id=1 -d g_name=X >/dev/null
+grep -q 'Please check the highlighted fields' "$WORK/g-bad.html" || fail "an incomplete guest form was not sent back with errors"
+URL=$(post_guest "$WORK/g-ok.html" -d event_id=1 --data-urlencode "g_name=Ada Guest" -d g_email=ada@example.com "${valid_guest[@]}")
+case "$URL" in *"events.php?guest="*) check guest-reg "$GJ" "${URL#"$BASE"/}"; grep -q 'Ada Guest' "$WORK/page.html" || fail "guest registration page does not show the guest";;
+  *) fail "guest registration did not land on the private registration page (got $URL)";; esac
+post_guest "$WORK/g-dup.html" -d event_id=1 --data-urlencode "g_name=Ada Updated" -d g_email=ada@example.com "${valid_guest[@]}" >/dev/null
+grep -q 'Your details are updated' "$WORK/g-dup.html" || fail "registering again with the same email did not update the existing registration"
+check guest-reg "$GJ" "events.php?event=2"
+grep -q 'data-guest-open="2"' "$WORK/page.html" && fail "link-only event opened without its key"
+check guest-reg "$GJ" "events.php?event=2&k=c1c1c1c1c1c1c1c1c1c1c1c1"
+grep -q 'data-guest-open="2"' "$WORK/page.html" || fail "link-only event with its key has no Register button"
+post_guest "$WORK/g-l1.html" -d event_id=2 -d k=c1c1c1c1c1c1c1c1c1c1c1c1 --data-urlencode "g_name=Ben Guest" -d g_email=ben@example.com "${valid_guest[@]}" >/dev/null
+grep -q 'Ben Guest' "$WORK/g-l1.html" || fail "guest could not register for a link-only event with its key"
+post_guest "$WORK/g-full.html" -d event_id=2 -d k=c1c1c1c1c1c1c1c1c1c1c1c1 --data-urlencode "g_name=Cy Guest" -d g_email=cy@example.com "${valid_guest[@]}" >/dev/null
+grep -q 'fully booked' "$WORK/g-full.html" || fail "capacity was not enforced for guests"
+URL=$(post_guest "$WORK/g-mo.html" -d event_id=3 --data-urlencode "g_name=Di Guest" -d g_email=di@example.com "${valid_guest[@]}")
+case "$URL" in *"guest="*) fail "a guest registered for a members-only event";; esac
+check admin "$A" "admin/event-registrations.php?event=1"
+grep -q 'Ada Updated' "$WORK/page.html" || fail "guest is missing from the admin attendee list"
+curl -s -b "$A" "$BASE/admin/event-registrations.php?event=1&export=csv" | grep -q 'Swarm robotics' || fail "attendee CSV is missing the guest's research interest"
+check admin "$A" "admin/events.php"
+
 if grep -qE 'PHP (Fatal|Parse)' "$WORK/server.log"; then fail "server log has PHP errors:"; grep -E 'PHP (Fatal|Parse)' "$WORK/server.log" | head -5; fi
 [ "$FAILED" = 0 ] && echo "All smoke checks passed." || { echo "Smoke checks FAILED."; exit 1; }

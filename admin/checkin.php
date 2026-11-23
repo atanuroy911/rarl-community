@@ -15,7 +15,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'scan'
     if (!adminCsrfOk()) { echo json_encode(['ok' => false, 'state' => 'invalid', 'message' => 'Session expired — reload the page.']); exit; }
     $r = checkinApply((string)($_POST['t'] ?? ''));
     $r['avatar_url'] = !empty($r['avatar']) ? UPLOADS_URL . '/avatars/' . $r['avatar'] : null;
-    $r['count'] = !empty($r['event_id']) ? (int)$pdo->query("SELECT COUNT(*) FROM event_registrations WHERE event_id = " . (int)$r['event_id'] . " AND status = 'attended'")->fetchColumn() : null;
+    $r['count'] = !empty($r['event_id']) ? (int)$pdo->query('SELECT ' . eventAttendedSql('e') . ' FROM events e WHERE e.id = ' . (int)$r['event_id'])->fetchColumn() : null;
     echo json_encode($r, JSON_HEX_TAG); exit;
 }
 // Confirm from a pass link opened by a phone's camera app.
@@ -25,7 +25,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'confi
 }
 $token = (string)($_GET['t'] ?? '');
 $preview = null;
-if ($token && !$linkResult) {
+if ($token && !$linkResult && ($gid = guestCheckinParse($token)) !== null) {
+    $q = $pdo->prepare("SELECT e.title, e.event_date, g.full_name, NULL AS lab_name, 'individual' AS type, NULL AS member_code, NULL AS avatar_path, g.status
+        FROM event_guest_registrations g JOIN events e ON e.id = g.event_id WHERE g.id = ?");
+    $q->execute([$gid]);
+    $preview = $q->fetch() ?: null;
+} elseif ($token && !$linkResult) {
     $p = checkinParse($token);
     if ($p) {
         $q = $pdo->prepare("SELECT e.title, e.event_date, m.full_name, m.lab_name, m.type, m.member_code, m.avatar_path, r.status
@@ -36,8 +41,8 @@ if ($token && !$linkResult) {
 }
 
 $events = $pdo->query("SELECT e.id, e.title, e.event_date, e.event_time, e.end_date, e.end_time, e.timezone,
-        (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status IN ('registered','attended')) AS regs,
-        (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status = 'attended') AS done
+        " . eventTakenSql('e') . " AS regs,
+        " . eventAttendedSql('e') . " AS done
     FROM events e WHERE e.is_active = 1 AND e.event_date BETWEEN CURDATE() - INTERVAL 2 DAY AND CURDATE() + INTERVAL 7 DAY ORDER BY e.event_date, e.event_time")->fetchAll();
 
 adminWrap(function () use ($events, $token, $preview, $linkResult) {

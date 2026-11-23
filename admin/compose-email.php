@@ -32,8 +32,10 @@ function composeRecipients(PDO $pdo, array $in): array {
             $s = $pdo->prepare("SELECT email, full_name, lab_name, type FROM members WHERE plan_id = ? AND status = 'active'"); $s->execute([(int)$in['plan_id']]); $rows = $s->fetchAll(); break;
         case 'event':
             $statuses = $in['event_status'] === 'attended' ? "('attended')" : ($in['event_status'] === 'registered' ? "('registered')" : "('registered','attended')");
-            $s = $pdo->prepare("SELECT m.email, m.full_name, m.lab_name, m.type FROM event_registrations r JOIN members m ON m.id = r.member_id WHERE r.event_id = ? AND r.status IN {$statuses}");
-            $s->execute([(int)$in['event_id']]); $rows = $s->fetchAll(); break;
+            // Members and guests who used the event's registration form.
+            $s = $pdo->prepare("SELECT m.email, m.full_name, m.lab_name, m.type FROM event_registrations r JOIN members m ON m.id = r.member_id WHERE r.event_id = ? AND r.status IN {$statuses}
+                                UNION SELECT g.email, g.full_name, NULL, 'individual' FROM event_guest_registrations g WHERE g.event_id = ? AND g.status IN {$statuses}");
+            $s->execute([(int)$in['event_id'], (int)$in['event_id']]); $rows = $s->fetchAll(); break;
         case 'pending':
             $rows = $pdo->query("SELECT email, full_name, lab_name, type FROM members WHERE status = 'pending'")->fetchAll(); break;
         case 'all_active':

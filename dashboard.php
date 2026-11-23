@@ -34,7 +34,7 @@ $goingCount->execute([$memberId]);
 $goingCount = (int)$goingCount->fetchColumn();
 
 $evStmt = $pdo->prepare("SELECT e.*, r.status AS my_status,
-        (SELECT COUNT(*) FROM event_registrations x WHERE x.event_id = e.id AND x.status != 'cancelled') AS reg_count
+        " . eventTakenSql('e') . " AS reg_count
     FROM events e LEFT JOIN event_registrations r ON r.event_id = e.id AND r.member_id = ?
     WHERE e.is_active = 1 AND " . eventNotOverSql('e') . "
       AND (e.visibility <> 'unlisted' OR r.status IN ('registered','attended'))

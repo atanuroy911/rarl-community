@@ -179,6 +179,36 @@ CREATE TABLE IF NOT EXISTS `event_registrations` (
   KEY `member_id` (`member_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- People who register for a public or link-only event without signing in.
+-- Admin-added walk-ins may have only a name and email, so most fields default to ''.
+CREATE TABLE IF NOT EXISTS `event_guest_registrations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `event_id` int(11) NOT NULL,
+  `full_name` varchar(255) NOT NULL,
+  `email` varchar(255) NOT NULL,
+  `country` varchar(100) NOT NULL DEFAULT '',
+  `institution` varchar(255) NOT NULL DEFAULT '',
+  `position` enum('student','researcher','faculty','industry','other','') NOT NULL DEFAULT '',
+  `position_other` varchar(120) DEFAULT NULL,
+  `says_member` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'answered Yes to: Are you a RARL member?',
+  `member_number` varchar(40) DEFAULT NULL COMMENT 'as typed',
+  `member_id` int(11) DEFAULT NULL COMMENT 'member account using this email, if any',
+  `member_verified` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'typed number matches that account',
+  `research_interest` text DEFAULT NULL,
+  `status` enum('registered','attended','no_show','cancelled') NOT NULL DEFAULT 'registered',
+  `token` char(32) NOT NULL COMMENT 'private link to the registration, cancel and check-in pass',
+  `source` enum('form','admin') NOT NULL DEFAULT 'form',
+  `ip_hash` char(64) DEFAULT NULL,
+  `registered_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `event_email` (`event_id`,`email`),
+  UNIQUE KEY `token` (`token`),
+  KEY `event_status` (`event_id`,`status`),
+  KEY `ip_time` (`ip_hash`,`registered_at`),
+  KEY `member_id` (`member_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `member_activity` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `member_id` int(11) NOT NULL,

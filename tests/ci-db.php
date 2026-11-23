@@ -28,3 +28,17 @@ db()->prepare("INSERT INTO members (uuid, type, email, password_hash, full_name,
                VALUES (UUID(), 'individual', 'ci@example.com', ?, 'Ci Tester', 'active', NOW(), SHA2(UUID(), 256), 'RARL-CI-0001')")
     ->execute([password_hash('ci-password', PASSWORD_DEFAULT)]);
 echo "Test member created\n";
+
+// Events for the guest-registration smoke test (ids 1–3 on the empty database):
+// 1 public online webinar, 2 link-only in-person workshop with one place, 3 members only.
+$mk = function (array $e): int {
+    $e += ['type' => 'webinar', 'event_time' => '15:00:00', 'end_time' => '16:30:00', 'timezone' => 'Europe/London',
+           'event_date' => date('Y-m-d', strtotime('+10 days')), 'share_token' => eventNewShareToken()];
+    $e += eventUtcColumns($e);
+    db()->prepare('INSERT INTO events (' . implode(',', array_keys($e)) . ') VALUES (' . implode(',', array_fill(0, count($e), '?')) . ')')->execute(array_values($e));
+    return (int)db()->lastInsertId();
+};
+$mk(['title' => 'CI Public Webinar', 'visibility' => 'public', 'online_url' => 'https://example.com/join', 'capacity' => 50]);
+$mk(['title' => 'CI Link-only Workshop', 'type' => 'workshop', 'visibility' => 'unlisted', 'share_token' => 'c1c1c1c1c1c1c1c1c1c1c1c1', 'location' => 'CI Lab', 'capacity' => 1]);
+$mk(['title' => 'CI Members Seminar', 'type' => 'seminar', 'visibility' => 'members_only']);
+echo "Test events created\n";

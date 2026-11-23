@@ -188,6 +188,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
     }
     if ($action === 'delete_event' && $id) {
         $pdo->prepare("DELETE FROM event_registrations WHERE event_id=?")->execute([$id]);
+        $pdo->prepare("DELETE FROM event_guest_registrations WHERE event_id=?")->execute([$id]);
         $pdo->prepare("DELETE FROM events WHERE id=?")->execute([$id]);
         $_SESSION['flash'] = ['type'=>'success','msg'=>'Event deleted. Its link no longer works.'];
     }
@@ -198,7 +199,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && adminCsrfOk()) {
             $inClause = implode(',', $ids);
             if ($bulkOp === 'activate')   $pdo->exec("UPDATE events SET is_active = 1 WHERE id IN ({$inClause})");
             if ($bulkOp === 'deactivate') $pdo->exec("UPDATE events SET is_active = 0 WHERE id IN ({$inClause})");
-            if ($bulkOp === 'delete') { $pdo->exec("DELETE FROM event_registrations WHERE event_id IN ({$inClause})"); $pdo->exec("DELETE FROM events WHERE id IN ({$inClause})"); }
+            if ($bulkOp === 'delete') { $pdo->exec("DELETE FROM event_registrations WHERE event_id IN ({$inClause})"); $pdo->exec("DELETE FROM event_guest_registrations WHERE event_id IN ({$inClause})"); $pdo->exec("DELETE FROM events WHERE id IN ({$inClause})"); }
             $_SESSION['flash'] = ['type'=>'success','msg'=>count($ids) . ' event(s) updated.'];
         } else {
             $_SESSION['flash'] = ['type'=>'error','msg'=>'Select at least one event first.'];
@@ -211,8 +212,8 @@ $tab = in_array($_GET['tab'] ?? '', ['past','hidden','all'], true) ? $_GET['tab'
 $q = trim($_GET['q'] ?? '');
 $all = $pdo->query("SELECT e.*,
     (SELECT COUNT(*) FROM certificates c WHERE c.event_id = e.id) as cert_count,
-    (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status != 'cancelled') as reg_count,
-    (SELECT COUNT(*) FROM event_registrations r WHERE r.event_id = e.id AND r.status = 'attended') as attended_count
+    " . eventTakenSql('e') . " as reg_count,
+    " . eventAttendedSql('e') . " as attended_count
     FROM events e ORDER BY e.event_date IS NULL, e.event_date DESC, e.created_at DESC")->fetchAll();
 // Old rows saved before time zones existed: fill in the derived columns once.
 foreach ($all as &$row) {
